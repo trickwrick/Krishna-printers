@@ -46,6 +46,9 @@ import StaffTeamManagement from './StaffTeamManagement';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
 import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
 import { STAFF_TEAM_ENABLED } from './utils/featureFlags';
+import { API_BASE_URL } from './utils/apiBase';
+
+const DEFAULT_SITE_TITLE = 'Krishna Printers';
 
 const DropdownMenu = ({ title, icon: Icon, items, isActive }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -373,8 +376,8 @@ export default function App() {
   // Site Settings Integration
   const [siteSettings, setSiteSettings] = useState(() => {
     const saved = localStorage.getItem('siteSettings');
-    return saved ? JSON.parse(saved) : {
-      siteTitle: 'Harihar Printers',
+    return saved ? { ...JSON.parse(saved), siteTitle: DEFAULT_SITE_TITLE } : {
+      siteTitle: DEFAULT_SITE_TITLE,
       logo: null,
       whiteLogo: null,
       favicon: null
@@ -389,7 +392,7 @@ export default function App() {
 
   useEffect(() => {
     // Update Document Title
-    document.title = siteSettings.siteTitle || 'Harihar Printers';
+    document.title = siteSettings.siteTitle || DEFAULT_SITE_TITLE;
 
     // Update Favicon
     if (siteSettings.favicon) {
@@ -438,11 +441,8 @@ export default function App() {
     {
       name: 'Job Card',
       icon: Briefcase,
-      isDropdown: true,
-      dropdownItems: [
-        { label: 'Job Card Listings', icon: List, onClick: () => navigate('/job-card-list') },
-        { label: 'Add New', icon: PlusSquare, onClick: () => navigate('/job-card') },
-      ],
+      path: '/job-card-list',
+      matchPath: '/job-card',
     },
     {
       name: 'Invoices',
@@ -569,10 +569,11 @@ export default function App() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch('https://crm-qpw8.onrender.com/api/notifications');
-      const data = await res.json();
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.isRead).length);
+      const res = await fetch(`${API_BASE_URL}/api/notifications`);
+      const data = res.ok ? await res.json() : [];
+      const notificationList = Array.isArray(data) ? data : [];
+      setNotifications(notificationList);
+      setUnreadCount(notificationList.filter(n => !n.isRead).length);
     } catch (err) {
       console.error("Notif Error:", err);
     }
@@ -605,7 +606,7 @@ export default function App() {
 
   const markAllAsRead = async () => {
     try {
-      await fetch('https://crm-qpw8.onrender.com/api/notifications/read-all', { method: 'PUT' });
+      await fetch(`${API_BASE_URL}/api/notifications/read-all`, { method: 'PUT' });
       fetchNotifications();
     } catch (err) {
       console.error("Read Error:", err);
@@ -634,9 +635,9 @@ export default function App() {
               </div>
             )}
             <span className="truncate hidden sm:block">
-              {(!siteSettings.siteTitle || siteSettings.siteTitle === 'TRICKWRICK' || siteSettings.siteTitle === 'Harihar Printers') ? (
+              {(!siteSettings.siteTitle || siteSettings.siteTitle === DEFAULT_SITE_TITLE) ? (
                 <>
-                  <span className="text-[#111827] font-black">Harihar</span>{' '}
+                  <span className="text-[#111827] font-black">Krishna</span>{' '}
                   <span className="text-[#2563eb] font-black">Printers</span>
                 </>
               ) : (

@@ -69,6 +69,7 @@ const jobCardSchema = new mongoose.Schema({
   jobColor: [Number], // [1, 2, 3, 4]
   jobCounter: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
+  completionDays: { type: Number },
   notes: { type: String },
 
   createdAt: { type: Date, default: Date.now },

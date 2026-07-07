@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import { Plus, Trash2, X, Printer, UserPlus } from 'lucide-react';
 import { buildPartySuggestions, partyNameExists } from './utils/partySuggestions';
 import { masterItemToLineFields } from './utils/itemSuggestions';
@@ -13,6 +12,7 @@ import { getStoredPaymentType, setStoredPaymentType } from './utils/paymentTypeS
 import { setStoredDocumentExtras, getStoredDocumentExtras } from './utils/documentExtrasStorage';
 import { setStoredItemNotes, mapLineItemsForSave } from './utils/itemNoteStorage';
 import { validateStateAndCode } from './utils/indianStateCodes';
+import { API_BASE_URL } from './utils/apiBase';
 
 const EMPTY_PARTY_FORM = {
   partyName: '',
@@ -21,10 +21,6 @@ const EMPTY_PARTY_FORM = {
   emailId: '',
   gstNo: '',
 };
-
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://crm-qpw8.onrender.com'
-  : 'https://crm-qpw8.onrender.com';
 
 const defaultInvoiceItem = () => ({
   id: Date.now() + Math.random(),

@@ -16,6 +16,7 @@ import { getBillToDetails, getShipToDetails } from './utils/shipAddress';
 import { numberToWords } from './utils/numberToWords';
 import { getChallanLineItems, computeLineItemsTotals, buildMergedChallanMeta } from './utils/challanTotals';
 import { SELLER, fmtTaxDate, fmtAmt, getStateFromGst, formatStateWithCode, TaxFieldsTable, SellerGstinMsmeLines, TaxDocumentSignaturesRow, TaxTermsAndReceiverSignature, TaxBankAndAuthorisedSignature, buildTaxItemLine, getEmptyProductRowCount, CompanyBrandName, TaxCopyBox, TaxCopyTypeControls, DEFAULT_TAX_COPY_SELECTION, getSelectedCopyIds, getPreviewHighlightCopy, TaxInvoiceColGroup, getTaxTableColCount, getTaxTableHalfColSpans, getTaxChargeSubRowCount, TaxClassicItemsBlock, buildTaxAnalysisGroups, TaxAnalysisSection } from './utils/taxDocumentPrint';
+import { API_BASE_URL } from './utils/apiBase';
 
 const ChallanList = () => {
   const navigate = useNavigate();
@@ -95,7 +96,7 @@ const ChallanList = () => {
 
   useEffect(() => {
     fetchChallans();
-    fetch('https://crm-qpw8.onrender.com/api/jobcard')
+    fetch(`${API_BASE_URL}/api/jobcard`)
       .then((res) => res.json())
       .then((data) => setJobCards(Array.isArray(data) ? data : []))
       .catch((err) => console.error('Error fetching job cards:', err));
@@ -126,7 +127,7 @@ const ChallanList = () => {
   }, [challans, location.state?.printChallanId, navigate]);
 
   const fetchChallans = () => {
-    fetch('https://crm-qpw8.onrender.com/api/challan')
+    fetch(`${API_BASE_URL}/api/challan`)
       .then(res => res.json())
       .then((data) => setChallans(mergeDocumentForPrintList(mergePaymentTypeList(data))))
       .catch(err => console.error("Error fetching Challans:", err));
@@ -140,7 +141,7 @@ const ChallanList = () => {
   const confirmDelete = async () => {
     if (challanToDelete) {
       try {
-        const response = await fetch(`https://crm-qpw8.onrender.com/api/challan/${challanToDelete}`, {
+        const response = await fetch(`${API_BASE_URL}/api/challan/${challanToDelete}`, {
           method: 'DELETE'
         });
         if (response.ok) {
@@ -167,7 +168,7 @@ const ChallanList = () => {
     setOpenDropdownId(null);
 
     try {
-      const response = await fetch(`https://crm-qpw8.onrender.com/api/challan/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/challan/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentStatus: newStatus })

@@ -6,6 +6,8 @@ import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { syncPlateUsageFromCards } from './utils/plateUsage';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
+import { API_BASE_URL } from './utils/apiBase';
+import { deleteLocalJobCard, mergeWithLocalJobCards } from './utils/localJobCards';
 
 const BINDING_OPTIONS = [
   { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -23,13 +25,43 @@ const BINDING_OPTIONS = [
 const getBindingLabel = (card) =>
   BINDING_OPTIONS.filter((item) => card[item.key]).map((item) => item.label).join(', ') || '-';
 
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://crm-qpw8.onrender.com'
-  : 'https://crm-qpw8.onrender.com';
+const WORKFLOW_STEPS = [
+  { title: 'Design & Proof', desc: 'Artwork, design & client approval', owner: 'Super Admin 1' },
+  { title: 'Printing', desc: 'Plate making & print production', owner: 'Super Admin 2' },
+  { title: 'Binding & Finish', desc: 'Cutting, folding & binding', owner: 'Admin 1' },
+  { title: 'QC & Delivery', desc: 'Quality check, packing & dispatch', owner: 'Admin 2' },
+];
+
+const readWorkflowProgress = () => {
+  try {
+    return JSON.parse(localStorage.getItem('krishnaJobWorkflowProgress') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const getCardKey = (card) => card?._id || card?.jobNumber || '';
+
+const getTimeLeft = (card) => {
+  const completionDays = Number(card.completionDays) || 0;
+  if (!completionDays) return null;
+
+  const start = new Date(card.createdAt || card.jobDate || Date.now());
+  const due = new Date(start);
+  due.setDate(start.getDate() + completionDays);
+
+  const diffMs = due.getTime() - Date.now();
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return {
+    days: Math.max(0, days),
+    overdue: days < 0,
+  };
+};
 
 export default function JobCardListing() {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState([]);
+  const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
@@ -68,16 +100,19 @@ export default function JobCardListing() {
   const loadData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/jobcard`);
-      const data = await response.json();
-      syncPlateUsageFromCards(data);
-      setJobCards(data);
+      const data = response.ok ? await response.json() : [];
+      const mergedData = mergeWithLocalJobCards(data);
+      syncPlateUsageFromCards(mergedData);
+      setJobCards(mergedData);
     } catch (error) {
       console.error("Error loading job cards:", error);
+      setJobCards(mergeWithLocalJobCards([]));
     }
   };
 
   useEffect(() => {
     loadData();
+    setWorkflowProgress(readWorkflowProgress());
 
     // Close filter dropdown on click outside
     const handleClickOutside = (event) => {
@@ -90,6 +125,7 @@ export default function JobCardListing() {
   }, []);
 
   const refreshData = () => {
+    setWorkflowProgress(readWorkflowProgress());
     loadData();
   };
 
@@ -177,6 +213,15 @@ export default function JobCardListing() {
 
   const confirmDelete = async () => {
     if (cardToDelete) {
+      const card = jobCards.find((item) => item._id === cardToDelete);
+      if (card?.localOnly) {
+        deleteLocalJobCard(cardToDelete);
+        setJobCards(jobCards.filter((item) => item._id !== cardToDelete));
+        setIsDeleteModalOpen(false);
+        setCardToDelete(null);
+        return;
+      }
+
       try {
         const response = await fetch(`${API_BASE_URL}/api/jobcard/${cardToDelete}`, {
           method: "DELETE"
@@ -364,104 +409,154 @@ export default function JobCardListing() {
                   </td>
                 </tr>
               ) : (
-                filteredCards.map((card, index) => (
-                  <tr key={card._id} className="border-b last:border-0 border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">{index + 1}</td>
-                    {columnVisibility.partyName && (
-                      <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.partyName}</td>
-                    )}
-                    {columnVisibility.jobNumber && (
-                      <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
-                        <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block break-all">
-                          {card.jobNumber}
-                        </span>
-                      </td>
-                    )}
-                    {columnVisibility.jobDate && (
-                      <td className="py-2 px-1.5 text-gray-500 align-top whitespace-normal leading-snug">
-                        {formatShortDate(card.jobDate)}
-                      </td>
-                    )}
-                    {columnVisibility.jobQty && (
-                      <td className="py-2 px-1.5 text-gray-800 font-semibold align-top break-all whitespace-normal overflow-hidden max-w-0 leading-snug">
-                        {card.jobQty || 0}
-                      </td>
-                    )}
-                    {columnVisibility.jobName && (
-                      <td className="py-2 px-1.5 text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.jobName || '-'}</td>
-                    )}
-                    {columnVisibility.pageSize && (
-                      <td className="py-2 px-1.5 text-gray-700 align-top wrap-break-word whitespace-normal leading-snug">{card.pageSize || '-'}</td>
-                    )}
-                    {columnVisibility.pageCount && (
-                      <td className="py-2 px-1.5 text-gray-700 align-top">{card.pageCount || '-'}</td>
-                    )}
-                    {columnVisibility.printingType && (
-                      <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
-                        {card.printingType ? (
-                          <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-medium inline-block">{card.printingType}</span>
-                        ) : '-'}
-                      </td>
-                    )}
-                    {columnVisibility.paper && (
-                      <td className="py-2 px-1.5 text-gray-700 align-top wrap-break-word whitespace-normal leading-snug">{card.paper || '-'}</td>
-                    )}
-                    {columnVisibility.paperGSM && <td className="py-2 px-1.5 text-gray-700 align-top">{card.paperGSM || '-'}</td>}
-                    {columnVisibility.innerPaperGSM && <td className="py-2 px-1.5 text-gray-700 align-top">{card.innerPaperGSM || '-'}</td>}
-                    {columnVisibility.lamination && (
-                      <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
-                        {card.lamination ? (
-                          <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium inline-block">{card.lamination}</span>
-                        ) : <span className="text-gray-400">-</span>}
-                      </td>
-                    )}
-                    {columnVisibility.binding && (
-                      <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
-                        {(() => {
-                          const chips = getBindingText(card);
-                          return chips ? (
-                            <div className="flex flex-wrap gap-0.5">
-                              {chips.map((b, i) => (
-                                <span key={i} className="bg-amber-50 text-amber-700 border border-amber-100 px-1 py-0.5 rounded text-[9px] font-semibold">{b}</span>
-                              ))}
+                filteredCards.map((card, index) => {
+                  const cardKey = getCardKey(card);
+                  const doneSteps = workflowProgress[cardKey] || 0;
+                  const timeLeft = getTimeLeft(card);
+
+                  return (
+                    <React.Fragment key={cardKey || index}>
+                      <tr className="border-b-0 border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">{index + 1}</td>
+                        {columnVisibility.partyName && (
+                          <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.partyName}</td>
+                        )}
+                        {columnVisibility.jobNumber && (
+                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
+                            <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-semibold inline-block break-all">
+                              {card.jobNumber}
+                            </span>
+                          </td>
+                        )}
+                        {columnVisibility.jobDate && (
+                          <td className="py-2 px-1.5 text-gray-500 align-top whitespace-normal leading-snug">
+                            {formatShortDate(card.jobDate)}
+                          </td>
+                        )}
+                        {columnVisibility.jobQty && (
+                          <td className="py-2 px-1.5 text-gray-800 font-semibold align-top break-all whitespace-normal overflow-hidden max-w-0 leading-snug">
+                            {card.jobQty || 0}
+                          </td>
+                        )}
+                        {columnVisibility.jobName && (
+                          <td className="py-2 px-1.5 text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.jobName || '-'}</td>
+                        )}
+                        {columnVisibility.pageSize && (
+                          <td className="py-2 px-1.5 text-gray-700 align-top wrap-break-word whitespace-normal leading-snug">{card.pageSize || '-'}</td>
+                        )}
+                        {columnVisibility.pageCount && (
+                          <td className="py-2 px-1.5 text-gray-700 align-top">{card.pageCount || '-'}</td>
+                        )}
+                        {columnVisibility.printingType && (
+                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
+                            {card.printingType ? (
+                              <span className="bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-medium inline-block">{card.printingType}</span>
+                            ) : '-'}
+                          </td>
+                        )}
+                        {columnVisibility.paper && (
+                          <td className="py-2 px-1.5 text-gray-700 align-top wrap-break-word whitespace-normal leading-snug">{card.paper || '-'}</td>
+                        )}
+                        {columnVisibility.paperGSM && <td className="py-2 px-1.5 text-gray-700 align-top">{card.paperGSM || '-'}</td>}
+                        {columnVisibility.innerPaperGSM && <td className="py-2 px-1.5 text-gray-700 align-top">{card.innerPaperGSM || '-'}</td>}
+                        {columnVisibility.lamination && (
+                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
+                            {card.lamination ? (
+                              <span className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-medium inline-block">{card.lamination}</span>
+                            ) : <span className="text-gray-400">-</span>}
+                          </td>
+                        )}
+                        {columnVisibility.binding && (
+                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
+                            {(() => {
+                              const chips = getBindingText(card);
+                              return chips ? (
+                                <div className="flex flex-wrap gap-0.5">
+                                  {chips.map((b, i) => (
+                                    <span key={i} className="bg-amber-50 text-amber-700 border border-amber-100 px-1 py-0.5 rounded text-[9px] font-semibold">{b}</span>
+                                  ))}
+                                </div>
+                              ) : <span className="text-gray-400">-</span>;
+                            })()}
+                          </td>
+                        )}
+                        {columnVisibility.createdAt && (
+                          <td className="py-2 px-1.5 text-gray-500 align-top wrap-break-word whitespace-normal leading-tight">
+                            <span className="block">{formatShortDateTime(card.createdAt).date}</span>
+                            <span className="block text-[10px] text-gray-400">{formatShortDateTime(card.createdAt).time}</span>
+                          </td>
+                        )}
+                        <td className="py-2 px-0.5 align-top">
+                          <div className="flex items-center justify-center gap-0.5">
+                            <button
+                              onClick={() => openPreview(card)}
+                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
+                              title="Print Preview"
+                            >
+                              <Printer size={13} />
+                            </button>
+                            <button
+                              onClick={() => navigate('/job-card', { state: { editData: card } })}
+                              className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
+                              title="Edit"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(card._id)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-100 bg-white">
+                        <td colSpan="20" className="px-12 pb-4 pt-1">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1 min-w-[620px]">
+                              <div className="relative grid grid-cols-4 gap-4">
+                                <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
+                                {WORKFLOW_STEPS.map((step, stepIndex) => {
+                                  const stepNo = stepIndex + 1;
+                                  const done = doneSteps >= stepNo;
+                                  const active = doneSteps + 1 === stepNo;
+                                  return (
+                                    <div key={step.title} className="relative z-10 text-center">
+                                      <div className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm ${
+                                        done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500'
+                                      }`}>
+                                        {stepNo}
+                                      </div>
+                                      <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
+                                      <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
+                                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
+                                        done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+                                      }`}>
+                                        {step.owner}
+                                      </span>
+                                      <p className={`mt-0.5 text-[8px] font-black ${active ? 'text-blue-600' : done ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                        {done ? 'Done' : active ? 'In Progress' : 'Pending'}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          ) : <span className="text-gray-400">-</span>;
-                        })()}
-                      </td>
-                    )}
-                    {columnVisibility.createdAt && (
-                      <td className="py-2 px-1.5 text-gray-500 align-top wrap-break-word whitespace-normal leading-tight">
-                        <span className="block">{formatShortDateTime(card.createdAt).date}</span>
-                        <span className="block text-[10px] text-gray-400">{formatShortDateTime(card.createdAt).time}</span>
-                      </td>
-                    )}
-                    <td className="py-2 px-0.5 align-top">
-                      <div className="flex items-center justify-center gap-0.5">
-                        <button
-                          onClick={() => openPreview(card)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
-                          title="Print Preview"
-                        >
-                          <Printer size={13} />
-                        </button>
-                        <button
-                          onClick={() => navigate('/job-card', { state: { editData: card } })}
-                          className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
-                          title="Edit"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(card._id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
-                          title="Delete"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                            {timeLeft && (
+                              <div className={`w-24 rounded-xl border p-3 text-center shrink-0 ${timeLeft.overdue ? 'bg-red-50 border-red-100 text-red-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                                <p className="text-[9px] font-black uppercase">Time Left</p>
+                                <p className="text-2xl font-black leading-none mt-1">{timeLeft.days}</p>
+                                <p className="text-[10px] font-bold mt-0.5">days</p>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
               )}
             </tbody>
           </table>

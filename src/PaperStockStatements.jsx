@@ -9,10 +9,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { buildPaperStockHistory } from './utils/buildPaperStockHistory.js';
-
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://crm-qpw8.onrender.com'
-  : 'https://crm-qpw8.onrender.com';
+import { API_BASE_URL } from './utils/apiBase';
 
 const PaperStockStatements = () => {
   const [transactions, setTransactions] = useState([]);

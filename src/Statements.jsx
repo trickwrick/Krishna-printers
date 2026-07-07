@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SELLER } from './utils/taxDocumentPrint';
 import { printElement } from './utils/printDocument';
+import { API_BASE_URL } from './utils/apiBase';
 import {
   buildFinancialStatement,
   formatStatementDate,
@@ -49,8 +50,8 @@ const Statements = ({ defaultTab = 'transactions' }) => {
   const fetchData = async () => {
     try {
       const [stmtRes, invRes] = await Promise.all([
-        fetch('https://crm-qpw8.onrender.com/api/statements'),
-        fetch('https://crm-qpw8.onrender.com/api/invoice'),
+        fetch(`${API_BASE_URL}/api/statements`),
+        fetch(`${API_BASE_URL}/api/invoice`),
       ]);
       const [stmtData, invData] = await Promise.all([
         stmtRes.json(),
@@ -68,7 +69,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure? This will also update the invoice balance.")) {
       try {
-        const res = await fetch(`https://crm-qpw8.onrender.com/api/statements/${id}`, { method: 'DELETE' });
+        const res = await fetch(`${API_BASE_URL}/api/statements/${id}`, { method: 'DELETE' });
         if (res.ok) fetchData();
       } catch (err) {
         console.error("Delete Error:", err);

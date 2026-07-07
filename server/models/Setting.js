@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const settingSchema = new mongoose.Schema({
-  siteTitle: { type: String, default: 'TRICKWRICK CRM' },
+  siteTitle: { type: String, default: 'Krishna Printers CRM' },
   adminEmail: { type: String },
   adminMobile: { type: String },
   supportEmail: { type: String },

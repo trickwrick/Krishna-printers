@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight } from 'lucide-react';
 import { mergePaperSizes, rememberPaperSizes } from './utils/paperStockSizes';
-
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://crm-qpw8.onrender.com'
-  : 'https://crm-qpw8.onrender.com';
+import { API_BASE_URL } from './utils/apiBase';
 
 const buildStockName = (coverName, innerName) => {
   const cover = (coverName || '').trim();

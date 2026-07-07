@@ -1,9 +1,9 @@
 import React from 'react';
 import { Phone, Mail } from 'lucide-react';
 
-const TRICKWRICK = {
-  website: 'https://www.trickwrick.com/',
-  email: 'info@trickwrick.com',
+const SUPPORT = {
+  phone: '',
+  email: '',
 };
 
 const MAINTENANCE_POINTS = [
@@ -22,23 +22,19 @@ const ContactSupport = () => (
         </h1>
 
         <div className="flex flex-col items-start gap-3 mb-6">
-          <a
-            href={TRICKWRICK.website}
-            target="_blank"
-            rel="noopener noreferrer"
+          <div
             className="inline-flex items-center gap-3 border border-[#0c3d6e] rounded-sm px-5 py-3 text-[#0c3d6e] font-medium w-fit hover:bg-blue-50/40 transition-colors"
           >
             <Phone size={20} className="shrink-0" strokeWidth={2} />
-            <span>+91 97728 21573</span>
-          </a>
+            <span>{SUPPORT.phone || 'Add support phone'}</span>
+          </div>
 
-          <a
-            href={`mailto:${TRICKWRICK.email}`}
+          <div
             className="inline-flex items-center gap-3 border border-[#0c3d6e] rounded-sm px-5 py-3 text-[#0c3d6e] font-medium w-fit hover:bg-blue-50/40 transition-colors"
           >
             <Mail size={20} className="shrink-0" strokeWidth={2} />
-            <span>{TRICKWRICK.email}</span>
-          </a>
+            <span>{SUPPORT.email || 'Add support email'}</span>
+          </div>
         </div>
 
         <p className="text-sm font-bold text-[#0c3d6e] mb-4">
@@ -46,9 +42,9 @@ const ContactSupport = () => (
         </p>
 
         <p className="text-sm text-gray-500 leading-relaxed">
-        This software is designed and developed by Trickwrick Infotech Private Limited.
+        This software is configured for Krishna Printers.
         <br></br> 
-        © Copyright {new Date().getFullYear()} Trickwrick. All Right Reserved
+        © Copyright {new Date().getFullYear()} Krishna Printers. All Rights Reserved
         </p>
       </div>
     </div>

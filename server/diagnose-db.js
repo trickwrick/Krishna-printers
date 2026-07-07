@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import dns from "dns";
@@ -7,12 +8,34 @@ import net from "net";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, "./.env") });
+const rootDir = path.join(__dirname, "..");
+const loadedEnvFiles = [];
+
+const loadEnvFile = (filePath) => {
+    if (!fs.existsSync(filePath)) return;
+    const result = dotenv.config({ path: filePath, override: false });
+    if (!result.error) loadedEnvFiles.push(filePath);
+};
+
+loadEnvFile(path.join(rootDir, ".env"));
+loadEnvFile(path.join(__dirname, ".env"));
+
+function maskMongoUri(uri = "") {
+    return uri.replace(/\/\/([^:/@]+):([^@]*)@/i, (_, username) => `//${username}:****@`);
+}
+
+function getMongoHost() {
+    const uri = process.env.MONGO_URI || "";
+    const match = uri.match(/^mongodb(?:\+srv)?:\/\/(?:[^@]+@)?([^/?]+)/i);
+    return match ? match[1].split(",")[0] : "";
+}
 
 async function diagnose() {
     console.log("------------------------------------------");
     console.log("🔍 MongoDB Connection Deep Diagnosis (Fast Mode)");
+    console.log(`📁 ENV files loaded: ${loadedEnvFiles.length ? loadedEnvFiles.join(", ") : "none"}`);
     console.log(`📡 URI Detected: ${process.env.MONGO_URI ? 'YES' : 'MISSING'}`);
+    console.log(`📡 URI Used: ${process.env.MONGO_URI ? maskMongoUri(process.env.MONGO_URI) : 'MISSING'}`);
     console.log("------------------------------------------");
 
     // 1. IP TEST
@@ -28,7 +51,11 @@ async function diagnose() {
 
     // 2. DNS TEST
     console.log("\n2. Testing Atlas DNS...");
-    const host = "cluster0.jqdaq6a.mongodb.net";
+    const host = getMongoHost();
+    if (!host) {
+        console.error("❌ DNS test skipped: MONGO_URI host is missing.");
+        return;
+    }
     try {
         const addr = await dns.promises.resolve(host, 'ANY');
         console.log(`✅ Host ${host} found!`);
@@ -39,7 +66,7 @@ async function diagnose() {
 
     // 3. PORT TEST (27017)
     console.log("\n3. Testing Port 27017 reachability...");
-    const shardHost = "ac-jqdaq6a-shard-00-00.jqdaq6a.mongodb.net";
+    const shardHost = host;
     const socket = new net.Socket();
     const portPromise = new Promise((resolve) => {
         socket.setTimeout(3000);
@@ -65,11 +92,14 @@ async function diagnose() {
     console.log("\n4. Final Driver Handshake Test...");
     try {
         mongoose.set("bufferCommands", false);
-        await mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+        await mongoose.connect(process.env.MONGO_URI, {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+        });
         console.log("✅ SUCCESS: Application is now connected to Cloud!");
         await mongoose.disconnect();
     } catch (e) {
-        console.error(`❌ Handshake Failed: ${e.message}`);
+        console.error("❌ Handshake Failed:", e);
     }
     console.log("------------------------------------------");
 }

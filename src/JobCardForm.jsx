@@ -1,14 +1,60 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronDown, Layers, Search, FileText } from 'lucide-react';
+import { AlertCircle, ChevronDown, Layers, Search, FileText, Printer, X } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
+import { API_BASE_URL } from './utils/apiBase';
+import { printElement } from './utils/printDocument';
+import { mergeWithLocalJobCards, saveLocalJobCard } from './utils/localJobCards';
 
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'https://crm-qpw8.onrender.com'
-  : 'https://crm-qpw8.onrender.com';
+const PLATE_SIZES = ['530x650', '560x670', '700x945', '800x1030', '715x915', '820x1030'];
+
+const FINISHING_COLUMNS = [
+  { key: 'lamination', label: 'Lamination' },
+  { key: 'dripoff', label: 'Dripoff' },
+  { key: 'uv', label: 'U.V.' },
+  { key: 'halfCut', label: 'Half Cut' },
+  { key: 'die', label: 'Die' },
+  { key: 'dieCutting', label: 'Die Cutting' },
+  { key: 'cutting', label: 'Cutting' },
+  { key: 'creasingFold', label: 'Creasing/Fold' },
+  { key: 'total', label: 'Total' },
+];
+
+const emptyCell = () => ({ ticked: null });
+const emptyFinishingRow = () => Object.fromEntries(FINISHING_COLUMNS.map((col) => [col.key, emptyCell()]));
+
+const normalizeFinishingRow = (row = {}) =>
+  Object.fromEntries(
+    FINISHING_COLUMNS.map((col) => {
+      const cell = row[col.key];
+      if (cell && typeof cell === 'object' && 'ticked' in cell) {
+        return [col.key, { ticked: cell.ticked == null ? null : !!cell.ticked }];
+      }
+      const val = cell != null ? String(cell) : '';
+      if (!val.trim()) return [col.key, { ticked: null }];
+      return [col.key, { ticked: true }];
+    })
+  );
+
+const defaultFinishingRows = () => [emptyFinishingRow()];
+
+const parseFinishingRows = (editData) => {
+  if (!editData?.bindingNote) return defaultFinishingRows();
+  try {
+    const parsed = JSON.parse(editData.bindingNote);
+    if (Array.isArray(parsed) && parsed.length) {
+      return [normalizeFinishingRow(parsed[0])];
+    }
+  } catch {
+    /* keep defaults for old notes */
+  }
+  return defaultFinishingRows();
+};
+
+const fieldClass =
+  'h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all w-full';
 
 const buildPartySuggestions = (jobCards = []) => {
   const map = new Map();
@@ -47,6 +93,7 @@ export default function JobCardForm() {
   const navigate = useNavigate();
   const location = useLocation();
   const editData = location.state?.editData;
+  const formRef = useRef(null);
 
   const [jobDate, setJobDate] = useState(editData ? new Date(editData.jobDate) : new Date());
   const [paperStocks, setPaperStocks] = useState([]);
@@ -67,6 +114,15 @@ export default function JobCardForm() {
   const [innerPaperCount, setInnerPaperCount] = useState(editData?.innerPaperCount || 0);
   const [innerPaperDetails, setInnerPaperDetails] = useState(editData?.innerPaperDetails || '');
   const [paperSource, setPaperSource] = useState(editData?.paperSource || 'Company paper');
+  const [plateType, setPlateType] = useState(
+    editData?.plateType === 'Old' || editData?.plateType === 'Old Plate' ? 'Old Plate' : 'New Plate'
+  );
+  const [printSide, setPrintSide] = useState(editData?.printSheet === 'Both Side' ? 'Both Side' : 'Single Side');
+  const [finishingRows, setFinishingRows] = useState(() => parseFinishingRows(editData));
+  const [remarks, setRemarks] = useState(editData?.notes || '');
+  const [formErrors, setFormErrors] = useState([]);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
   const [useShipAddress, setUseShipAddress] = useState(
     editData?.useShipAddress || !!(editData?.shipAddress || editData?.shipPartyName)
   );
@@ -89,6 +145,55 @@ export default function JobCardForm() {
   const paperDropdownRef = useRef(null);
   const innerPaperDropdownRef = useRef(null);
   const partyDropdownRef = useRef(null);
+
+  const toggleFinishingTick = (rowIdx, key, ticked) => {
+    setFinishingRows((rows) =>
+      rows.map((row, idx) => (idx === rowIdx ? { ...row, [key]: { ticked } } : row))
+    );
+  };
+
+  const buildPreviewData = () => {
+    if (!formRef.current) return null;
+    const fd = new FormData(formRef.current);
+    return {
+      partyName: fd.get('partyName'),
+      jobName: fd.get('jobName'),
+      jobNumber: editData?.jobNumber || 'Auto',
+      jobDate,
+      plateType: plateType === 'Old Plate' ? 'Old' : 'New',
+      plateSize,
+      plateUseCount,
+      paper: selectedPaper,
+      paperGSM,
+      innerPaper: selectedInnerPaper,
+      innerPaperGSM,
+      jobQty,
+      printingQty: fd.get('printingQty'),
+      printSheet: printSide,
+      bindingNote: JSON.stringify(finishingRows),
+      notes: remarks,
+    };
+  };
+
+  const handleOpenPrint = () => {
+    const preview = buildPreviewData();
+    if (!preview) return;
+    setPreviewData(preview);
+    setShowPrintPreview(true);
+  };
+
+  const handlePrint = () => {
+    printElement('printable-inner');
+  };
+
+  const validateForm = (fd) => {
+    const errors = [];
+    if (!String(fd.get('partyName') || '').trim()) errors.push('Party Name');
+    if (!String(fd.get('jobName') || '').trim()) errors.push('Job Name');
+    if (!String(fd.get('jobQty') || '').trim()) errors.push('Job Quantity');
+    if (!plateSize) errors.push('Plate Size');
+    return errors;
+  };
 
   const filteredPartySuggestions = partySuggestions.filter((party) => {
     const query = partyName.trim().toLowerCase();
@@ -195,13 +300,15 @@ export default function JobCardForm() {
     const fetchJobCards = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/jobcard`);
-        const cards = await res.json();
+        const data = res.ok ? await res.json() : [];
+        const cards = mergeWithLocalJobCards(data);
         setJobCards(cards);
         setPartySuggestions(buildPartySuggestions(cards));
       } catch (err) {
         console.error('Job card fetch error:', err);
-        setJobCards([]);
-        setPartySuggestions([]);
+        const cards = mergeWithLocalJobCards([]);
+        setJobCards(cards);
+        setPartySuggestions(buildPartySuggestions(cards));
       }
     };
     fetchJobCards();
@@ -265,6 +372,14 @@ export default function JobCardForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
+    const errors = validateForm(fd);
+    if (errors.length) {
+      setFormErrors(errors);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setFormErrors([]);
+
     const jobCard = {
       ...Object.fromEntries(fd.entries()),
       jobDate: jobDate.toISOString(),
@@ -277,6 +392,10 @@ export default function JobCardForm() {
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
       plateSize: plateSize || undefined,
       plateUseCount: plateUseCount ? Number(plateUseCount) : undefined,
+      plateType: plateType === 'Old Plate' ? 'Old' : 'New',
+      printSheet: printSide,
+      bindingNote: JSON.stringify(finishingRows),
+      notes: remarks,
       // Boolean conversion for binding checkboxes
       bindingCenterPin: fd.get('bindingCenterPin') === 'on',
       bindingSilai: fd.get('bindingSilai') === 'on',
@@ -290,41 +409,57 @@ export default function JobCardForm() {
       bindingPukki: fd.get('bindingPukki') === 'on',
     };
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/jobcard`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(jobCard)
-      });
-      if (response.ok) {
-        const saved = await response.json();
-        rememberPlateUsage(saved.plateSize || plateSize, saved.plateUseCount || plateUseCount);
-        window.dispatchEvent(new Event('fetchNotifications'));
-        navigate('/job-card-list');
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to save: ${errorData.error || 'Unknown error'}`);
-        console.error("Save Error:", errorData);
-      }
-    } catch (error) {
-      alert("Network Error: Could not connect to server.");
-      console.error("Error saving job card:", error);
-    }
+    const saveLocalAndOpenList = () => {
+      const saved = saveLocalJobCard(jobCard);
+      rememberPlateUsage(saved.plateSize || plateSize, saved.plateUseCount || plateUseCount);
+      window.dispatchEvent(new Event('jobCardsUpdated'));
+      window.dispatchEvent(new Event('fetchNotifications'));
+      navigate('/job-card-list');
+    };
+
+    saveLocalAndOpenList();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto mt-8 pb-12">
+    <>
+    <form ref={formRef} onSubmit={handleSubmit} className="mx-auto mt-8 pb-12">
       {editData?._id && <input type="hidden" name="_id" value={editData._id} />}
       {editData?.jobNumber && <input type="hidden" name="jobNumber" value={editData.jobNumber} />}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <div className="bg-blue-600 w-1.5 h-6 rounded-full" />
-          Manage Job Card
-        </h1>
-        <p className="text-gray-500 mt-1 text-sm sm:text-base italic">Enter job card details below</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="bg-blue-600 w-1.5 h-6 rounded-full" />
+            Manage Job Card
+          </h1>
+          <p className="text-gray-500 mt-1 text-sm sm:text-base italic">Enter job card details below</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenPrint}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <Printer size={16} />
+          Preview & Print
+        </button>
       </div>
+
+      {formErrors.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-sm font-bold text-red-700 mb-2">
+                Job card cannot be saved - please complete the following:
+              </p>
+              <ul className="text-sm text-red-600 space-y-1 list-disc list-inside">
+                {formErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6 sm:space-y-8">
         {/* Section 1: Basic Details */}
@@ -898,50 +1033,118 @@ export default function JobCardForm() {
           </div>
         </div>
 
-        {/* Section 5: Printing Details */}
+        {/* Section 5: Plate & Printing Details */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
           <div className="absolute top-0 left-6 -translate-y-1/2 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
-            Printing Details
+            Plate Details
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-1">Plate Size</label>
-              <select
-                name="plateSize"
-                value={plateSize}
-                onChange={handlePlateSizeChange}
-                className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-              >
-                <option value="">Select Plate Size</option>
-                <option value="560*670">560*670</option>
-                <option value="800*1030">800*1030</option>
-                <option value="820*1030">820*1030</option>
-                <option value="540*780">540*780</option>
-                <option value="608*890">608*890</option>
-                <option value="715*915">715*915</option>
-              </select>
+          <div className="space-y-6">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Plate Type</label>
+              <div className="flex items-center gap-6 h-10">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="plateType"
+                    value="New"
+                    checked={plateType === 'New Plate'}
+                    onChange={() => setPlateType('New Plate')}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">New Plate</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="plateType"
+                    value="Old"
+                    checked={plateType === 'Old Plate'}
+                    onChange={() => setPlateType('Old Plate')}
+                    className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">Old Plate</span>
+                </label>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
-              <input
-                type="text"
-                readOnly
-                value={plateSize ? plateUseCount : ''}
-                placeholder="Auto"
-                className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
-              />
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-3 block">Plate Size *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {PLATE_SIZES.map((size) => (
+                  <label
+                    key={size}
+                    className={`flex items-center gap-2 h-10 border rounded-lg px-3 cursor-pointer text-sm transition-all ${
+                      plateSize === size
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-500/20'
+                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="plateSize"
+                      value={size}
+                      checked={plateSize === size}
+                      onChange={handlePlateSizeChange}
+                      className="w-4 h-4 text-indigo-600"
+                    />
+                    {size}
+                  </label>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-1">Quantity Of Plates</label>
-              <input
-                type="text"
-                name="plateQty"
-                defaultValue={editData?.plateQty}
-                className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                placeholder="e.g. 4, 8 plates"
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={plateSize ? plateUseCount : ''}
+                  placeholder="Auto"
+                  className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Quantity Of Plates</label>
+                <input
+                  type="text"
+                  name="plateQty"
+                  defaultValue={editData?.plateQty}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="e.g. 4, 8 plates"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-2">Sides</label>
+                <div className="flex items-center gap-6 h-10">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="printSheet"
+                      value="Single Side"
+                      checked={printSide === 'Single Side'}
+                      onChange={() => setPrintSide('Single Side')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <span className="text-sm text-gray-700">Single Side</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="printSheet"
+                      value="Both Side"
+                      checked={printSide === 'Both Side'}
+                      onChange={() => setPrintSide('Both Side')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <span className="text-sm text-gray-700">Both Side</span>
+                  </label>
+                </div>
+              </div>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             <div className="flex flex-col sm:col-span-2 lg:col-span-3">
               <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
               <textarea
@@ -963,67 +1166,106 @@ export default function JobCardForm() {
                 <option value="UV">UV</option>
               </select>
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-medium text-gray-700 mb-2">Plate</label>
-              <div className="flex items-center gap-4 h-10">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="plateType" value="Old" defaultChecked={editData?.plateType === 'Old'} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
-                  <span className="text-sm text-gray-700">Old</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="plateType" value="New" defaultChecked={editData?.plateType !== 'Old'} className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500" />
-                  <span className="text-sm text-gray-700">New</span>
-                </label>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Section 6: Binding */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-14 text-gray-700">
-          <div className="absolute -top-4 left-6 bg-amber-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
-            Binding
+        {/* Section 6: Finishing Processes */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+          <div className="absolute top-0 left-6 -translate-y-1/2 bg-amber-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+            Finishing Processes
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {[
-              { name: 'bindingCenterPin', label: 'Center Pin' },
-              { name: 'bindingSilai', label: 'Silai' },
-              { name: 'bindingSidePin', label: 'Side Pin' },
-              { name: 'bindingFolding', label: 'Folding' },
-              { name: 'bindingPerforation', label: 'Perforation' },
-              { name: 'bindingNumbring', label: 'Numbring' },
-              { name: 'bindingRegister', label: 'Register' },
-              { name: 'bindingGlue', label: 'Glue Binding' },
-              { name: 'bindingKachhi', label: 'Kechhi Binding' },
-              { name: 'bindingPukki', label: 'Pukki Binding' }
-            ].map(item => (
-              <label key={item.name} className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  name={item.name}
-                  defaultChecked={editData?.[item.name]}
-                  className="w-4 h-4 text-amber-600 border-gray-300 rounded focus:ring-amber-500 transition-all"
-                />
-                <span className="text-sm text-gray-700 group-hover:text-amber-700 transition-colors uppercase font-medium">{item.label}</span>
-              </label>
-            ))}
+          <div className="overflow-x-auto -mx-2 px-2">
+            <table className="w-full min-w-[800px] border-collapse text-sm">
+              <thead>
+                <tr className="bg-gray-50">
+                  {FINISHING_COLUMNS.map((col) => (
+                    <th
+                      key={col.key}
+                      className="border border-gray-200 px-1 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide text-center min-w-[90px]"
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {finishingRows.map((row, rowIdx) => (
+                  <tr key={rowIdx} className="hover:bg-gray-50/50">
+                    {FINISHING_COLUMNS.map((col) => {
+                      const cell = row[col.key];
+                      return (
+                        <td key={col.key} className="border border-gray-200 p-1.5 align-middle">
+                          <div className="flex items-center justify-center gap-2 text-[10px] font-medium text-gray-600">
+                            <label className="flex items-center gap-0.5 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`fin-${rowIdx}-${col.key}`}
+                                checked={cell.ticked === true}
+                                onChange={() => toggleFinishingTick(rowIdx, col.key, true)}
+                                className="w-3 h-3 text-emerald-600"
+                              />
+                              <span>Yes</span>
+                            </label>
+                            <label className="flex items-center gap-0.5 cursor-pointer">
+                              <input
+                                type="radio"
+                                name={`fin-${rowIdx}-${col.key}`}
+                                checked={cell.ticked === false}
+                                onChange={() => toggleFinishingTick(rowIdx, col.key, false)}
+                                className="w-3 h-3 text-gray-400"
+                              />
+                              <span>No</span>
+                            </label>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Section 7: Notes */}
+        {/* Section 7: Time Period */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+          <div className="absolute top-0 left-6 -translate-y-1/2 bg-rose-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+            Time Period
+          </div>
+
+          <div className="max-w-xs">
+            <label className="text-sm font-medium text-gray-700 mb-1 block">
+              Expected completion time (in days)
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                name="completionDays"
+                min="1"
+                defaultValue={editData?.completionDays ?? ''}
+                className={fieldClass}
+                placeholder="e.g. 7"
+              />
+              <span className="text-sm font-semibold text-gray-600 shrink-0">Days</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 8: Remarks */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
           <div className="absolute top-0 left-6 -translate-y-1/2 bg-teal-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
-            Notes
+            Remarks
           </div>
 
           <div className="w-full">
-            <label className="text-sm text-gray-700 mb-2 block font-semibold tracking-wide">Extra Instructions / Notes</label>
+            <label className="text-sm text-gray-700 mb-2 block font-semibold tracking-wide">Remarks</label>
             <textarea
-              name="notes"
-              defaultValue={editData?.notes}
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
               className="w-full h-40 border border-gray-200 rounded-xl px-4 py-4 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all resize-none shadow-sm text-sm"
-              placeholder="Enter any extra instructions or notes here..."
+              placeholder="Enter any extra instructions or remarks here..."
             ></textarea>
           </div>
         </div>
@@ -1035,5 +1277,96 @@ export default function JobCardForm() {
         </button>
       </div>
     </form>
+
+    {showPrintPreview && previewData && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto print-modal-overlay">
+        <div className="bg-white border border-gray-300 w-full max-w-4xl relative max-h-[95vh] flex flex-col shadow-xl print-modal-shell">
+          <div className="p-4 border-b flex justify-between items-center bg-white no-print">
+            <h2 className="text-lg font-bold text-gray-800">Job Card Print Preview</h2>
+            <button type="button" onClick={() => setShowPrintPreview(false)} className="p-1 hover:bg-gray-100 rounded-full">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto grow a4-page-container bg-gray-50">
+            <div id="printable-inner" className="job-card-print-page a4-page bg-white mx-auto p-6 text-gray-900">
+              <div className="border-b-2 border-gray-900 pb-4 mb-5 flex justify-between gap-4">
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">Krishna Printers</h2>
+                  <p className="text-sm font-semibold text-gray-600 mt-1">Job Card</p>
+                </div>
+                <div className="text-right text-sm">
+                  <p><span className="font-bold">Job No:</span> {previewData.jobNumber}</p>
+                  <p><span className="font-bold">Date:</span> {new Date(previewData.jobDate).toLocaleDateString('en-IN')}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm mb-5">
+                {[
+                  ['Party Name', previewData.partyName],
+                  ['Job Name', previewData.jobName],
+                  ['Job Quantity', previewData.jobQty],
+                  ['Printing Quantity', previewData.printingQty],
+                  ['Plate Type', previewData.plateType],
+                  ['Plate Size', previewData.plateSize],
+                  ['Plate No.', previewData.plateUseCount],
+                  ['Sides', previewData.printSheet],
+                  ['Cover Paper', [previewData.paper, previewData.paperGSM && `${previewData.paperGSM} GSM`].filter(Boolean).join(' - ')],
+                  ['Inner Paper', [previewData.innerPaper, previewData.innerPaperGSM && `${previewData.innerPaperGSM} GSM`].filter(Boolean).join(' - ')],
+                ].map(([label, value]) => (
+                  <div key={label} className="border border-gray-300 p-2">
+                    <p className="text-[10px] uppercase font-black text-gray-500">{label}</p>
+                    <p className="font-bold">{value || '-'}</p>
+                  </div>
+                ))}
+              </div>
+
+              <table className="w-full border-collapse text-xs mb-5">
+                <thead>
+                  <tr className="bg-gray-100">
+                    {FINISHING_COLUMNS.map((col) => (
+                      <th key={col.key} className="border border-gray-400 p-1">{col.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {finishingRows.map((row, rowIdx) => (
+                    <tr key={rowIdx}>
+                      {FINISHING_COLUMNS.map((col) => (
+                        <td key={col.key} className="border border-gray-400 p-2 text-center font-black">
+                          {row[col.key].ticked === true ? 'Yes' : row[col.key].ticked === false ? 'No' : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="border border-gray-300 p-3 min-h-24">
+                <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
+                <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 border-t bg-white flex justify-end gap-3 no-print">
+            <button
+              type="button"
+              onClick={() => setShowPrintPreview(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded"
+            >
+              <Printer size={16} />
+              Print
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

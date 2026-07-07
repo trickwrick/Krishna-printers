@@ -1,23 +1,99 @@
 // CRM Server v1.0.3 - Final Paper Details Sync
 import dotenv from "dotenv";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import { readCache, writeCache, enqueueRequest, processQueue } from './utils/syncManager.js';
+import next from "next";
 
 // Fix __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const rootDir = path.join(__dirname, "..");
+const isDev = process.env.NODE_ENV !== "production";
+const nextApp = next({ dev: isDev, dir: rootDir });
+const nextHandler = nextApp.getRequestHandler();
 
-// Load ENV
-dotenv.config({ path: path.join(__dirname, ".env") });
+// Load ENV. Root .env wins locally; server/.env remains a packaged fallback.
+const rootEnvPath = path.join(rootDir, ".env");
+const serverEnvPath = path.join(__dirname, ".env");
+const loadedEnvFiles = [];
+
+const loadEnvFile = (filePath) => {
+    if (!fs.existsSync(filePath)) return;
+    const result = dotenv.config({ path: filePath, override: false });
+    if (result.error) {
+        console.warn(`ENV WARN: Could not load ${filePath}: ${result.error.message}`);
+        return;
+    }
+    loadedEnvFiles.push(filePath);
+};
+
+loadEnvFile(rootEnvPath);
+loadEnvFile(serverEnvPath);
+
+const maskMongoUri = (uri = "") => (
+    uri.replace(/\/\/([^:/@]+):([^@]*)@/i, (_, username) => `//${username}:****@`)
+);
+
+const getMongoUriInfo = (uri = "") => {
+    const match = uri.match(/^(mongodb(?:\+srv)?):\/\/(?:([^:/@]+):([^@]*)@)?([^/?]+)(\/[^?]*)?(\?.*)?$/i);
+    if (!match) {
+        return {
+            valid: false,
+            protocol: "unknown",
+            hosts: [],
+            database: "",
+        };
+    }
+
+    return {
+        valid: true,
+        protocol: match[1],
+        isSrv: match[1].toLowerCase() === "mongodb+srv",
+        hosts: match[4].split(","),
+        database: (match[5] || "").replace("/", "") || "(default)",
+    };
+};
+
+const classifyMongoError = (error) => {
+    const message = `${error?.message || ""} ${error?.reason?.toString?.() || ""}`;
+    if (/querySrv|ENOTFOUND|ETIMEOUT|getaddrinfo|DNS/i.test(message)) return "DNS resolution issue";
+    if (/Authentication failed|bad auth|auth failed|SCRAM|credentials/i.test(message)) return "Authentication issue";
+    if (/TLS|SSL|certificate|self signed|CERT_/i.test(message)) return "TLS/certificate issue";
+    if (/whitelist|not whitelisted|ReplicaSetNoPrimary|server selection timed out/i.test(message)) return "Atlas network access or replica set reachability issue";
+    return "Unknown MongoDB connection issue";
+};
 
 // Debug
+const mongoUriInfo = getMongoUriInfo(process.env.MONGO_URI);
 console.log("------------------------------------------");
-console.log(`📡 ENV CHECK: ${process.env.MONGO_URI}`);
+console.log(`ENV CHECK: loaded files: ${loadedEnvFiles.length ? loadedEnvFiles.join(", ") : "none"}`);
+console.log(`ENV CHECK: MONGO_URI ${process.env.MONGO_URI ? 'configured' : 'missing'}`);
+console.log(`ENV CHECK: MONGO_URI used: ${process.env.MONGO_URI ? maskMongoUri(process.env.MONGO_URI) : "missing"}`);
+console.log(`ENV CHECK: Mongo protocol: ${mongoUriInfo.protocol}${mongoUriInfo.valid ? ` (${mongoUriInfo.isSrv ? "SRV" : "standard"})` : " (invalid URI format)"}`);
+console.log(`ENV CHECK: Mongo hosts: ${mongoUriInfo.hosts.join(", ") || "none"}`);
+console.log(`ENV CHECK: Mongo database: ${mongoUriInfo.database}`);
 console.log("------------------------------------------");
+
+mongoose.connection.on("connected", () => {
+    console.log("MongoDB connection event: connected");
+});
+
+mongoose.connection.on("error", (error) => {
+    console.error("MongoDB connection event error:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        category: classifyMongoError(error),
+    });
+});
+
+mongoose.connection.on("disconnected", () => {
+    console.warn("MongoDB connection event: disconnected");
+});
 
 // Routes
 import jobCardRoutes from "./routes/jobCardRoutes.js";
@@ -39,59 +115,32 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* ================= OFFLINE SYNC MIDDLEWARE ================= */
-app.use((req, res, next) => {
-  // Only apply offline sync in the Desktop App context and for API routes
-  if (process.env.IS_ELECTRON !== 'true' || !req.path.startsWith('/api') || req.headers['x-offline-sync']) {
-    return next();
-  }
-
-  // If connected, intercept GET responses to cache them
-  if (mongoose.connection.readyState === 1) {
-    if (req.method === 'GET') {
-      const originalSend = res.send;
-      res.send = function (data) {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          try {
-            writeCache(req.originalUrl, JSON.parse(data));
-          } catch (err) {} // Ignore parse errors
-        }
-        originalSend.apply(res, arguments);
-      };
-    }
-    return next();
-  }
-
-  // Mongoose is Disconnected
-  if (req.method === 'GET') {
-    const cachedData = readCache(req.originalUrl);
-    if (cachedData) {
-      return res.status(200).json(cachedData);
-    } else {
-      // Send empty array or object as fallback based on typical responses
-      return res.status(200).json([]);
-    }
-  } else {
-    // POST, PUT, DELETE
-    const queuedResponse = enqueueRequest(req);
-    if (queuedResponse) {
-      return res.status(200).json(queuedResponse);
-    } else {
-      return res.status(500).json({ error: "Offline mode: Failed to enqueue request." });
-    }
-  }
-});
-
 /* ================= DB CONNECT ================= */
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        if (!process.env.MONGO_URI) {
+            throw new Error("MONGO_URI is missing. Add it to .env or server/.env.");
+        }
 
-        console.log("✅ MongoDB Connected Successfully");
+        await mongoose.connect(process.env.MONGO_URI, {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+        });
+
+        console.log("MongoDB Connected Successfully");
         await seedStaffAndRoles();
-        console.log("✅ Staff roles seeded");
+        console.log("Staff roles seeded");
     } catch (error) {
-        console.error("❌ MongoDB Error:", error.message);
+        console.error("Full Mongo Error:", error);
+        console.error("Mongo Error Summary:", {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            category: classifyMongoError(error),
+            uriUsed: maskMongoUri(process.env.MONGO_URI || ""),
+            protocol: mongoUriInfo.protocol,
+            hosts: mongoUriInfo.hosts,
+        });
     }
 };
 
@@ -126,32 +175,19 @@ app.get('/ping', (req, res) => {
     });
 });
 
-app.all("/api/*", (req, res) => {
+app.use("/api", (req, res) => {
   res.status(404).json({ error: "API route not found" });
 });
 
-/* ================= STATIC FILES & SPA ROUTING ================= */
-const distPath = path.join(__dirname, "..", "dist");
-
-// Serve static assets
-app.use(express.static(distPath));
-
-
-// The "catchall" handler: for any request that doesn't
-// match one above (like /invoices, /challans), send back index.html.
-app.get("*", (req, res) => {
-    // If it's not an API call, serve the frontend
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(distPath, "index.html"), (err) => {
-            if (err) {
-                res.status(500).send("Frontend build not found. Please run 'npm run build'.");
-            }
-        });
-    }
+/* ================= NEXT FRONTEND ROUTING ================= */
+app.use((req, res) => {
+    return nextHandler(req, res);
 });
 
 /* ================= SERVER START ================= */
-const startServer = (port) => {
+const startServer = async (port) => {
+    await nextApp.prepare();
+
     const server = app.listen(port, () => {
         console.log(`🚀 Server running on port ${port}`);
     });
@@ -174,10 +210,7 @@ const startServer = (port) => {
 const PORT = process.env.PORT || 5011;
 
 connectDB();      // ✅ ONLY ONE TIME
-startServer(PORT);
-
-if (process.env.IS_ELECTRON === 'true') {
-  setInterval(() => {
-    processQueue(mongoose);
-  }, 10000);
-}
+startServer(PORT).catch((error) => {
+  console.error("Failed to start Next server:", error);
+  process.exit(1);
+});

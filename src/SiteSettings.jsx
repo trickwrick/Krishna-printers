@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, Save, Upload, Plus, X, Phone, Mail, MapPin } from 'lucide-react';
 
+const DEFAULT_SITE_TITLE = 'Krishna Printers';
+
 const SiteSettings = () => {
   const [formData, setFormData] = useState({
     siteTitle: '',
@@ -26,7 +28,7 @@ const SiteSettings = () => {
     if (saved) {
       const data = JSON.parse(saved);
       setFormData({
-        siteTitle: data.siteTitle || '',
+        siteTitle: DEFAULT_SITE_TITLE,
         adminEmail: data.adminEmail || '',
         adminMobile: data.adminMobile || '',
         supportEmail: data.supportEmail || '',
@@ -82,7 +84,7 @@ const SiteSettings = () => {
     localStorage.setItem('siteSettings', JSON.stringify(fullSettings));
 
     // Update dynamically
-    document.title = fullSettings.siteTitle || 'Harihar Printers';
+    document.title = fullSettings.siteTitle || DEFAULT_SITE_TITLE;
 
     // Update favicon tag
     if (fullSettings.favicon) {
@@ -227,7 +229,7 @@ const SiteSettings = () => {
                   name="siteTitle"
                   value={formData.siteTitle}
                   onChange={handleInputChange}
-                  placeholder="e.g. Harihar Printers"
+                  placeholder="e.g. Krishna Printers"
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
                   required
                 />

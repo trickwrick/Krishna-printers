@@ -11,7 +11,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-dist_electron
+.next
 
 # Environment variables
 .env
@@ -20,6 +20,8 @@ dist_electron
 .env.test.local
 .env.production.local
 .env.*
+!.env.example
+!server/.env.example
 
 # Editor directories and files
 .vscode/*
