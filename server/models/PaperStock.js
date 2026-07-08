@@ -14,11 +14,19 @@ const paperStockSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  coverSupplier: {
+    type: String,
+    trim: true
+  },
   innerPartyName: {
     type: String,
     trim: true
   },
   innerName: {
+    type: String,
+    trim: true
+  },
+  innerSupplier: {
     type: String,
     trim: true
   },

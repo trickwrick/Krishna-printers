@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, ChevronDown, Layers, Search, FileText, Printer, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { API_BASE_URL } from './utils/apiBase';
@@ -114,6 +114,8 @@ export default function JobCardForm() {
   const [innerPaperCount, setInnerPaperCount] = useState(editData?.innerPaperCount || 0);
   const [innerPaperDetails, setInnerPaperDetails] = useState(editData?.innerPaperDetails || '');
   const [paperSource, setPaperSource] = useState(editData?.paperSource || 'Company paper');
+  const [digitalPrintout, setDigitalPrintout] = useState(editData?.digitalPrintout || '');
+  const [digitalPrintoutRemark, setDigitalPrintoutRemark] = useState(editData?.digitalPrintoutRemark || '');
   const [plateType, setPlateType] = useState(
     editData?.plateType === 'Old' || editData?.plateType === 'Old Plate' ? 'Old Plate' : 'New Plate'
   );
@@ -137,6 +139,7 @@ export default function JobCardForm() {
   const [emailId, setEmailId] = useState(editData?.emailId || '');
   const [gstNo, setGstNo] = useState(editData?.gstNo || '');
   const [jobQty, setJobQty] = useState(editData?.jobQty || '');
+  const [jobAttachment, setJobAttachment] = useState(editData?.jobAttachment || null);
   const [shipPartyName, setShipPartyName] = useState(editData?.shipPartyName || '');
   const [shipAddress, setShipAddress] = useState(editData?.shipAddress || '');
   const [shipContactNo, setShipContactNo] = useState(editData?.shipContactNo || '');
@@ -160,6 +163,10 @@ export default function JobCardForm() {
       jobName: fd.get('jobName'),
       jobNumber: editData?.jobNumber || 'Auto',
       jobDate,
+      jobAttachmentName: jobAttachment?.name || '',
+      dieCuttingType: fd.get('dieCuttingType'),
+      digitalPrintout,
+      digitalPrintoutRemark,
       plateType: plateType === 'Old Plate' ? 'Old' : 'New',
       plateSize,
       plateUseCount,
@@ -184,6 +191,36 @@ export default function JobCardForm() {
 
   const handlePrint = () => {
     printElement('printable-inner');
+  };
+
+  const handleJobAttachmentChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf'];
+    const isAllowed = allowedTypes.includes(file.type) || file.type.startsWith('image/');
+    if (!isAllowed) {
+      alert('Only PDF and image files are allowed.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size should be 2MB or less.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setJobAttachment({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: reader.result,
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const validateForm = (fd) => {
@@ -390,8 +427,11 @@ export default function JobCardForm() {
       shipContactNo: useShipAddress ? (fd.get('shipContactNo') || '') : '',
       shipEmailId: useShipAddress ? (fd.get('shipEmailId') || '') : '',
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
+      jobAttachment,
       plateSize: plateSize || undefined,
       plateUseCount: plateUseCount ? Number(plateUseCount) : undefined,
+      digitalPrintout,
+      digitalPrintoutRemark,
       plateType: plateType === 'Old Plate' ? 'Old' : 'New',
       printSheet: printSide,
       bindingNote: JSON.stringify(finishingRows),
@@ -541,6 +581,45 @@ export default function JobCardForm() {
                 required
                 className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="e.g. 1000, 50 Books"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload</label>
+              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+                  <FileText size={16} />
+                  Choose File
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    onChange={handleJobAttachmentChange}
+                    className="hidden"
+                  />
+                </label>
+                <p className="mt-2 text-xs text-gray-500">PDF/image up to 2MB.</p>
+                {jobAttachment?.name && (
+                  <div className="mt-3 rounded-lg border border-blue-100 bg-white p-2">
+                    <p className="truncate text-sm font-bold text-gray-800">{jobAttachment.name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setJobAttachment(null)}
+                      className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                    >
+                      <X size={14} />
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col sm:col-span-2 lg:col-span-3">
+              <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
+              <textarea
+                name="printingQty"
+                rows={4}
+                defaultValue={editData?.printingQty}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-y min-h-20"
+                placeholder="e.g. 135 sheets white, pink copy, yellow copy..."
               />
             </div>
           </div>
@@ -1033,7 +1112,100 @@ export default function JobCardForm() {
           </div>
         </div>
 
-        {/* Section 5: Plate & Printing Details */}
+        {/* Section 5: Die Cutting */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+          <div className="absolute top-0 left-6 -translate-y-1/2 bg-amber-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+            Die Cutting
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-3 block">Die Cutting Type</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {['Old', 'New', 'Testing'].map((type) => (
+                <label
+                  key={type}
+                  className="flex items-center gap-2 h-10 border border-gray-200 rounded-lg px-3 cursor-pointer text-sm text-gray-700 hover:border-amber-300 hover:bg-amber-50 transition-all"
+                >
+                  <input
+                    type="radio"
+                    name="dieCuttingType"
+                    value={type}
+                    defaultChecked={editData?.dieCuttingType === type}
+                    className="w-4 h-4 text-amber-600 border-gray-300 focus:ring-amber-500"
+                  />
+                  <span>{type}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 6: Digital Printout */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+          <div className="absolute top-0 left-6 -translate-y-1/2 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+            Digital Printout
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-3 block">Digital Printout</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { value: 'Yes', label: 'Yes', Icon: Check, color: 'emerald' },
+                { value: 'No', label: 'No', Icon: X, color: 'red' },
+              ].map(({ value, label, Icon, color }) => {
+                const isSelected = digitalPrintout === value;
+                return (
+                  <label
+                    key={value}
+                    className={`flex items-center justify-between h-12 border rounded-xl px-4 cursor-pointer transition-all ${
+                      isSelected
+                        ? color === 'emerald'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500/20'
+                          : 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500/20'
+                        : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3 text-sm font-semibold">
+                      <span
+                        className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                          isSelected
+                            ? color === 'emerald'
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-red-600 text-white'
+                            : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
+                        <Icon size={16} />
+                      </span>
+                      {label}
+                    </span>
+                    <input
+                      type="radio"
+                      name="digitalPrintout"
+                      value={value}
+                      checked={isSelected}
+                      onChange={() => setDigitalPrintout(value)}
+                      className="h-4 w-4"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+            <div className="mt-4">
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Remark</label>
+              <textarea
+                name="digitalPrintoutRemark"
+                rows={3}
+                value={digitalPrintoutRemark}
+                onChange={(e) => setDigitalPrintoutRemark(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-y min-h-20"
+                placeholder="Enter digital printout remark"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 7: Plate & Printing Details */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
           <div className="absolute top-0 left-6 -translate-y-1/2 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
             Plate Details
@@ -1145,16 +1317,6 @@ export default function JobCardForm() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="flex flex-col sm:col-span-2 lg:col-span-3">
-              <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
-              <textarea
-                name="printingQty"
-                rows={4}
-                defaultValue={editData?.printingQty}
-                className="border border-gray-200 rounded-lg px-3 py-2 text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-y min-h-20"
-                placeholder="e.g. 135 sheets white, pink copy, yellow copy..."
-              />
-            </div>
             <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700 mb-1">Lamination</label>
               <select name="lamination" defaultValue={editData?.lamination} className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
@@ -1162,6 +1324,9 @@ export default function JobCardForm() {
                 <option value="BOPP">BOPP</option>
                 <option value="MATT">MATT</option>
                 <option value="GLOSS">GLOSS</option>
+                <option value="THERMAL MATT">THERMAL MATT</option>
+                <option value="THERMAL GLOSS">THERMAL GLOSS</option>
+                <option value="VELVET">VELVET</option>
                 <option value="AQUOS COATING">AQUOS COATING</option>
                 <option value="UV">UV</option>
               </select>
@@ -1306,6 +1471,10 @@ export default function JobCardForm() {
                   ['Job Name', previewData.jobName],
                   ['Job Quantity', previewData.jobQty],
                   ['Printing Quantity', previewData.printingQty],
+                  ['Uploaded File', previewData.jobAttachmentName],
+                  ['Die Cutting', previewData.dieCuttingType],
+                  ['Digital Printout', previewData.digitalPrintout],
+                  ['Digital Printout Remark', previewData.digitalPrintoutRemark],
                   ['Plate Type', previewData.plateType],
                   ['Plate Size', previewData.plateSize],
                   ['Plate No.', previewData.plateUseCount],

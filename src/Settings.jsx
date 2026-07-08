@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Lock, CheckCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
 import { getCurrentUser } from './utils/permissions';
 
@@ -13,6 +13,15 @@ const Settings = () => {
     confirmPassword: ''
   });
   const [status, setStatus] = useState({ type: '', message: '' });
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    oldPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
+
+  const togglePasswordVisibility = (field) => {
+    setVisiblePasswords((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -132,41 +141,71 @@ const Settings = () => {
               <form onSubmit={handlePasswordChange} className="space-y-6 max-w-xl">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Current Password</label>
-                  <input
-                    type="password"
-                    name="oldPassword"
-                    value={formData.oldPassword}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="••••••••"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
-                  />
+                  <div className="relative">
+                    <input
+                      type={visiblePasswords.oldPassword ? 'text' : 'password'}
+                      name="oldPassword"
+                      value={formData.oldPassword}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="••••••••"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('oldPassword')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                      aria-label={visiblePasswords.oldPassword ? 'Hide current password' : 'Show current password'}
+                    >
+                      {visiblePasswords.oldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">New Password</label>
-                    <input
-                      type="password"
-                      name="newPassword"
-                      value={formData.newPassword}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="••••••••"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
-                    />
+                    <div className="relative">
+                      <input
+                        type={visiblePasswords.newPassword ? 'text' : 'password'}
+                        name="newPassword"
+                        value={formData.newPassword}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="••••••••"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('newPassword')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                        aria-label={visiblePasswords.newPassword ? 'Hide new password' : 'Show new password'}
+                      >
+                        {visiblePasswords.newPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-widest ml-1">Confirm New Password</label>
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="••••••••"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
-                    />
+                    <div className="relative">
+                      <input
+                        type={visiblePasswords.confirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="••••••••"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('confirmPassword')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                        aria-label={visiblePasswords.confirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                      >
+                        {visiblePasswords.confirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

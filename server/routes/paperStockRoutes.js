@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
 // POST /api/paper-stock - Add new stock item
 router.post('/', async (req, res) => {
   try {
-    const { name, coverPartyName, coverName, innerPartyName, innerName, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
+    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
     
     const resolvedCoverName = (coverName || '').trim();
     const resolvedInnerName = (innerName || '').trim();
@@ -47,8 +47,10 @@ router.post('/', async (req, res) => {
       name: resolvedName,
       coverPartyName: (coverPartyName || '').trim(),
       coverName: resolvedCoverName || resolvedName,
+      coverSupplier: (coverSupplier || '').trim(),
       innerPartyName: (innerPartyName || '').trim(),
       innerName: resolvedInnerName || resolvedName,
+      innerSupplier: (innerSupplier || '').trim(),
       gsm,
       quantity,
       coverGSM,
@@ -102,7 +104,7 @@ router.post('/', async (req, res) => {
 // PUT /api/paper-stock/:id - Update stock item
 router.put('/:id', async (req, res) => {
   try {
-    const { name, coverPartyName, coverName, innerPartyName, innerName, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
+    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
     const resolvedCoverName = (coverName || '').trim();
     const resolvedInnerName = (innerName || '').trim();
     const resolvedName = name?.trim()
@@ -118,8 +120,10 @@ router.put('/:id', async (req, res) => {
         name: resolvedName,
         coverPartyName: (coverPartyName || '').trim(),
         coverName: resolvedCoverName || resolvedName,
+        coverSupplier: (coverSupplier || '').trim(),
         innerPartyName: (innerPartyName || '').trim(),
         innerName: resolvedInnerName || resolvedName,
+        innerSupplier: (innerSupplier || '').trim(),
         gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource, updatedAt: Date.now()
       },
       { new: true }

@@ -763,15 +763,13 @@ const AddChallan = () => {
             Item Details
           </div>
           <div className="overflow-x-auto overflow-y-visible -mx-1 px-1">
-            <table className="crm-items-table w-full text-left border-collapse min-w-[880px]">
+            <table className="crm-items-table w-full text-left border-collapse min-w-[760px]">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-56">Description *</th>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">Qty *</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-28">Rate *</th>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-20">per</th>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">GST %</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-32">Amount</th>
                   <th className="px-6 py-3 w-14"></th>
                 </tr>
               </thead>
@@ -805,19 +803,6 @@ const AddChallan = () => {
                     <td className="px-2 py-4 text-center">
                       <div className="flex justify-center">
                         <input
-                          type="number"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(index, 'rate', e.target.value)}
-                          required
-                          min="0"
-                          step="any"
-                          className="w-24 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
                           type="text"
                           value={item.per ?? ''}
                           onChange={(e) => handleItemChange(index, 'per', e.target.value)}
@@ -835,16 +820,6 @@ const AddChallan = () => {
                           min="0"
                           step="any"
                           className="w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="text"
-                          value={Number(item.total || 0).toFixed(2)}
-                          readOnly
-                          className="w-28 bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 focus:outline-none text-sm text-center font-semibold text-blue-700"
                         />
                       </div>
                     </td>
@@ -902,12 +877,6 @@ const AddChallan = () => {
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-base sm:text-lg font-semibold text-gray-800"
               placeholder="0.00"
             />
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
-            <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Amount</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-base sm:text-lg font-semibold text-gray-800">
-              ₹ {totals.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </div>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 space-y-2">
             <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">GST Type *</label>

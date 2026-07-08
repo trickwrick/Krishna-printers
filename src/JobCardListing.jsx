@@ -413,10 +413,12 @@ export default function JobCardListing() {
                   const cardKey = getCardKey(card);
                   const doneSteps = workflowProgress[cardKey] || 0;
                   const timeLeft = getTimeLeft(card);
+                  const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-blue-50/40';
+                  const rowHoverBg = index % 2 === 0 ? 'hover:bg-gray-50' : 'hover:bg-blue-50/70';
 
                   return (
                     <React.Fragment key={cardKey || index}>
-                      <tr className="border-b-0 border-gray-50 hover:bg-gray-50 transition-colors">
+                      <tr className={`border-b-0 border-gray-50 transition-colors ${rowBg} ${rowHoverBg}`}>
                         <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">{index + 1}</td>
                         {columnVisibility.partyName && (
                           <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.partyName}</td>
@@ -512,7 +514,7 @@ export default function JobCardListing() {
                           </div>
                         </td>
                       </tr>
-                      <tr className="border-b border-gray-100 bg-white">
+                      <tr className={`border-b border-gray-100 ${rowBg}`}>
                         <td colSpan="20" className="px-12 pb-4 pt-1">
                           <div className="flex items-center gap-4">
                             <div className="flex-1 min-w-[620px]">

@@ -62,10 +62,6 @@
 }
 
 @layer base {
-  html {
-    scrollbar-gutter: stable;
-  }
-
   body {
     background-color: #f4f7fa;
     color: #1f2937;

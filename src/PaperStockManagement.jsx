@@ -19,8 +19,10 @@ const PaperStockManagement = () => {
   const [formData, setFormData] = useState({
     coverPartyName: '',
     coverName: '',
+    coverSupplier: '',
     innerPartyName: '',
     innerName: '',
+    innerSupplier: '',
     gsm: '',
     quantity: '',
     coverGSM: '',
@@ -106,8 +108,10 @@ const PaperStockManagement = () => {
         setFormData({ 
           coverPartyName: '',
           coverName: '',
+          coverSupplier: '',
           innerPartyName: '',
           innerName: '',
+          innerSupplier: '',
           gsm: '', 
           quantity: '', 
           coverGSM: '', 
@@ -142,8 +146,10 @@ const PaperStockManagement = () => {
     setFormData({
       coverPartyName: item.coverPartyName || '',
       coverName: item.coverName || item.name || '',
+      coverSupplier: item.coverSupplier || '',
       innerPartyName: item.innerPartyName || '',
       innerName: item.innerName || item.name || '',
+      innerSupplier: item.innerSupplier || '',
       gsm: item.gsm || '',
       quantity: item.quantity || '',
       coverGSM: item.coverGSM !== undefined ? item.coverGSM : (item.gsm || ''),
@@ -266,6 +272,16 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Supplier</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Supplier name"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
+                      value={formData.coverSupplier}
+                      onChange={(e) => setFormData({...formData, coverSupplier: e.target.value})}
+                    />
+                  </div>
+                  <div>
                     <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Cover GSM</label>
                     <input 
                       type="number"
@@ -332,6 +348,16 @@ const PaperStockManagement = () => {
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
                       value={formData.innerName}
                       onChange={(e) => setFormData({...formData, innerName: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Supplier</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Supplier name"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
+                      value={formData.innerSupplier}
+                      onChange={(e) => setFormData({...formData, innerSupplier: e.target.value})}
                     />
                   </div>
                   <div>
@@ -498,6 +524,8 @@ const PaperStockManagement = () => {
                                             (item.innerName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.coverPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.innerPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (item.coverSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (item.innerSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.gsm && item.gsm.toString().includes(searchQuery)) ||
                                             (item.coverGSM && item.coverGSM.toString().includes(searchQuery)) ||
                                             (item.innerGSM && item.innerGSM.toString().includes(searchQuery)) ||
@@ -513,6 +541,8 @@ const PaperStockManagement = () => {
                                             (item.innerName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.coverPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.innerPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (item.coverSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            (item.innerSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             (item.gsm && item.gsm.toString().includes(searchQuery)) ||
                                             (item.coverGSM && item.coverGSM.toString().includes(searchQuery)) ||
                                             (item.innerGSM && item.innerGSM.toString().includes(searchQuery)) ||
@@ -538,14 +568,14 @@ const PaperStockManagement = () => {
                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold">
                                      {(item.coverGSM !== undefined || item.gsm) ? (
                                        <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-100">
-                                         Cover: {item.coverPartyName ? `${item.coverPartyName} · ` : ''}{item.coverName || item.name || '--'} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
+                                         Cover: {item.coverPartyName ? `${item.coverPartyName} · ` : ''}{item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
                                        </span>
                                      ) : (
                                        <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Cover: --</span>
                                      )}
                                      {item.innerGSM ? (
                                        <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
-                                         Inner: {item.innerPartyName ? `${item.innerPartyName} · ` : ''}{item.innerName || item.name || '--'} · {item.innerGSM} GSM{item.innerPaperSize ? ` · ${item.innerPaperSize}` : ''}
+                                         Inner: {item.innerPartyName ? `${item.innerPartyName} · ` : ''}{item.innerName || item.name || '--'}{item.innerSupplier ? ` · Supplier: ${item.innerSupplier}` : ''} · {item.innerGSM} GSM{item.innerPaperSize ? ` · ${item.innerPaperSize}` : ''}
                                        </span>
                                      ) : (
                                        <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Inner: --</span>
