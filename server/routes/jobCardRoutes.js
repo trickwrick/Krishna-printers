@@ -376,4 +376,26 @@ router.post('/sync-tally-direct', async (req, res) => {
   }
 });
 
+
+// PATCH /api/jobcard/:id/status - Update job card status only
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['pending', 'in-progress', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+    const updated = await JobCard.findByIdAndUpdate(
+      req.params.id,
+      { status, updatedAt: new Date() },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Job card not found' });
+    res.json({ success: true, status: updated.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
+

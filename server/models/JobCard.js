@@ -80,6 +80,11 @@ const jobCardSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   completionDays: { type: Number },
   notes: { type: String },
+  status: { 
+    type: String, 
+    enum: ['pending', 'in-progress', 'completed', 'cancelled'], 
+    default: 'pending' 
+  },
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

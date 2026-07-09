@@ -22,6 +22,8 @@ import {
   LogOut,
   Headphones,
   Users,
+  BarChart,
+  Database,
 } from 'lucide-react';
 import Dashboard from './Dashboard';
 import JobCardForm from './JobCardForm';
@@ -36,12 +38,15 @@ import SiteSettings from './SiteSettings';
 import SocialSettings from './SocialSettings';
 import PaymentTypeManagement from './PaymentTypeManagement';
 import PaperStockManagement from './PaperStockManagement';
+import PlateStockManagement from './PlateStockManagement';
 import Statements from './Statements';
 import PaperStockStatements from './PaperStockStatements';
+import PlateStockStatements from './PlateStockStatements';
 import Estimates from './Estimates';
 import AddEstimate from './AddEstimate';
 import ItemListManagement from './ItemListManagement';
 import ContactSupport from './ContactSupport';
+import Report from './Report';
 import StaffTeamManagement from './StaffTeamManagement';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
 import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
@@ -81,21 +86,21 @@ const DropdownMenu = ({ title, icon: Icon, items, isActive }) => {
           : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
       >
-        <Icon size={16} className="flex-shrink-0" />
+        <Icon size={16} className="shrink-0" />
         <span className="leading-none whitespace-nowrap">{title}</span>
         <ChevronDown
           size={14}
-          className={`flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : 'text-gray-400'}`}
+          className={`shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : 'text-gray-400'}`}
         />
       </button>
 
       <div
-        className={`absolute top-full left-0 w-max transition-all duration-200 ease-out z-[100] ${isOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 translate-y-2 invisible pointer-events-none'}`}
+        className={`absolute top-full left-0 w-max transition-all duration-200 ease-out z-100 ${isOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 translate-y-2 invisible pointer-events-none'}`}
       >
         {/* Transparent bridge to prevent flickering */}
         <div className="h-2 w-full" />
 
-        <div className="min-w-[220px] bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1">
+        <div className="min-w-55 bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1">
           {items.map((item, idx) => (
             <div
               key={idx}
@@ -128,7 +133,7 @@ const DropdownMenu = ({ title, icon: Icon, items, isActive }) => {
 
               {/* Submenu rendering */}
               {item.isSubDropdown && (activeSubMenu === idx) && (
-                <div className="absolute lg:right-[calc(100%-8px)] lg:left-auto lg:top-0 left-0 top-full mt-1 min-w-[180px] bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1 z-[60] animate-in fade-in slide-in-from-right-2 duration-200">
+                <div className="absolute lg:right-[calc(100%-8px)] lg:left-auto lg:top-0 left-0 top-full mt-1 min-w-45 bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1 z-60 animate-in fade-in slide-in-from-right-2 duration-200">
                   {item.subItems.map((sub, sidx) => (
                     <button
                       key={sidx}
@@ -250,7 +255,7 @@ const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, location, o
           <>
             <div className="absolute right-full top-0 w-3 h-full" aria-hidden />
             <div
-              className="absolute right-[calc(100%+10px)] top-0 min-w-[210px] bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1 z-[70]"
+              className="absolute right-[calc(100%+10px)] top-0 min-w-52.5 bg-white border border-gray-100 rounded-xl shadow-[0_10px_40px_-4px_rgba(0,0,0,0.15)] p-2 space-y-1 z-70"
               onMouseEnter={() => {
                 clearCloseTimer();
                 openMenu();
@@ -304,7 +309,7 @@ const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, location, o
       </button>
 
       <div
-        className={`absolute top-full right-0 w-[220px] z-[60] transition-opacity duration-150 ${
+        className={`absolute top-full right-0 w-55 z-60 transition-opacity duration-150 ${
           isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
         }`}
         onMouseEnter={openMenu}
@@ -464,7 +469,15 @@ export default function App() {
       ],
     },
     { name: 'Payments', icon: Wallet, path: '/payment-type' },
-    { name: 'Paper Stock', icon: Layers, path: '/paper-stock' },
+    {
+      name: 'Stock',
+      icon: Layers,
+      isDropdown: true,
+      dropdownItems: [
+        { label: 'Paper Stock', icon: Layers, onClick: () => navigate('/paper-stock') },
+        { label: 'Plate Stock', icon: Database, onClick: () => navigate('/plate-stock') },
+      ],
+    },
     {
       name: 'Statements',
       icon: FileLock,
@@ -472,6 +485,7 @@ export default function App() {
       dropdownItems: [
         { label: 'Invoice Statements', icon: FileText, onClick: () => navigate('/statements/invoice') },
         { label: 'Paper Stock Statements', icon: Layers, onClick: () => navigate('/statements/paper-stock') },
+        { label: 'Plate Stock Statements', icon: Database, onClick: () => navigate('/statements/plate-stock') },
       ],
     },
     {
@@ -483,6 +497,7 @@ export default function App() {
         { label: 'Add New', icon: PlusSquare, onClick: () => navigate('/estimates/add') },
       ],
     },
+    { name: 'Report', icon: BarChart, path: '/report' },
   ];
 
   const navigationItems = allNavigationItems.filter((item) => {
@@ -493,9 +508,10 @@ export default function App() {
       Invoices: 'invoice',
       Challan: 'challan',
       Payments: 'payments',
-      'Paper Stock': 'paperStock',
+      'Stock': 'paperStock',
       Statements: 'statements',
       'Estimate & Quotation': 'estimates',
+      'Report': 'report',
     };
     if (item.isDropdown && item.dropdownItems.length === 0) return false;
     const moduleKey = moduleByName[item.name];
@@ -507,9 +523,10 @@ export default function App() {
     Invoices: 'invoice',
     Challan: 'challan',
     Payments: 'payments',
-    'Paper Stock': 'paperStock',
+    'Stock': 'paperStock',
     Statements: 'statements',
     'Estimate & Quotation': 'estimates',
+    'Report': 'report',
   };
 
   const displayNavigationItems = isAdminUser()
@@ -686,7 +703,7 @@ export default function App() {
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
               >
-                <item.icon size={16} className="flex-shrink-0" />
+                <item.icon size={16} className="shrink-0" />
                 <span className="leading-none whitespace-nowrap">{item.name}</span>
               </button>
             );
@@ -701,14 +718,14 @@ export default function App() {
             >
               <Bell size={22} />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] h-4 min-w-[16px] flex items-center justify-center font-bold px-1 rounded-full border-2 border-white z-10 shadow-sm">
+                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] h-4 min-w-4 flex items-center justify-center font-bold px-1 rounded-full border-2 border-white z-10 shadow-sm">
                   {unreadCount}
                 </span>
               )}
             </button>
 
             {isNotifOpen && (
-              <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl z-[60] overflow-hidden transform animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl z-60 overflow-hidden transform animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="p-4 border-b border-gray-50 flex items-center justify-between">
                   <h3 className="font-bold text-gray-900">Notifications</h3>
                   <button
@@ -757,7 +774,7 @@ export default function App() {
 
       {/* Mobile Navigation Drawer */}
       <div
-        className={`fixed inset-0 bg-black/50 z-[55] transition-opacity duration-300 xl:hidden ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        className={`fixed inset-0 bg-black/50 z-55 transition-opacity duration-300 xl:hidden ${isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
           }`}
         onClick={() => setIsMobileMenuOpen(false)}
       >
@@ -951,9 +968,12 @@ export default function App() {
           )}
           <Route path="/payment-type" element={<PaymentTypeManagement />} />
           <Route path="/paper-stock" element={<PaperStockManagement />} />
+          <Route path="/plate-stock" element={<PlateStockManagement />} />
           <Route path="/statements" element={<Navigate to="/statements/invoice" replace />} />
           <Route path="/statements/invoice" element={<Statements defaultTab="invoices" />} />
           <Route path="/statements/paper-stock" element={<PaperStockStatements />} />
+          <Route path="/statements/plate-stock" element={<PlateStockStatements />} />
+          <Route path="/report" element={<Report />} />
           <Route path="/estimates" element={<Estimates />} />
           <Route path="/estimates/add" element={<AddEstimate />} />
           <Route path="/item-list" element={<ItemListManagement />} />
