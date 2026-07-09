@@ -89,7 +89,7 @@ const PlateStockStatements = () => {
             Plate Stock Statements
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium italic">
-            Plate stock add aur deduct ki poori history — date, time, quantity aur party ke saath.
+            Complete history of plate stock additions and deductions — including date, time, quantity, and party.
           </p>
         </div>
       </div>
@@ -187,14 +187,14 @@ const PlateStockStatements = () => {
                       onClick={loadTransactions}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
                     >
-                      Dubara try karein
+                      Try again
                     </button>
                   </td>
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-20 text-center text-gray-400 italic">
-                    Abhi koi transaction nahi hai. Naya plate add karo ya update karo — history yahan dikhegi.
+                    No transactions yet. Add or deduct plate stock and the history will appear here.
                   </td>
                 </tr>
               ) : (
