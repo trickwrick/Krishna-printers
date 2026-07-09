@@ -14,9 +14,14 @@ import {
   Hash,
   ExternalLink,
   RefreshCw,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
-import { mergeWithLocalJobCards } from './utils/localJobCards';
+import { mergeWithLocalJobCards, updateLocalJobCardField } from './utils/localJobCards';
+import { downloadAsPDF } from './utils/pdfExport';
+import * as XLSX from 'xlsx';
 
 const STATUS_CONFIG = {
   pending: {
@@ -81,15 +86,20 @@ const StatusDropdown = ({ jobId, currentStatus, onUpdate }) => {
     if (newStatus === currentStatus) { setOpen(false); return; }
     setLoading(true);
     setOpen(false);
+
+    // Update localStorage immediately (works for local-only cards)
+    updateLocalJobCardField(jobId, { status: newStatus });
+    onUpdate(jobId, newStatus);
+
+    // Best-effort server sync
     try {
-      const res = await fetch(`${API_BASE_URL}/api/jobcard/${jobId}/status`, {
+      await fetch(`${API_BASE_URL}/api/jobcard/${jobId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) onUpdate(jobId, newStatus);
     } catch (err) {
-      console.error('Status update error:', err);
+      // Server unavailable — local update already applied
     } finally {
       setLoading(false);
     }
@@ -237,6 +247,43 @@ export default function Report() {
     return new Date(val).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  const exportToExcel = () => {
+    const headers = ['Date', 'Job No.', 'Party Name', 'Job Name', 'Qty', 'Amount', 'Status'];
+    const rows = filtered.map((card) => [
+      formatDate(card.jobDate || card.createdAt),
+      card.jobNumber || '',
+      card.partyName || '',
+      card.jobName || '',
+      card.jobQty || '',
+      card.totalAmount || 0,
+      card.status || 'pending',
+    ]);
+    
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    
+    // Auto-adjust column widths
+    const colWidths = headers.map((_, colIndex) => {
+      let maxLen = headers[colIndex].length;
+      rows.forEach(row => {
+        const cellValue = row[colIndex] ? row[colIndex].toString() : '';
+        if (cellValue.length > maxLen) {
+          maxLen = cellValue.length;
+        }
+      });
+      return { wch: maxLen + 2 };
+    });
+    worksheet['!cols'] = colWidths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Job Cards');
+    
+    XLSX.writeFile(workbook, `Job_Cards_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    downloadAsPDF('report-table-container', `Job_Cards_Report_${new Date().toISOString().split('T')[0]}`);
+  };
+
   return (
     <div className="w-full px-4 mt-8 pb-12 text-gray-800 animate-in fade-in duration-500">
       {/* Header */}
@@ -250,13 +297,29 @@ export default function Report() {
             Track status, monitor workload, and update job card progress.
           </p>
         </div>
-        <button
-          onClick={fetchJobCards}
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
-        >
-          <RefreshCw size={15} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
+          >
+            <FileSpreadsheet size={15} />
+            Excel
+          </button>
+          <button
+            onClick={exportToPDF}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 transition-all shadow-sm"
+          >
+            <FileText size={15} />
+            PDF
+          </button>
+          <button
+            onClick={fetchJobCards}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
+          >
+            <RefreshCw size={15} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -342,7 +405,7 @@ export default function Report() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div id="report-table-container" className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-gray-50 flex items-center justify-between">
           <h2 className="font-bold text-gray-800">
             Showing <span className="text-violet-600">{filtered.length}</span> job cards

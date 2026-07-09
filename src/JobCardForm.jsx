@@ -139,6 +139,7 @@ export default function JobCardForm() {
   const [emailId, setEmailId] = useState(editData?.emailId || '');
   const [gstNo, setGstNo] = useState(editData?.gstNo || '');
   const [jobQty, setJobQty] = useState(editData?.jobQty || '');
+  const [status, setStatus] = useState(editData?.status || 'pending');
   const [jobAttachment, setJobAttachment] = useState(editData?.jobAttachment || null);
   const [shipPartyName, setShipPartyName] = useState(editData?.shipPartyName || '');
   const [shipAddress, setShipAddress] = useState(editData?.shipAddress || '');
@@ -583,6 +584,7 @@ export default function JobCardForm() {
                 placeholder="e.g. 1000, 50 Books"
               />
             </div>
+
             <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload</label>
               <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3">
@@ -1342,13 +1344,13 @@ export default function JobCardForm() {
           </div>
 
           <div className="overflow-x-auto -mx-2 px-2">
-            <table className="w-full min-w-[800px] border-collapse text-sm">
+            <table className="w-full min-w-200 border-collapse text-sm">
               <thead>
                 <tr className="bg-gray-50">
                   {FINISHING_COLUMNS.map((col) => (
                     <th
                       key={col.key}
-                      className="border border-gray-200 px-1 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide text-center min-w-[90px]"
+                      className="border border-gray-200 px-1 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide text-center min-w-22.5"
                     >
                       {col.label}
                     </th>

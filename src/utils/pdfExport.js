@@ -32,6 +32,7 @@ const getSanitizedSystemStyles = () => {
     return combinedStyles
       .replace(/oklch\([^)]+\)/g, '#2563eb') // Primary Blue
       .replace(/oklab\([^)]+\)/g, '#2563eb') // Secondary Blue
+      .replace(/lab\([^)]+\)/g, '#2563eb') // Support standard lab()
       .replace(/color-mix\([^)]+\)/g, '#3b82f6'); // Clean up modern color-mix too
   } catch (error) {
     return '';
@@ -54,12 +55,12 @@ const sanitizeDOMInIframe = (doc) => {
       }
 
       // Sanitizing Text Color
-      if (computed.color && (computed.color.includes('okl') || computed.color.includes('color-mix'))) {
+      if (computed.color && (computed.color.includes('okl') || computed.color.includes('lab') || computed.color.includes('color-mix'))) {
         el.style.color = '#1e293b'; 
       }
       
       // Sanitizing Background Color
-      if (computed.backgroundColor && (computed.backgroundColor.includes('okl') || computed.backgroundColor.includes('color-mix'))) {
+      if (computed.backgroundColor && (computed.backgroundColor.includes('okl') || computed.backgroundColor.includes('lab') || computed.backgroundColor.includes('color-mix'))) {
         el.style.backgroundColor = '#2563eb';
       }
 

@@ -308,27 +308,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Revenue Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-        <StatCard
-          title="Monthly Revenue"
-          value={stats.monthlyRevenue}
-          prefix="₹"
-          diff={stats.monthlyDiff}
-          icon={IndianRupee}
-          gradient="from-blue-500 to-indigo-600"
-          iconBg="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          title="Yearly Revenue"
-          value={stats.yearlyRevenue}
-          prefix="₹"
-          diff={stats.yearlyDiff}
-          icon={CalendarDays}
-          gradient="from-indigo-500 to-purple-600"
-          iconBg="bg-indigo-50 text-indigo-600"
-        />
-      </div>
 
       {/* Job Status Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">

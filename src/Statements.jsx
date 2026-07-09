@@ -229,7 +229,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                 <button
                   type="button"
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
-                  className="flex items-center gap-3 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 shadow-sm hover:border-emerald-500 transition-all min-w-[150px] justify-between group"
+                  className="flex items-center gap-3 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 shadow-sm hover:border-emerald-500 transition-all min-w-37.5 justify-between group"
                 >
                   <div className="flex items-center gap-2">
                     <Calendar size={16} className="text-emerald-500" />
@@ -294,7 +294,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
             </div>
           </div>
 
-          <div className="overflow-x-auto min-h-[300px]">
+          <div className="overflow-x-auto min-h-75">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
                 <tr className="bg-gray-50/50 text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">
@@ -530,13 +530,12 @@ const Statements = ({ defaultTab = 'transactions' }) => {
               </div>
             </div>
 
-            <div className="overflow-x-auto min-h-[300px] financial-statement-table-wrap">
+            <div className="overflow-x-auto min-h-75 financial-statement-table-wrap">
               <table className="w-full text-left border-collapse financial-statement-table" style={{ tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '9%' }} />
-                  <col className="financial-statement-col-value-date" style={{ width: '9%' }} />
-                  <col style={{ width: '28%' }} />
-                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '33%' }} />
+                  <col style={{ width: '15%' }} />
                   <col style={{ width: '14%' }} />
                   <col style={{ width: '14%' }} />
                   <col style={{ width: '14%' }} />
@@ -544,9 +543,8 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                 <thead>
                   <tr className="bg-indigo-600 text-white text-sm font-black uppercase tracking-wide">
                     <th className="px-4 py-3 border border-indigo-500">Txn Date</th>
-                    <th className="financial-statement-col-value-date px-4 py-3 border border-indigo-500">Value Date</th>
-                    <th className="financial-statement-col-particulars px-4 py-3 border border-indigo-500">Particulars</th>
-                    <th className="px-4 py-3 border border-indigo-500">Chq / Ref No.</th>
+                    <th className="financial-statement-col-particulars px-4 py-3 border border-indigo-500">Party Name</th>
+                    <th className="px-4 py-3 border border-indigo-500">Invoice Number</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Withdrawal (Dr)</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Deposit (Cr)</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Balance</th>
@@ -555,7 +553,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase border border-gray-100">
+                      <td colSpan="6" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase border border-gray-100">
                         Loading Statement...
                       </td>
                     </tr>
@@ -563,7 +561,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                     <>
                       {periodFilter !== 'all' && (
                         <tr className="bg-amber-50/70">
-                          <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-700" colSpan="4">
+                          <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-700" colSpan="3">
                             Opening Balance b/f
                           </td>
                           <td className="px-4 py-3 border border-gray-200 text-right text-base font-bold text-gray-400">—</td>
@@ -584,10 +582,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                             <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-800">
                               {formatStatementDate(entry.date)}
                             </td>
-                            <td className="financial-statement-col-value-date px-4 py-3 border border-gray-200 text-base font-semibold text-gray-600">
-                              {formatStatementDate(entry.date)}
-                            </td>
-                            <td className="financial-statement-col-particulars px-4 py-3 border border-gray-200 text-base font-semibold text-gray-800 break-words">
+                            <td className="financial-statement-col-particulars px-4 py-3 border border-gray-200 text-base font-semibold text-gray-800 wrap-break-word">
                               {entry.particulars}
                             </td>
                             <td className="px-4 py-3 border border-gray-200 text-base font-black text-indigo-700 break-all">
