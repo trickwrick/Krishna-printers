@@ -46,6 +46,7 @@ import AddEstimate from './AddEstimate';
 import ItemListManagement from './ItemListManagement';
 import ContactSupport from './ContactSupport';
 import Report from './Report';
+import DailyJobReport from './DailyJobReport';
 import StaffTeamManagement from './StaffTeamManagement';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
 import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
@@ -502,7 +503,7 @@ export default function App() {
       isDropdown: true,
       dropdownItems: [
         { label: 'Job Card Report', icon: List, onClick: () => navigate('/report') },
-        { label: 'Daily Job Report', icon: List, onClick: () => navigate('/report?dateFilter=today') },
+        { label: 'Daily Job Report', icon: List, onClick: () => navigate('/daily-job-report') },
       ],
     },
   ];
@@ -980,6 +981,7 @@ export default function App() {
           <Route path="/statements/paper-stock" element={<PaperStockStatements />} />
           <Route path="/statements/plate-stock" element={<PlateStockStatements />} />
           <Route path="/report" element={<Report />} />
+          <Route path="/daily-job-report" element={<DailyJobReport />} />
           <Route path="/estimates" element={<Estimates />} />
           <Route path="/estimates/add" element={<AddEstimate />} />
           <Route path="/item-list" element={<ItemListManagement />} />
