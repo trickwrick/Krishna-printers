@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Search,
   Briefcase,
@@ -139,12 +139,16 @@ const StatusDropdown = ({ jobId, currentStatus, onUpdate }) => {
 
 export default function Report() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [jobCards, setJobCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('dateFilter') || 'all';
+  });
 
   const fetchJobCards = async () => {
     setLoading(true);

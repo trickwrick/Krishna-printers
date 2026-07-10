@@ -425,7 +425,7 @@ const ChallanList = () => {
       {/* Challan Preview & Print Modal */}
       {isModalOpen && primaryChallan && (
         <div className="print-modal-overlay fixed inset-0 bg-black/60 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0">
-          <div className="print-modal-shell bg-white border border-gray-300 w-full max-w-full relative h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
+          <div className="print-modal-shell bg-white border border-gray-300 w-full max-w-full relative h-dvh sm:h-auto max-h-dvh sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
             <div className="modal-header print-modal-header no-print p-3 sm:p-4 border-b bg-white">
               <div className="print-modal-title-row flex items-center justify-between gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-800">

@@ -34,8 +34,7 @@ import AddChallan from './AddChallan';
 import ChallanList from './ChallanList';
 import Login from './Login';
 import SettingsPage from './Settings';
-import SiteSettings from './SiteSettings';
-import SocialSettings from './SocialSettings';
+import OurProfile from './OurProfile';
 import PaymentTypeManagement from './PaymentTypeManagement';
 import PaperStockManagement from './PaperStockManagement';
 import PlateStockManagement from './PlateStockManagement';
@@ -497,7 +496,15 @@ export default function App() {
         { label: 'Add New', icon: PlusSquare, onClick: () => navigate('/estimates/add') },
       ],
     },
-    { name: 'Report', icon: BarChart, path: '/report' },
+    {
+      name: 'Report',
+      icon: BarChart,
+      isDropdown: true,
+      dropdownItems: [
+        { label: 'Job Card Report', icon: List, onClick: () => navigate('/report') },
+        { label: 'Daily Job Report', icon: List, onClick: () => navigate('/report?dateFilter=today') },
+      ],
+    },
   ];
 
   const navigationItems = allNavigationItems.filter((item) => {
@@ -548,6 +555,8 @@ export default function App() {
               ? '/estimates/add'
               : item.name === 'Estimate & Quotation'
               ? '/estimates'
+              : sub.label === 'Job Card Report' ? '/report'
+              : sub.label === 'Daily Job Report' ? '/report'
               : sub.label.includes('Job Card') ? '/job-card'
               : sub.label.includes('Invoice') ? '/invoice'
               : sub.label.includes('Challan') ? '/challan'
@@ -560,8 +569,7 @@ export default function App() {
   const profileSettingsItems = [
     ...(hasPermission('settings', 'edit')
       ? [
-          { label: 'Site Setting', path: '/settings/site', onClick: () => navigate('/settings/site') },
-          { label: 'Social Setting', path: '/settings/social', onClick: () => navigate('/settings/social') },
+          { label: 'Our Profile', path: '/settings/profile', onClick: () => navigate('/settings/profile') },
         ]
       : []),
     { label: 'Change Password', path: '/settings/password', onClick: () => navigate('/settings/password') },
@@ -649,15 +657,13 @@ export default function App() {
             {siteSettings.logo ? (
               <img src={siteSettings.logo} alt="Site Logo" className="h-8 w-auto object-contain" />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
-                <Building size={20} />
-              </div>
+              <img src="/logo.png" alt="Site Logo" className="h-8 w-auto object-contain" />
             )}
             <span className="truncate hidden sm:block">
               {(!siteSettings.siteTitle || siteSettings.siteTitle === DEFAULT_SITE_TITLE) ? (
                 <>
-                  <span className="text-[#111827] font-black">Krishna</span>{' '}
-                  <span className="text-[#2563eb] font-black">Printers</span>
+                  <span className="text-[#1b2e59] font-black">Krishna</span>{' '}
+                  <span className="text-[#00bda6] font-black">Printers</span>
                 </>
               ) : (
                 siteSettings.siteTitle
@@ -680,13 +686,14 @@ export default function App() {
                   title={item.name}
                   icon={item.icon}
                   items={item.dropdownItems}
-                  isActive={
-                    (item.name === 'Job Card' && location.pathname.includes('/job-card')) ||
-                    (item.name === 'Invoices' && location.pathname.includes('/invoice')) ||
-                    (item.name === 'Challan' && location.pathname.includes('/challan')) ||
-                    (item.name === 'Statements' && location.pathname.includes('/statements')) ||
-                    (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates'))
-                  }
+                    isActive={
+                      (item.name === 'Job Card' && location.pathname.includes('/job-card')) ||
+                      (item.name === 'Invoices' && location.pathname.includes('/invoice')) ||
+                      (item.name === 'Challan' && location.pathname.includes('/challan')) ||
+                      (item.name === 'Statements' && location.pathname.includes('/statements')) ||
+                      (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates')) ||
+                      (item.name === 'Report' && location.pathname.includes('/report'))
+                    }
                 />
               );
             }
@@ -956,8 +963,7 @@ export default function App() {
           <Route path="/challan/list" element={<ChallanList />} />
           <Route path="/contact-support" element={<ContactSupport />} />
           <Route path="/settings/password" element={<SettingsPage />} />
-          <Route path="/settings/site" element={<SiteSettings />} />
-          <Route path="/settings/social" element={<SocialSettings />} />
+          <Route path="/settings/profile" element={<OurProfile />} />
           {STAFF_TEAM_ENABLED && (
             <>
           <Route path="/staff-team" element={<Navigate to="/staff-team/manage" replace />} />

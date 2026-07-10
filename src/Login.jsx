@@ -100,7 +100,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full flex font-sans relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0c1a4a] via-[#1e3a8a] to-[#312e81]" />
+      <div className="absolute inset-0 bg-linear-to-br from-[#0c1a4a] via-[#1e3a8a] to-[#312e81]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(251,146,60,0.18),transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(96,165,250,0.22),transparent_55%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.06),transparent_70%)]" />
@@ -114,16 +114,14 @@ const Login = () => {
       />
 
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-transparent backdrop-blur-[1px]" />
-        <div className="absolute -top-32 -left-32 w-[420px] h-[420px] bg-orange-400/25 rounded-full blur-[100px]" />
+        <div className="absolute inset-0 bg-linear-to-br from-white/8 to-transparent backdrop-blur-[1px]" />
+        <div className="absolute -top-32 -left-32 w-105 h-105 bg-orange-400/25 rounded-full blur-[100px]" />
         <div className="absolute bottom-20 right-10 w-72 h-72 bg-sky-400/20 rounded-full blur-[80px]" />
-        <div className="absolute bottom-0 left-0 w-full h-2/5 bg-gradient-to-t from-[#0c1a4a]/80 to-transparent" />
+        <div className="absolute bottom-0 left-0 w-full h-2/5 bg-linear-to-t from-[#0c1a4a]/80 to-transparent" />
 
         <div className="relative z-10">
           <div className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-              <Printer size={24} />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-2xl object-contain bg-white p-1 shadow-lg shadow-orange-500/30" />
             <div>
               <p className="text-white font-black text-xl tracking-tight leading-none">
                 Krishna
@@ -173,21 +171,19 @@ const Login = () => {
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative overflow-hidden z-10">
-        <div className="absolute inset-0 bg-gradient-to-bl from-[#eef4ff]/95 via-[#f5f0ff]/90 to-[#fff8f0]/95 lg:rounded-l-[3rem] lg:shadow-[-20px_0_60px_rgba(0,0,0,0.15)]" />
+        <div className="absolute inset-0 bg-linear-to-bl from-[#eef4ff]/95 via-[#f5f0ff]/90 to-[#fff8f0]/95 lg:rounded-l-[3rem] lg:shadow-[-20px_0_60px_rgba(0,0,0,0.15)]" />
         <div className="absolute top-10 right-10 w-56 h-56 bg-blue-300/30 rounded-full blur-3xl" />
         <div className="absolute bottom-10 left-6 w-48 h-48 bg-orange-300/35 rounded-full blur-3xl" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-violet-200/25 rounded-full blur-3xl" />
 
         <div className="w-full max-w-md relative z-10">
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-md">
-              <Printer size={22} />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-11 h-11 rounded-xl object-contain bg-white p-1 shadow-md" />
             <div>
-              <p className="text-gray-900 font-black text-lg leading-none">
+              <p className="text-[#1b2e59] font-black text-lg leading-none">
                 Krishna
               </p>
-              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
+              <p className="text-[#00bda6] text-[10px] font-bold uppercase tracking-widest mt-0.5">
                 Printers
               </p>
             </div>
@@ -265,7 +261,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full mt-2 bg-gradient-to-r from-[#2563eb] via-[#4f46e5] to-[#7c3aed] hover:from-[#1d4ed8] hover:via-[#4338ca] hover:to-[#6d28d9] disabled:opacity-70 text-white py-3.5 rounded-xl font-bold text-base shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98]"
+                className="w-full mt-2 bg-linear-to-r from-[#2563eb] via-[#4f46e5] to-[#7c3aed] hover:from-[#1d4ed8] hover:via-[#4338ca] hover:to-[#6d28d9] disabled:opacity-70 text-white py-3.5 rounded-xl font-bold text-base shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98]"
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </button>

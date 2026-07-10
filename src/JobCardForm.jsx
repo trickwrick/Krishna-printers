@@ -721,11 +721,10 @@ export default function JobCardForm() {
               <label className="text-sm font-medium text-gray-700 mb-1">Color</label>
               <select name="printingType" defaultValue={editData?.printingType} className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
                 <option value="">Select Color</option>
-                <option value="Single Color">Single Color</option>
-                <option value="Multi Color">Multi Color</option>
-                <option value="CMYK">CMYK</option>
-                <option value="Pantone">Pantone</option>
-                <option value="Black & White">Black & White</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
               </select>
             </div>
           </div>
@@ -1337,6 +1336,55 @@ export default function JobCardForm() {
           </div>
         </div>
 
+        {/* Section: Binding */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+          <div className="absolute top-0 left-6 -translate-y-1/2 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+            Binding
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingCenterPin" defaultChecked={editData?.bindingCenterPin} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>CENTER PIN</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingSilai" defaultChecked={editData?.bindingSilai} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>SILAI</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingSidePin" defaultChecked={editData?.bindingSidePin} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>SIDE PIN</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingFolding" defaultChecked={editData?.bindingFolding} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>FOLDING</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingPerforation" defaultChecked={editData?.bindingPerforation} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>PERFORATION</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingNumbring" defaultChecked={editData?.bindingNumbring} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>NUMBRING</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingRegister" defaultChecked={editData?.bindingRegister} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>REGISTER</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingGlue" defaultChecked={editData?.bindingGlue} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>GLUE BINDING</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingKachhi" defaultChecked={editData?.bindingKachhi} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>KECHHI BINDING</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+              <input type="checkbox" name="bindingPukki" defaultChecked={editData?.bindingPukki} className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+              <span>PUKKI BINDING</span>
+            </label>
+          </div>
+        </div>
+
         {/* Section 6: Finishing Processes */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
           <div className="absolute top-0 left-6 -translate-y-1/2 bg-amber-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
@@ -1364,26 +1412,40 @@ export default function JobCardForm() {
                       const cell = row[col.key];
                       return (
                         <td key={col.key} className="border border-gray-200 p-1.5 align-middle">
-                          <div className="flex items-center justify-center gap-2 text-[10px] font-medium text-gray-600">
-                            <label className="flex items-center gap-0.5 cursor-pointer">
+                          <div className="flex items-center justify-center gap-3 text-[11px] font-semibold text-gray-600">
+                            <label className="flex items-center gap-1 cursor-pointer select-none group">
                               <input
                                 type="radio"
                                 name={`fin-${rowIdx}-${col.key}`}
                                 checked={cell.ticked === true}
                                 onChange={() => toggleFinishingTick(rowIdx, col.key, true)}
-                                className="w-3 h-3 text-emerald-600"
+                                className="sr-only"
                               />
-                              <span>Yes</span>
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                                cell.ticked === true
+                                  ? 'bg-emerald-500 border-emerald-500 text-white'
+                                  : 'border-gray-300 group-hover:border-emerald-500 bg-white text-transparent'
+                              }`}>
+                                <Check size={12} strokeWidth={3} />
+                              </div>
+                              <span className={cell.ticked === true ? 'text-emerald-600 font-bold' : 'text-gray-500'}>Yes</span>
                             </label>
-                            <label className="flex items-center gap-0.5 cursor-pointer">
+                            <label className="flex items-center gap-1 cursor-pointer select-none group">
                               <input
                                 type="radio"
                                 name={`fin-${rowIdx}-${col.key}`}
                                 checked={cell.ticked === false}
                                 onChange={() => toggleFinishingTick(rowIdx, col.key, false)}
-                                className="w-3 h-3 text-gray-400"
+                                className="sr-only"
                               />
-                              <span>No</span>
+                              <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${
+                                cell.ticked === false
+                                  ? 'bg-red-500 border-red-500 text-white'
+                                  : 'border-gray-300 group-hover:border-red-500 bg-white text-transparent'
+                              }`}>
+                                <X size={12} strokeWidth={3} />
+                              </div>
+                              <span className={cell.ticked === false ? 'text-red-600 font-bold' : 'text-gray-500'}>No</span>
                             </label>
                           </div>
                         </td>
