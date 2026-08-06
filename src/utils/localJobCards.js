@@ -40,17 +40,6 @@ export const deleteLocalJobCard = (id) => {
   writeLocalJobCards(readLocalJobCards().filter((card) => card._id !== id));
 };
 
-export const updateLocalJobCardField = (id, fields) => {
-  const cards = readLocalJobCards();
-  const idx = cards.findIndex((card) => card._id === id);
-  if (idx >= 0) {
-    cards[idx] = { ...cards[idx], ...fields, updatedAt: new Date().toISOString() };
-    writeLocalJobCards(cards);
-    return cards[idx];
-  }
-  return null;
-};
-
 export const mergeWithLocalJobCards = (serverCards = []) => {
   const merged = new Map();
   (Array.isArray(serverCards) ? serverCards : []).forEach((card) => {
@@ -60,4 +49,15 @@ export const mergeWithLocalJobCards = (serverCards = []) => {
     merged.set(card._id || card.jobNumber, card);
   });
   return Array.from(merged.values());
+};
+
+export const updateLocalJobCardField = (id, updates) => {
+  const cards = readLocalJobCards();
+  const idx = cards.findIndex((item) => item._id === id || item.jobNumber === id);
+  if (idx >= 0) {
+    cards[idx] = { ...cards[idx], ...updates, updatedAt: new Date().toISOString() };
+    writeLocalJobCards(cards);
+    return cards[idx];
+  }
+  return null;
 };

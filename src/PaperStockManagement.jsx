@@ -244,13 +244,13 @@ const PaperStockManagement = () => {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Cover Paper Section */}
-                <div className="bg-sky-50/30 p-5 rounded-2xl border border-sky-100/50 space-y-4">
-                  <h3 className="text-xs font-black text-sky-700 uppercase tracking-wider flex items-center gap-2">
+              <div className="w-full mb-6">
+                <div className="bg-sky-50/30 p-5 sm:p-6 rounded-2xl border border-sky-100/50">
+                  <h3 className="text-xs font-black text-sky-700 uppercase tracking-wider flex items-center gap-2 mb-6">
                     <span className="w-1.5 h-3 bg-sky-500 rounded-full" />
-                    Cover Paper
+                    Paper Details
                   </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   <div>
                     <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Party Name</label>
                     <input 
@@ -282,7 +282,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Cover GSM</label>
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper GSM</label>
                     <input 
                       type="number"
                       placeholder="e.g. 350, 300"
@@ -293,7 +293,7 @@ const PaperStockManagement = () => {
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">
-                      {editingId ? 'Add More Cover Sheets' : 'Cover Initial Sheet Count'}
+                      {editingId ? 'Add More Sheets' : 'Initial Sheet Count'}
                     </label>
                     {editingId && (
                       <p className="text-xs font-bold text-sky-700 mb-2 px-1">
@@ -313,7 +313,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Cover Paper Size</label>
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Size</label>
                     <input 
                       type="text"
                       placeholder="e.g. 12x18, 13x19"
@@ -322,96 +322,17 @@ const PaperStockManagement = () => {
                       onChange={(e) => setFormData({...formData, coverPaperSize: e.target.value})}
                     />
                   </div>
-                </div>
-
-                {/* Inner Paper Section */}
-                <div className="bg-indigo-50/30 p-5 rounded-2xl border border-indigo-100/50 space-y-4">
-                  <h3 className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-2">
-                    <span className="w-1.5 h-3 bg-indigo-500 rounded-full" />
-                    Inner Paper
-                  </h3>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Party Name</label>
+                  </div>
+                  <div className="mt-5 pt-5 border-t border-sky-100/50">
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 pl-1 tracking-widest">Low Stock Alert (Value)</label>
                     <input 
-                      type="text"
-                      placeholder="e.g. XYZ Publications"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerPartyName}
-                      onChange={(e) => setFormData({...formData, innerPartyName: e.target.value})}
+                      type="number" required
+                      placeholder="Alert when below..."
+                      className="w-full max-w-sm px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
+                      value={formData.lowStockThreshold}
+                      onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Name</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. Offset, Maplitho"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerName}
-                      onChange={(e) => setFormData({...formData, innerName: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Supplier</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Supplier name"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerSupplier}
-                      onChange={(e) => setFormData({...formData, innerSupplier: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Inner GSM</label>
-                    <input 
-                      type="number"
-                      placeholder="e.g. 90, 70"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerGSM}
-                      onChange={(e) => setFormData({...formData, innerGSM: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">
-                      {editingId ? 'Add More Inner Sheets' : 'Inner Initial Sheet Count'}
-                    </label>
-                    {editingId && (
-                      <p className="text-xs font-bold text-indigo-700 mb-2 px-1">
-                        Current remaining: {currentStock.inner.toLocaleString()} sheets
-                        {formData.innerQuantity ? (
-                          <span className="text-emerald-700"> → New total: {(currentStock.inner + Number(formData.innerQuantity || 0)).toLocaleString()} sheets</span>
-                        ) : null}
-                      </p>
-                    )}
-                    <input 
-                      type="number"
-                      min="0"
-                      placeholder={editingId ? 'e.g. 4000 to add more stock' : 'e.g. 5000, 10000'}
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerQuantity}
-                      onChange={(e) => setFormData({...formData, innerQuantity: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Inner Paper Size</label>
-                    <input 
-                      type="text"
-                      placeholder="e.g. 18x23, 23x36"
-                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                      value={formData.innerPaperSize}
-                      onChange={(e) => setFormData({...formData, innerPaperSize: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 pl-1 tracking-widest">Low Stock Alert (Value)</label>
-                  <input 
-                    type="number" required
-                    placeholder="Alert when below..."
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
-                    value={formData.lowStockThreshold}
-                    onChange={(e) => setFormData({...formData, lowStockThreshold: e.target.value})}
-                  />
                 </div>
               </div>
               <div>
@@ -561,9 +482,7 @@ const PaperStockManagement = () => {
                                 </div>
                                 <div>
                                    <p className="font-black text-gray-950 group-hover:text-blue-600 transition-colors uppercase text-sm">
-                                     {(item.coverName || item.name) === (item.innerName || item.name)
-                                       ? (item.coverName || item.name)
-                                       : `${item.coverName || item.name || '--'} / ${item.innerName || '--'}`}
+                                     {item.coverName || item.name || '--'}
                                    </p>
                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold">
                                      {(item.coverGSM !== undefined || item.gsm) ? (

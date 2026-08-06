@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Clock, AlertCircle, CheckCircle2, XCircle, ChevronDown } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { syncPlateUsageFromCards } from './utils/plateUsage';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
-import { deleteLocalJobCard, mergeWithLocalJobCards, updateLocalJobCardField } from './utils/localJobCards';
+import { deleteLocalJobCard, mergeWithLocalJobCards } from './utils/localJobCards';
 
 const BINDING_OPTIONS = [
   { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -58,109 +58,6 @@ const getTimeLeft = (card) => {
   };
 };
 
-const STATUS_CONFIG = {
-  pending: {
-    label: 'Pending',
-    icon: Clock,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    ring: 'ring-amber-200',
-    dot: 'bg-amber-500'
-  },
-  'in-progress': {
-    label: 'In Progress',
-    icon: AlertCircle,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    ring: 'ring-blue-200',
-    dot: 'bg-blue-500'
-  },
-  completed: {
-    label: 'Completed',
-    icon: CheckCircle2,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-    ring: 'ring-emerald-200',
-    dot: 'bg-emerald-500'
-  },
-  cancelled: {
-    label: 'Cancelled',
-    icon: XCircle,
-    color: 'text-red-500',
-    bg: 'bg-red-50',
-    ring: 'ring-red-200',
-    dot: 'bg-red-500'
-  }
-};
-
-const StatusDropdown = ({ jobId, currentStatus, onUpdate }) => {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleSelect = async (newStatus) => {
-    if (newStatus === currentStatus) { setOpen(false); return; }
-    setLoading(true);
-    setOpen(false);
-
-    // Always update locally first (covers local-only cards)
-    updateLocalJobCardField(jobId, { status: newStatus });
-    onUpdate(jobId, newStatus);
-
-    // Also try to sync with server (best-effort, no block on failure)
-    try {
-      await fetch(`${API_BASE_URL}/api/jobcard/${jobId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-    } catch (err) {
-      // Server unavailable — local update already applied
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cfg = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.pending;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        disabled={loading}
-        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black uppercase ring-1 transition-all hover:opacity-80 ${cfg.bg} ${cfg.color} ${cfg.ring} ${loading ? 'animate-pulse' : ''}`}
-      >
-        {loading ? <RefreshCw size={11} className="animate-spin" /> : <cfg.icon size={11} />}
-        {cfg.label}
-        <ChevronDown size={9} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-100 rounded-lg shadow-lg z-50 overflow-hidden min-w-32 animate-in fade-in slide-in-from-top-2 duration-150">
-          {Object.entries(STATUS_CONFIG).map(([key, conf]) => (
-            <button
-              key={key}
-              onClick={(e) => { e.stopPropagation(); handleSelect(key); }}
-              className={`flex items-center gap-2 w-full px-2 py-2 text-left text-[11px] font-bold transition-colors hover:bg-gray-50 ${key === currentStatus ? `${conf.bg} ${conf.color}` : 'text-gray-700'}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${conf.dot}`} />
-              {conf.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function JobCardListing() {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState([]);
@@ -192,8 +89,7 @@ export default function JobCardListing() {
       innerPaperGSM: false,
       lamination: true,
       binding: true,
-      createdAt: true,
-      status: true
+      createdAt: true
     };
   });
 
@@ -209,18 +105,16 @@ export default function JobCardListing() {
       syncPlateUsageFromCards(mergedData);
       setJobCards(mergedData);
     } catch (error) {
-      console.error('Error fetching job cards:', error);
+      console.error("Error loading job cards:", error);
+      setJobCards(mergeWithLocalJobCards([]));
     }
-  };
-
-  const handleStatusUpdate = (jobId, newStatus) => {
-    setJobCards((prev) => prev.map((j) => (j._id === jobId ? { ...j, status: newStatus } : j)));
   };
 
   useEffect(() => {
     loadData();
     setWorkflowProgress(readWorkflowProgress());
 
+    // Close filter dropdown on click outside
     const handleClickOutside = (event) => {
       if (filterRef.current && !filterRef.current.contains(event.target)) {
         setIsFilterOpen(false);
@@ -271,13 +165,12 @@ export default function JobCardListing() {
       if (columnVisibility.jobQty) exportRow['Job Qty'] = card.jobQty || 0;
       if (columnVisibility.pageSize) exportRow['Page Size'] = card.pageSize || '-';
       if (columnVisibility.pageCount) exportRow['Page Count'] = card.pageCount || '-';
-      if (columnVisibility.status) exportRow['Status'] = card.status || 'pending';
       if (columnVisibility.printingType) exportRow['Color'] = card.printingType || '-';
       if (columnVisibility.paper) exportRow['Paper'] = card.paper || '-';
       if (columnVisibility.paperGSM) exportRow['Paper GSM'] = card.paperGSM || '-';
       if (columnVisibility.lamination) exportRow['Lamination'] = card.lamination || '-';
       if (columnVisibility.binding) exportRow['Binding'] = (getBindingText(card) || []).join(' • ');
-      if (columnVisibility.createdAt) exportRow['Created At'] = formatShortDateTime(card.createdAt).date;
+      if (columnVisibility.createdAt) exportRow['Created At'] = new Date(card.createdAt).toLocaleString();
       return exportRow;
     });
 
@@ -448,7 +341,6 @@ export default function JobCardListing() {
                     { id: 'innerPaperGSM', label: 'Inner GSM' },
                     { id: 'lamination', label: 'Lamination' },
                     { id: 'binding', label: 'Binding' },
-                    { id: 'status', label: 'Status' },
                     { id: 'createdAt', label: 'Created At' }
                   ].map((col) => (
                     <label key={col.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group">
@@ -486,7 +378,6 @@ export default function JobCardListing() {
               {columnVisibility.innerPaperGSM && <col style={{ width: '5%' }} />}
               {columnVisibility.lamination && <col style={{ width: '7%' }} />}
               {columnVisibility.binding && <col style={{ width: '8%' }} />}
-              {columnVisibility.status && <col style={{ width: '9%' }} />}
               {columnVisibility.createdAt && <col style={{ width: '9%' }} />}
               <col style={{ width: '56px' }} />
             </colgroup>
@@ -506,7 +397,6 @@ export default function JobCardListing() {
                 {columnVisibility.innerPaperGSM && <th className="py-2 px-1.5 leading-tight">I.GSM</th>}
                 {columnVisibility.lamination && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Lam.</th>}
                 {columnVisibility.binding && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Binding</th>}
-                {columnVisibility.status && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Status</th>}
                 {columnVisibility.createdAt && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Created</th>}
                 <th className="py-2 px-1 text-center leading-tight">Action</th>
               </tr>
@@ -590,15 +480,6 @@ export default function JobCardListing() {
                                 </div>
                               ) : <span className="text-gray-400">-</span>;
                             })()}
-                          </td>
-                        )}
-                        {columnVisibility.status && (
-                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
-                            <StatusDropdown
-                              jobId={card._id}
-                              currentStatus={card.status || 'pending'}
-                              onUpdate={handleStatusUpdate}
-                            />
                           </td>
                         )}
                         {columnVisibility.createdAt && (

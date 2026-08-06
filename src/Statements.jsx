@@ -533,9 +533,10 @@ const Statements = ({ defaultTab = 'transactions' }) => {
             <div className="overflow-x-auto min-h-75 financial-statement-table-wrap">
               <table className="w-full text-left border-collapse financial-statement-table" style={{ tableLayout: 'fixed' }}>
                 <colgroup>
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '33%' }} />
-                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col className="financial-statement-col-value-date" style={{ width: '9%' }} />
+                  <col style={{ width: '28%' }} />
+                  <col style={{ width: '12%' }} />
                   <col style={{ width: '14%' }} />
                   <col style={{ width: '14%' }} />
                   <col style={{ width: '14%' }} />
@@ -543,8 +544,9 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                 <thead>
                   <tr className="bg-indigo-600 text-white text-sm font-black uppercase tracking-wide">
                     <th className="px-4 py-3 border border-indigo-500">Txn Date</th>
-                    <th className="financial-statement-col-particulars px-4 py-3 border border-indigo-500">Party Name</th>
-                    <th className="px-4 py-3 border border-indigo-500">Invoice Number</th>
+                    <th className="financial-statement-col-value-date px-4 py-3 border border-indigo-500">Value Date</th>
+                    <th className="financial-statement-col-particulars px-4 py-3 border border-indigo-500">Particulars</th>
+                    <th className="px-4 py-3 border border-indigo-500">Chq / Ref No.</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Withdrawal (Dr)</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Deposit (Cr)</th>
                     <th className="px-4 py-3 border border-indigo-500 text-right">Balance</th>
@@ -553,7 +555,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase border border-gray-100">
+                      <td colSpan="7" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase border border-gray-100">
                         Loading Statement...
                       </td>
                     </tr>
@@ -561,7 +563,7 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                     <>
                       {periodFilter !== 'all' && (
                         <tr className="bg-amber-50/70">
-                          <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-700" colSpan="3">
+                          <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-700" colSpan="4">
                             Opening Balance b/f
                           </td>
                           <td className="px-4 py-3 border border-gray-200 text-right text-base font-bold text-gray-400">—</td>
@@ -580,6 +582,9 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                         displayEntries.map((entry) => (
                           <tr key={entry.id} className="hover:bg-gray-50/60 transition-colors">
                             <td className="px-4 py-3 border border-gray-200 text-base font-bold text-gray-800">
+                              {formatStatementDate(entry.date)}
+                            </td>
+                            <td className="financial-statement-col-value-date px-4 py-3 border border-gray-200 text-base font-semibold text-gray-600">
                               {formatStatementDate(entry.date)}
                             </td>
                             <td className="financial-statement-col-particulars px-4 py-3 border border-gray-200 text-base font-semibold text-gray-800 wrap-break-word">

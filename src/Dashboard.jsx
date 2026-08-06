@@ -273,38 +273,34 @@ export default function Dashboard() {
       </div>
 
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl mb-8 bg-white border border-gray-100 p-6 sm:p-8 text-gray-800 shadow-sm">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="relative overflow-hidden rounded-3xl mb-8 bg-linear-to-r from-[#1e3a8a] via-[#2563eb] to-[#4f46e5] p-6 sm:p-8 text-white shadow-xl shadow-blue-900/20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(251,146,60,0.25),transparent_55%)]" />
+        <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="max-w-xl">
-            <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 text-xs font-bold text-blue-700 mb-4">
-              <Printer size={14} className="text-blue-600" />
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/20 rounded-full px-3 py-1 text-xs font-semibold mb-4">
+              <Printer size={14} className="text-orange-300" />
               Print - Design - Deliver
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black leading-tight mb-2 text-gray-900">
+            <h2 className="text-2xl sm:text-3xl font-black leading-tight mb-2">
               Your print business, fully under control
             </h2>
-            <p className="text-gray-500 text-sm sm:text-base leading-relaxed">
+            <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
               Job cards, invoices, challans, and paper stock - manage everything from one dashboard.
             </p>
           </div>
-
-          {/* Printing Machine Image */}
-          <div className="flex items-center justify-center shrink-0">
-            <img src="/machine.png" alt="Printing Machine" className="h-36 sm:h-48 lg:h-52 w-auto object-contain hover:scale-105 transition-transform duration-300" />
-          </div>
-
-          <div className="flex lg:flex-col gap-3 shrink-0">
+          <div className="flex flex-wrap gap-3 shrink-0">
             <button
               type="button"
               onClick={() => navigate('/invoice/add')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md shadow-blue-500/20 whitespace-nowrap"
+              className="bg-white text-blue-700 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md"
             >
               Add Invoice
             </button>
             <button
               type="button"
               onClick={() => navigate('/paper-stock')}
-              className="bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap"
+              className="bg-white/15 hover:bg-white/25 border border-white/30 backdrop-blur-sm px-5 py-2.5 rounded-xl font-bold text-sm transition"
             >
               Paper Stock
             </button>
@@ -312,6 +308,27 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Revenue Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+        <StatCard
+          title="Monthly Revenue"
+          value={stats.monthlyRevenue}
+          prefix="₹"
+          diff={stats.monthlyDiff}
+          icon={IndianRupee}
+          gradient="from-blue-500 to-indigo-600"
+          iconBg="bg-blue-50 text-blue-600"
+        />
+        <StatCard
+          title="Yearly Revenue"
+          value={stats.yearlyRevenue}
+          prefix="₹"
+          diff={stats.yearlyDiff}
+          icon={CalendarDays}
+          gradient="from-indigo-500 to-purple-600"
+          iconBg="bg-indigo-50 text-indigo-600"
+        />
+      </div>
 
       {/* Job Status Quick Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -391,7 +408,7 @@ export default function Dashboard() {
                 recentCards.map((card) => (
                   <tr
                     key={card._id}
-                    onClick={() => navigate('/job-card-list')}
+                    onClick={() => navigate(`/job-card/${card._id}`)}
                     className="hover:bg-violet-50/30 transition-colors cursor-pointer group"
                   >
                     <td className="px-5 py-3.5">

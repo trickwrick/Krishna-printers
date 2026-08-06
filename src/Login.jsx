@@ -121,7 +121,9 @@ const Login = () => {
 
         <div className="relative z-10">
           <div className="inline-flex items-center gap-3">
-            <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-2xl object-contain bg-white p-1 shadow-lg shadow-orange-500/30" />
+            <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+              <Printer size={24} />
+            </div>
             <div>
               <p className="text-white font-black text-xl tracking-tight leading-none">
                 Krishna
@@ -178,12 +180,14 @@ const Login = () => {
 
         <div className="w-full max-w-md relative z-10">
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <img src="/logo.png" alt="Logo" className="w-11 h-11 rounded-xl object-contain bg-white p-1 shadow-md" />
+            <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-md">
+              <Printer size={22} />
+            </div>
             <div>
-              <p className="text-[#1b2e59] font-black text-lg leading-none">
+              <p className="text-gray-900 font-black text-lg leading-none">
                 Krishna
               </p>
-              <p className="text-[#00bda6] text-[10px] font-bold uppercase tracking-widest mt-0.5">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
                 Printers
               </p>
             </div>

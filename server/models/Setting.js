@@ -10,10 +10,6 @@ const settingSchema = new mongoose.Schema({
   logo: { type: String }, // Store as string (URL or Base64)
   whiteLogo: { type: String },
   favicon: { type: String },
-  profileImage: { type: String },
-  description: { type: String },
-  mobile: { type: String },
-  gmailId: { type: String },
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

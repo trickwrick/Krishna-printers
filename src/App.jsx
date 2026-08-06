@@ -34,7 +34,8 @@ import AddChallan from './AddChallan';
 import ChallanList from './ChallanList';
 import Login from './Login';
 import SettingsPage from './Settings';
-import OurProfile from './OurProfile';
+import SiteSettings from './SiteSettings';
+import SocialSettings from './SocialSettings';
 import PaymentTypeManagement from './PaymentTypeManagement';
 import PaperStockManagement from './PaperStockManagement';
 import PlateStockManagement from './PlateStockManagement';
@@ -46,7 +47,6 @@ import AddEstimate from './AddEstimate';
 import ItemListManagement from './ItemListManagement';
 import ContactSupport from './ContactSupport';
 import Report from './Report';
-import DailyJobReport from './DailyJobReport';
 import StaffTeamManagement from './StaffTeamManagement';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
 import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
@@ -497,15 +497,7 @@ export default function App() {
         { label: 'Add New', icon: PlusSquare, onClick: () => navigate('/estimates/add') },
       ],
     },
-    {
-      name: 'Report',
-      icon: BarChart,
-      isDropdown: true,
-      dropdownItems: [
-        { label: 'Job Card Report', icon: List, onClick: () => navigate('/report') },
-        { label: 'Daily Job Report', icon: List, onClick: () => navigate('/daily-job-report') },
-      ],
-    },
+    { name: 'Report', icon: BarChart, path: '/report' },
   ];
 
   const navigationItems = allNavigationItems.filter((item) => {
@@ -556,8 +548,6 @@ export default function App() {
               ? '/estimates/add'
               : item.name === 'Estimate & Quotation'
               ? '/estimates'
-              : sub.label === 'Job Card Report' ? '/report'
-              : sub.label === 'Daily Job Report' ? '/report'
               : sub.label.includes('Job Card') ? '/job-card'
               : sub.label.includes('Invoice') ? '/invoice'
               : sub.label.includes('Challan') ? '/challan'
@@ -570,7 +560,8 @@ export default function App() {
   const profileSettingsItems = [
     ...(hasPermission('settings', 'edit')
       ? [
-          { label: 'Our Profile', path: '/settings/profile', onClick: () => navigate('/settings/profile') },
+          { label: 'Site Setting', path: '/settings/site', onClick: () => navigate('/settings/site') },
+          { label: 'Social Setting', path: '/settings/social', onClick: () => navigate('/settings/social') },
         ]
       : []),
     { label: 'Change Password', path: '/settings/password', onClick: () => navigate('/settings/password') },
@@ -642,7 +633,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fa] font-sans pb-10 text-gray-800 overflow-x-clip">
+    <div className="min-h-screen bg-[#f4f7fa] font-sans pb-10 text-gray-800 overflow-x-hidden">
       {/* Top Navbar */}
       <nav className="w-full bg-white border-b border-gray-200 px-1.5 sm:px-2 py-2.5 flex items-center gap-1.5 sm:gap-2 sticky top-0 z-50">
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
@@ -658,13 +649,15 @@ export default function App() {
             {siteSettings.logo ? (
               <img src={siteSettings.logo} alt="Site Logo" className="h-8 w-auto object-contain" />
             ) : (
-              <img src="/logo.png" alt="Site Logo" className="h-8 w-auto object-contain" />
+              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
+                <Building size={20} />
+              </div>
             )}
             <span className="truncate hidden sm:block">
               {(!siteSettings.siteTitle || siteSettings.siteTitle === DEFAULT_SITE_TITLE) ? (
                 <>
-                  <span className="text-[#1b2e59] font-black">Krishna</span>{' '}
-                  <span className="text-[#00bda6] font-black">Printers</span>
+                  <span className="text-[#111827] font-black">Krishna</span>{' '}
+                  <span className="text-[#2563eb] font-black">Printers</span>
                 </>
               ) : (
                 siteSettings.siteTitle
@@ -687,14 +680,13 @@ export default function App() {
                   title={item.name}
                   icon={item.icon}
                   items={item.dropdownItems}
-                    isActive={
-                      (item.name === 'Job Card' && location.pathname.includes('/job-card')) ||
-                      (item.name === 'Invoices' && location.pathname.includes('/invoice')) ||
-                      (item.name === 'Challan' && location.pathname.includes('/challan')) ||
-                      (item.name === 'Statements' && location.pathname.includes('/statements')) ||
-                      (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates')) ||
-                      (item.name === 'Report' && location.pathname.includes('/report'))
-                    }
+                  isActive={
+                    (item.name === 'Job Card' && location.pathname.includes('/job-card')) ||
+                    (item.name === 'Invoices' && location.pathname.includes('/invoice')) ||
+                    (item.name === 'Challan' && location.pathname.includes('/challan')) ||
+                    (item.name === 'Statements' && location.pathname.includes('/statements')) ||
+                    (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates'))
+                  }
                 />
               );
             }
@@ -964,7 +956,8 @@ export default function App() {
           <Route path="/challan/list" element={<ChallanList />} />
           <Route path="/contact-support" element={<ContactSupport />} />
           <Route path="/settings/password" element={<SettingsPage />} />
-          <Route path="/settings/profile" element={<OurProfile />} />
+          <Route path="/settings/site" element={<SiteSettings />} />
+          <Route path="/settings/social" element={<SocialSettings />} />
           {STAFF_TEAM_ENABLED && (
             <>
           <Route path="/staff-team" element={<Navigate to="/staff-team/manage" replace />} />
@@ -981,7 +974,6 @@ export default function App() {
           <Route path="/statements/paper-stock" element={<PaperStockStatements />} />
           <Route path="/statements/plate-stock" element={<PlateStockStatements />} />
           <Route path="/report" element={<Report />} />
-          <Route path="/daily-job-report" element={<DailyJobReport />} />
           <Route path="/estimates" element={<Estimates />} />
           <Route path="/estimates/add" element={<AddEstimate />} />
           <Route path="/item-list" element={<ItemListManagement />} />
