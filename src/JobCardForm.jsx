@@ -19,7 +19,6 @@ const FINISHING_COLUMNS = [
   { key: 'dieCutting', label: 'Die Cutting' },
   { key: 'cutting', label: 'Cutting' },
   { key: 'creasingFold', label: 'Creasing/Fold' },
-  { key: 'total', label: 'Total' },
 ];
 
 const emptyCell = () => ({ ticked: null });
@@ -121,6 +120,12 @@ export default function JobCardForm() {
   );
   const [printSide, setPrintSide] = useState(editData?.printSheet === 'Both Side' ? 'Both Side' : 'Single Side');
   const [finishingRows, setFinishingRows] = useState(() => parseFinishingRows(editData));
+  const [dripOffPlateType, setDripOffPlateType] = useState(editData?.dripOffPlateType || '');
+  const [dripOffJobSize, setDripOffJobSize] = useState(editData?.dripOffJobSize || '');
+  const [dripOffQty, setDripOffQty] = useState(editData?.dripOffQty || '');
+  const [lamination, setLamination] = useState(editData?.lamination || '');
+  const [laminationSide, setLaminationSide] = useState(editData?.laminationSide || '');
+  const [laminationSize, setLaminationSize] = useState(editData?.laminationSize || '');
   const [remarks, setRemarks] = useState(editData?.notes || '');
   const [formErrors, setFormErrors] = useState([]);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -128,8 +133,14 @@ export default function JobCardForm() {
   const [useShipAddress, setUseShipAddress] = useState(
     editData?.useShipAddress || !!(editData?.shipAddress || editData?.shipPartyName)
   );
-  const [plateSize, setPlateSize] = useState(editData?.plateSize || '');
-  const [plateUseCount, setPlateUseCount] = useState(editData?.plateUseCount || '');
+  const [plateSize, setPlateSize] = useState(() => {
+    if (!editData?.plateSize) return [];
+    // support both old string value and new array value
+    return Array.isArray(editData.plateSize)
+      ? editData.plateSize
+      : editData.plateSize.split(',').map((s) => s.trim()).filter(Boolean);
+  });
+  const [plateUseCount, setPlateUseCount] = useState({});
   const [jobCards, setJobCards] = useState([]);
   const [partySuggestions, setPartySuggestions] = useState([]);
   const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
@@ -168,8 +179,8 @@ export default function JobCardForm() {
       digitalPrintout,
       digitalPrintoutRemark,
       plateType: plateType === 'Old Plate' ? 'Old' : 'New',
-      plateSize,
-      plateUseCount,
+      plateSize: plateSize.join(', '),
+      plateUseCount: Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', '),
       paper: selectedPaper,
       paperGSM,
       innerPaper: selectedInnerPaper,
@@ -179,6 +190,12 @@ export default function JobCardForm() {
       printSheet: printSide,
       bindingNote: JSON.stringify(finishingRows),
       notes: remarks,
+      dripOffPlateType,
+      dripOffJobSize,
+      dripOffQty,
+      lamination,
+      laminationSide,
+      laminationSize,
     };
   };
 
@@ -228,7 +245,7 @@ export default function JobCardForm() {
     if (!String(fd.get('partyName') || '').trim()) errors.push('Party Name');
     if (!String(fd.get('jobName') || '').trim()) errors.push('Job Name');
     if (!String(fd.get('jobQty') || '').trim()) errors.push('Job Quantity');
-    if (!plateSize) errors.push('Plate Size');
+    if (!plateSize.length) errors.push('Plate Size');
     return errors;
   };
 
@@ -265,12 +282,17 @@ export default function JobCardForm() {
     setIsPartyDropdownOpen(false);
   };
 
-  const refreshPlateUseCount = (size, cards = []) => {
-    if (!size) {
-      setPlateUseCount('');
+  const refreshPlateUseCount = (sizes, cards = []) => {
+    const arr = Array.isArray(sizes) ? sizes : (sizes ? [sizes] : []);
+    if (!arr.length) {
+      setPlateUseCount({});
       return;
     }
-    setPlateUseCount(resolvePlateUseCount(size, cards, editData));
+    const countMap = {};
+    arr.forEach((size) => {
+      countMap[size] = resolvePlateUseCount(size, cards, editData);
+    });
+    setPlateUseCount(countMap);
   };
 
   const filteredStocks = paperStocks.filter(stock => {
@@ -403,7 +425,11 @@ export default function JobCardForm() {
   }, [plateSize, jobCards, editData?._id]);
 
   const handlePlateSizeChange = (e) => {
-    setPlateSize(e.target.value);
+    const { value, checked } = e.target;
+    setPlateSize((prev) => {
+      const next = checked ? [...prev, value] : prev.filter((s) => s !== value);
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -428,14 +454,22 @@ export default function JobCardForm() {
       shipEmailId: useShipAddress ? (fd.get('shipEmailId') || '') : '',
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
       jobAttachment,
-      plateSize: plateSize || undefined,
-      plateUseCount: plateUseCount ? Number(plateUseCount) : undefined,
+      plateSize: plateSize.length ? plateSize.join(', ') : undefined,
+      plateUseCount: Object.keys(plateUseCount).length
+        ? Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', ')
+        : undefined,
       digitalPrintout,
       digitalPrintoutRemark,
       plateType: plateType === 'Old Plate' ? 'Old' : 'New',
       printSheet: printSide,
       bindingNote: JSON.stringify(finishingRows),
       notes: remarks,
+      dripOffPlateType,
+      dripOffJobSize,
+      dripOffQty,
+      lamination,
+      laminationSide,
+      laminationSize,
       // Boolean conversion for binding checkboxes
       bindingCenterPin: fd.get('bindingCenterPin') === 'on',
       bindingSilai: fd.get('bindingSilai') === 'on',
@@ -451,7 +485,7 @@ export default function JobCardForm() {
 
     const saveLocalAndOpenList = () => {
       const saved = saveLocalJobCard(jobCard);
-      rememberPlateUsage(saved.plateSize || plateSize, saved.plateUseCount || plateUseCount);
+      rememberPlateUsage(saved.plateSize || plateSize.join(', '), saved.plateUseCount);
       window.dispatchEvent(new Event('jobCardsUpdated'));
       window.dispatchEvent(new Event('fetchNotifications'));
       navigate('/job-card-list');
@@ -845,7 +879,7 @@ export default function JobCardForm() {
 
             {/* Cover Paper Section */}
             <div className="mb-6 pb-6 border-b border-gray-100">
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 <div className="flex flex-col relative" ref={paperDropdownRef}>
                   <label className="text-xs font-bold text-gray-500 mb-1">Select Paper (From Stock)</label>
@@ -1007,6 +1041,61 @@ export default function JobCardForm() {
             </div>
           </div>
 
+          {/* Section 5b: Drip Off */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
+            <div className="absolute top-0 left-6 -translate-y-1/2 bg-violet-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
+              Drip Off
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+              {/* Plate: Old / New */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-2">Plate</label>
+                <div className="flex items-center gap-6 h-10">
+                  {['New', 'Old'].map((type) => (
+                    <label key={type} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="dripOffPlateType"
+                        value={type}
+                        checked={dripOffPlateType === type}
+                        onChange={() => setDripOffPlateType(type)}
+                        className="w-4 h-4 text-violet-600 border-gray-300 focus:ring-violet-500"
+                      />
+                      <span className="text-sm text-gray-700">{type} Plate</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Job Size */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Job Size</label>
+                <input
+                  type="text"
+                  name="dripOffJobSize"
+                  value={dripOffJobSize}
+                  onChange={(e) => setDripOffJobSize(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                  placeholder="e.g. A4, 1/4, 10x15"
+                />
+              </div>
+
+              {/* Quantity */}
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="text"
+                  name="dripOffQty"
+                  value={dripOffQty}
+                  onChange={(e) => setDripOffQty(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all"
+                  placeholder="e.g. 500, 1000"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Section 6: Digital Printout */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 relative pt-10">
             <div className="absolute top-0 left-6 -translate-y-1/2 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold shadow-sm">
@@ -1106,40 +1195,59 @@ export default function JobCardForm() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">Plate Size *</label>
+                <label className="text-sm font-medium text-gray-700 mb-3 block">Plate Size * <span className="text-xs font-normal text-indigo-500">(Multiple select allowed)</span></label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {PLATE_SIZES.map((size) => (
-                    <label
-                      key={size}
-                      className={`flex items-center gap-2 h-10 border rounded-lg px-3 cursor-pointer text-sm transition-all ${plateSize === size
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-500/20'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                        }`}
-                    >
-                      <input
-                        type="radio"
-                        name="plateSize"
-                        value={size}
-                        checked={plateSize === size}
-                        onChange={handlePlateSizeChange}
-                        className="w-4 h-4 text-indigo-600"
-                      />
-                      {size}
-                    </label>
-                  ))}
+                  {PLATE_SIZES.map((size) => {
+                    const isChecked = plateSize.includes(size);
+                    return (
+                      <label
+                        key={size}
+                        className={`flex items-center gap-2 h-10 border rounded-lg px-3 cursor-pointer text-sm transition-all ${isChecked
+                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-500/20'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                          }`}
+                      >
+                        <input
+                          type="checkbox"
+                          name="plateSize"
+                          value={size}
+                          checked={isChecked}
+                          onChange={handlePlateSizeChange}
+                          className="w-4 h-4 text-indigo-600 rounded"
+                        />
+                        {size}
+                      </label>
+                    );
+                  })}
                 </div>
+                {plateSize.length > 0 && (
+                  <p className="mt-2 text-xs text-indigo-600 font-medium">
+                    Selected: {plateSize.join(' · ')}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 <div className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={plateSize ? plateUseCount : ''}
-                    placeholder="Auto"
-                    className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
-                  />
+                  {plateSize.length > 0 ? (
+                    <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
+                      {plateSize.map((size) => (
+                        <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                          <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
+                          <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      readOnly
+                      value=""
+                      placeholder="Auto"
+                      className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700 mb-1">Quantity Of Plates</label>
@@ -1180,19 +1288,71 @@ export default function JobCardForm() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Lamination</label>
-                  <select name="lamination" defaultValue={editData?.lamination} className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-                    <option value="">Select Lamination</option>
-                    <option value="MATT">MATT</option>
-                    <option value="GLOSS">GLOSS</option>
-                    <option value="THERMAL MATT">THERMAL MATT</option>
-                    <option value="THERMAL GLOSS">THERMAL GLOSS</option>
-                    <option value="VELVET">VELVET</option>
-                    <option value="AQUOS COATING">AQUOS COATING</option>
-                    <option value="UV">UV</option>
-                  </select>
+              <div className="space-y-4">
+                {/* Lamination Dropdown */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                  <div className="flex flex-col sm:w-56 shrink-0">
+                    <label className="text-sm font-medium text-gray-700 mb-1">Lamination</label>
+                    <select
+                      name="lamination"
+                      value={lamination}
+                      onChange={(e) => {
+                        setLamination(e.target.value);
+                        if (!e.target.value) {
+                          setLaminationSide('');
+                          setLaminationSize('');
+                        }
+                      }}
+                      className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    >
+                      <option value="">Select Lamination</option>
+                      <option value="MATT">MATT</option>
+                      <option value="GLOSS">GLOSS</option>
+                      <option value="THERMAL MATT">THERMAL MATT</option>
+                      <option value="THERMAL GLOSS">THERMAL GLOSS</option>
+                      <option value="VELVET">VELVET</option>
+                      <option value="AQUOS COATING">AQUOS COATING</option>
+                      <option value="UV">UV</option>
+                    </select>
+                  </div>
+
+                  {/* Side + Size — shown only when a lamination is selected */}
+                  {lamination && (
+                    <div className="flex flex-col sm:flex-row gap-4 flex-1 animate-in fade-in slide-in-from-left-2 duration-200">
+                      {/* Side */}
+                      <div className="flex flex-col">
+                        <label className="text-sm font-medium text-gray-700 mb-1">Side</label>
+                        <div className="flex items-center gap-4 h-10">
+                          {['Single', 'Both'].map((side) => (
+                            <label key={side} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="laminationSide"
+                                value={side}
+                                checked={laminationSide === side}
+                                onChange={() => setLaminationSide(side)}
+                                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                              />
+                              <span className="text-sm text-gray-700">{side}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Size */}
+                      <div className="flex flex-col flex-1">
+                        <label className="text-sm font-medium text-gray-700 mb-1">Size</label>
+                        <input
+                          type="text"
+                          name="laminationSize"
+                          value={laminationSize}
+                          onChange={(e) => setLaminationSize(e.target.value)}
+                          className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          placeholder="e.g. A4, 10x15"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1336,12 +1496,18 @@ export default function JobCardForm() {
                     ['Printing Quantity', previewData.printingQty],
                     ['Uploaded File', previewData.jobAttachmentName],
                     ['Die Cutting', previewData.dieCuttingType],
+                    ['Drip Off Plate', previewData.dripOffPlateType ? `${previewData.dripOffPlateType} Plate` : ''],
+                    ['Drip Off Job Size', previewData.dripOffJobSize],
+                    ['Drip Off Quantity', previewData.dripOffQty],
                     ['Digital Printout', previewData.digitalPrintout],
                     ['Digital Printout Remark', previewData.digitalPrintoutRemark],
                     ['Plate Type', previewData.plateType],
                     ['Plate Size', previewData.plateSize],
                     ['Plate No.', previewData.plateUseCount],
                     ['Sides', previewData.printSheet],
+                    ['Lamination', previewData.lamination],
+                    ['Lamination Side', previewData.laminationSide],
+                    ['Lamination Size', previewData.laminationSize],
                     ['Paper', [previewData.paper, previewData.paperGSM && `${previewData.paperGSM} GSM`].filter(Boolean).join(' - ')],
                   ].map(([label, value]) => (
                     <div key={label} className="border border-gray-300 p-2">
