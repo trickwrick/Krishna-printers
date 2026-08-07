@@ -22,6 +22,7 @@ import { API_BASE_URL } from './utils/apiBase';
 import { mergeWithLocalJobCards, updateLocalJobCardField } from './utils/localJobCards';
 import { downloadAsPDF } from './utils/pdfExport';
 import * as XLSX from 'xlsx';
+import DailyWorkReport from './DailyWorkReport';
 
 const STATUS_CONFIG = {
   pending: {
@@ -141,14 +142,120 @@ export default function Report() {
   const navigate = useNavigate();
   const location = useLocation();
   const [jobCards, setJobCards] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [reportType, setReportType] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('type') || 'job-card';
+  });
+  const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
+  const reportRef = useRef(null);
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
+  const dateRef = useRef(null);
   const [dateFilter, setDateFilter] = useState(() => {
     const params = new URLSearchParams(location.search);
     return params.get('dateFilter') || 'all';
   });
+  const [customDateRange, setCustomDateRange] = useState({ from: '', to: '' });
+
+  const handleReportSelect = (type) => {
+    setReportType(type);
+    setReportDropdownOpen(false);
+    // Update URL without reloading
+    const params = new URLSearchParams(location.search);
+    params.set('type', type);
+    navigate(`/report?${params.toString()}`, { replace: true });
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const typeParam = params.get('type');
+    if (typeParam && typeParam !== reportType) {
+      setReportType(typeParam);
+    }
+  }, [location.search]);
+
+  // Close dropdown when clicking outside
+  const handleDateSelect = (filter) => {
+    setDateFilter(filter);
+    setDateDropdownOpen(false);
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (reportRef.current && !reportRef.current.contains(e.target)) setReportDropdownOpen(false);
+      if (dateRef.current && !dateRef.current.contains(e.target)) setDateDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const reportDropdown = (
+    <div ref={reportRef} className="relative inline-block text-left">
+      <button
+        onClick={() => setReportDropdownOpen(!reportDropdownOpen)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        {reportType === 'job-card' ? 'Job Card Report' : 'Daily Work Report'}
+        <ChevronDown className={`transition-transform ${reportDropdownOpen ? 'rotate-180' : ''}`} size={12} />
+      </button>
+      {reportDropdownOpen && (
+        <div className="absolute mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-20">
+          <div className="py-1">
+            <button
+              onClick={() => handleReportSelect('job-card')}
+              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              Job Card Report
+            </button>
+            <button
+              onClick={() => handleReportSelect('daily-work')}
+              className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+            >
+              Daily Work Report
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const dateDropdown = (
+    <div ref={dateRef} className="relative inline-block text-left">
+      <button
+        onClick={() => setDateDropdownOpen(!dateDropdownOpen)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        {(() => {
+          switch (dateFilter) {
+            case 'today': return 'Today';
+            case 'week': return 'This Week';
+            case 'month': return 'This Month';
+            case 'custom': return 'Custom Range';
+            default: return 'All Time';
+          }
+        })()}
+        <ChevronDown className={`transition-transform ${dateDropdownOpen ? 'rotate-180' : ''}`} size={12} />
+      </button>
+      {dateDropdownOpen && (
+        <div className="absolute mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-20">
+          <div className="py-1">
+            <button onClick={() => handleDateSelect('all')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">All Time</button>
+            <button onClick={() => handleDateSelect('today')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Today</button>
+            <button onClick={() => handleDateSelect('week')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">This Week</button>
+            <button onClick={() => handleDateSelect('month')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">This Month</button>
+            <button onClick={() => handleDateSelect('custom')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Custom Range</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+
 
   const fetchJobCards = async () => {
     setLoading(true);
@@ -214,10 +321,22 @@ export default function Report() {
     const status = card.status || 'pending';
     if (statusFilter !== 'all' && status !== statusFilter) return false;
 
-    const boundary = getDateBoundary();
-    if (boundary) {
-      const cardDate = new Date(card.jobDate || card.createdAt);
-      if (cardDate < boundary) return false;
+    const cardDate = new Date(card.jobDate || card.createdAt);
+
+    if (dateFilter === 'custom') {
+      if (customDateRange.from) {
+        const fromDate = new Date(customDateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        if (cardDate < fromDate) return false;
+      }
+      if (customDateRange.to) {
+        const toDate = new Date(customDateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        if (cardDate > toDate) return false;
+      }
+    } else {
+      const boundary = getDateBoundary();
+      if (boundary && cardDate < boundary) return false;
     }
 
     if (searchQuery) {
@@ -295,13 +414,34 @@ export default function Report() {
         <div>
           <h1 className="text-2xl font-black text-gray-900 flex items-center gap-3 tracking-tight">
             <div className="bg-violet-600 w-2 h-8 rounded-full" />
-            Job Card Report
+            {reportType === 'job-card' ? 'Job Card Report' : 'Daily Work Report'}
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium italic">
-            Track status, monitor workload, and update job card progress.
+            {reportType === 'job-card' ? 'Track status, monitor workload, and update job card progress.' : 'Summary of daily activities and work performed.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {reportDropdown}
+          {dateDropdown}
+          {dateFilter === 'custom' && (
+            <div className="flex bg-white p-1 rounded-lg border border-gray-200 gap-1 items-center shadow-sm h-8">
+              <input
+                type="date"
+                value={customDateRange.from}
+                onChange={(e) => setCustomDateRange(prev => ({ ...prev, from: e.target.value }))}
+                className="px-1 text-xs text-gray-700 outline-none bg-transparent font-medium"
+                title="From Date"
+              />
+              <span className="text-gray-400 text-xs font-bold">-</span>
+              <input
+                type="date"
+                value={customDateRange.to}
+                onChange={(e) => setCustomDateRange(prev => ({ ...prev, to: e.target.value }))}
+                className="px-1 text-xs text-gray-700 outline-none bg-transparent font-medium"
+                title="To Date"
+              />
+            </div>
+          )}
           <button
             onClick={exportToExcel}
             className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
@@ -337,8 +477,12 @@ export default function Report() {
         </div>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      {reportType === 'daily-work' ? (
+        <DailyWorkReport jobCards={filtered} />
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {[
           { label: 'Total Jobs', value: counts.total, icon: Briefcase, color: 'text-gray-700', bg: 'bg-gray-100' },
           { label: "Today's", value: todayCount, icon: Calendar, color: 'text-violet-600', bg: 'bg-violet-50' },
@@ -395,6 +539,7 @@ export default function Report() {
             { id: 'today', label: 'Today' },
             { id: 'week', label: 'This Week' },
             { id: 'month', label: 'This Month' },
+            { id: 'custom', label: 'Custom Range' },
           ].map((f) => (
             <button
               key={f.id}
@@ -503,6 +648,8 @@ export default function Report() {
           </table>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

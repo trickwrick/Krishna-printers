@@ -7,7 +7,7 @@ import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { syncPlateUsageFromCards } from './utils/plateUsage';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
-import { deleteLocalJobCard, mergeWithLocalJobCards } from './utils/localJobCards';
+import { deleteLocalJobCard, mergeWithLocalJobCards, migrateLocalJobNumbers } from './utils/localJobCards';
 
 const BINDING_OPTIONS = [
   { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -114,6 +114,7 @@ export default function JobCardListing() {
   };
 
   useEffect(() => {
+    migrateLocalJobNumbers(); // rename any existing LOCAL-XXXXXX cards to JOBKP-XXXX
     loadData();
     setWorkflowProgress(readWorkflowProgress());
 
@@ -196,11 +197,27 @@ export default function JobCardListing() {
   const executeStepClick = () => {
     if (!stepConfirm) return;
     const { cardKey, stepNo } = stepConfirm;
+    
     setWorkflowProgress(prev => {
       const current = prev[cardKey] || 0;
       const newVal = current === stepNo ? stepNo - 1 : stepNo;
       const newProgress = { ...prev, [cardKey]: newVal };
       localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(newProgress));
+      
+      // Also log to history
+      const action = newVal > current ? 'Completed' : 'Reverted';
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
+      const history = JSON.parse(localStorage.getItem('krishnaJobWorkflowHistory') || '{}');
+      if (!history[cardKey]) history[cardKey] = [];
+      
+      history[cardKey].push({
+        stepNo,
+        action,
+        timestamp: new Date().toISOString(),
+        user: currentUser.name
+      });
+      localStorage.setItem('krishnaJobWorkflowHistory', JSON.stringify(history));
+
       return newProgress;
     });
     setStepConfirm(null);
@@ -635,7 +652,7 @@ export default function JobCardListing() {
                                               >
                                                 <ImageIcon size={14} />
                                                 {count > 1 && (
-                                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
+                                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-3.5 h-3.5 flex items-center justify-center px-0.5">
                                                     {count}
                                                   </span>
                                                 )}
@@ -930,7 +947,7 @@ export default function JobCardListing() {
 
       {/* Step Confirmation Modal */}
       {stepConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-zoom-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="p-5">
               <div className="flex justify-between items-start mb-3">
@@ -956,7 +973,7 @@ export default function JobCardListing() {
       )}
       {/* Image Required Alert Modal */}
       {imageBlockAlert && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="bg-amber-50 px-5 pt-5 pb-3 border-b border-amber-100 flex items-start gap-3">
               <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">

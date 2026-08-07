@@ -237,7 +237,7 @@ router.post('/', async (req, res) => {
         const lastNum = parseInt(lastJob.jobNumber.replace(/[^0-9]/g, ''), 10);
         if (!isNaN(lastNum)) nextNum = lastNum + 1;
       }
-      const generatedJobNumber = `JOBHR-${String(nextNum).padStart(4, '0')}`;
+      const generatedJobNumber = `JOBKP-${String(nextNum).padStart(4, '0')}`;
       req.body.jobNumber = generatedJobNumber;
       jobCard = new JobCard(req.body);
       await jobCard.save();

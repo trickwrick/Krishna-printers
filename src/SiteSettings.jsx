@@ -36,9 +36,9 @@ const SiteSettings = () => {
         address: data.address || ''
       });
       setImages({
-        logo: data.logo || null,
-        whiteLogo: data.whiteLogo || null,
-        favicon: data.favicon || null
+        logo: data.logo || '/logo.png',
+        whiteLogo: data.whiteLogo || '/logo.png',
+        favicon: data.favicon || '/logo.png'
       });
     }
   }, []);
@@ -111,7 +111,7 @@ const SiteSettings = () => {
             <div className="bg-blue-600 w-1.5 h-6 rounded-full" />
             Site Settings
           </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium font-medium">Configure your website profile and branding</p>
+          <p className="text-sm sm:text-base text-gray-500 mt-1 font-medium">Configure your website profile and branding</p>
         </div>
       </div>
 
@@ -185,7 +185,7 @@ const SiteSettings = () => {
             {/* Favicon Upload */}
             <div className="space-y-3">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Favicon</label>
-              <div className="relative group aspect-square h-full max-h-[140px] bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center transition-all hover:border-blue-400 overflow-hidden mx-auto">
+              <div className="relative group aspect-square h-full max-h-35 bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center transition-all hover:border-blue-400 overflow-hidden mx-auto">
                 {images.favicon ? (
                   <>
                     <img src={images.favicon} className="w-16 h-16 object-contain" alt="Favicon preview" />

@@ -1,4 +1,5 @@
 const LOCAL_JOB_CARDS_KEY = 'krishnaLocalJobCards';
+const LOCAL_JOB_COUNTER_KEY = 'krishnaLocalJobCounter';
 
 export const readLocalJobCards = () => {
   try {
@@ -13,13 +14,68 @@ const writeLocalJobCards = (cards) => {
   localStorage.setItem(LOCAL_JOB_CARDS_KEY, JSON.stringify(cards));
 };
 
+// Generate next JOBKP-XXXX number
+const generateJobKPNumber = () => {
+  const cards = readLocalJobCards();
+
+  // Find the highest existing JOBKP number
+  let maxNum = 0;
+  cards.forEach((card) => {
+    const match = (card.jobNumber || '').match(/^JOBKP-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+
+  // Also check the stored counter
+  const storedCounter = parseInt(localStorage.getItem(LOCAL_JOB_COUNTER_KEY) || '0', 10);
+  const nextNum = Math.max(maxNum, storedCounter) + 1;
+
+  localStorage.setItem(LOCAL_JOB_COUNTER_KEY, String(nextNum));
+  return `JOBKP-${String(nextNum).padStart(4, '0')}`;
+};
+
+// One-time migration: rename existing LOCAL-XXXXXX cards to JOBKP-XXXX
+export const migrateLocalJobNumbers = () => {
+  const cards = readLocalJobCards();
+  let changed = false;
+  let counter = 0;
+
+  // Find highest existing JOBKP number first
+  cards.forEach((card) => {
+    const match = (card.jobNumber || '').match(/^JOBKP-(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > counter) counter = num;
+    }
+  });
+
+  const migrated = cards.map((card) => {
+    if ((card.jobNumber || '').startsWith('LOCAL-')) {
+      counter += 1;
+      changed = true;
+      return {
+        ...card,
+        jobNumber: `JOBKP-${String(counter).padStart(4, '0')}`,
+      };
+    }
+    return card;
+  });
+
+  if (changed) {
+    localStorage.setItem(LOCAL_JOB_COUNTER_KEY, String(counter));
+    writeLocalJobCards(migrated);
+  }
+};
+
 export const saveLocalJobCard = (card) => {
   const now = new Date().toISOString();
   const id = card._id || `local-${Date.now()}`;
   const savedCard = {
     ...card,
     _id: id,
-    jobNumber: card.jobNumber || `LOCAL-${String(Date.now()).slice(-6)}`,
+    jobNumber: card.jobNumber || generateJobKPNumber(),
     createdAt: card.createdAt || now,
     updatedAt: now,
     localOnly: true,

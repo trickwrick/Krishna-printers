@@ -24,6 +24,7 @@ import {
   Users,
   BarChart,
   Database,
+  Calendar,
 } from 'lucide-react';
 import Dashboard from './Dashboard';
 import JobCardForm from './JobCardForm';
@@ -380,13 +381,23 @@ export default function App() {
 
   // Site Settings Integration
   const [siteSettings, setSiteSettings] = useState(() => {
-    const saved = localStorage.getItem('siteSettings');
-    return saved ? { ...JSON.parse(saved), siteTitle: DEFAULT_SITE_TITLE } : {
+    const defaultSettings = {
       siteTitle: DEFAULT_SITE_TITLE,
-      logo: null,
-      whiteLogo: null,
-      favicon: null
+      logo: '/logo.png',
+      whiteLogo: '/logo.png',
+      favicon: '/logo.png'
     };
+    const saved = localStorage.getItem('siteSettings');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return {
+        siteTitle: DEFAULT_SITE_TITLE,
+        logo: parsed.logo || defaultSettings.logo,
+        whiteLogo: parsed.whiteLogo || defaultSettings.whiteLogo,
+        favicon: parsed.favicon || defaultSettings.favicon
+      };
+    }
+    return defaultSettings;
   });
 
   useEffect(() => {
@@ -483,7 +494,6 @@ export default function App() {
       icon: FileLock,
       isDropdown: true,
       dropdownItems: [
-        { label: 'Invoice Statements', icon: FileText, onClick: () => navigate('/statements/invoice') },
         { label: 'Paper Stock Statements', icon: Layers, onClick: () => navigate('/statements/paper-stock') },
         { label: 'Plate Stock Statements', icon: Database, onClick: () => navigate('/statements/plate-stock') },
       ],
@@ -497,7 +507,15 @@ export default function App() {
         { label: 'Add New', icon: PlusSquare, onClick: () => navigate('/estimates/add') },
       ],
     },
-    { name: 'Report', icon: BarChart, path: '/report' },
+    {
+      name: 'Report',
+      icon: BarChart,
+      isDropdown: true,
+      dropdownItems: [
+        { label: 'Job Card Report', icon: FileText, onClick: () => navigate('/report?type=job-card') },
+        { label: 'Daily Work Report', icon: Calendar, onClick: () => navigate('/report?type=daily-work') },
+      ],
+    },
   ];
 
   const navigationItems = allNavigationItems.filter((item) => {
@@ -548,6 +566,8 @@ export default function App() {
               ? '/estimates/add'
               : item.name === 'Estimate & Quotation'
               ? '/estimates'
+              : sub.label.includes('Job Card Report') ? '/report?type=job-card'
+              : sub.label.includes('Daily Work Report') ? '/report?type=daily-work'
               : sub.label.includes('Job Card') ? '/job-card'
               : sub.label.includes('Invoice') ? '/invoice'
               : sub.label.includes('Challan') ? '/challan'
@@ -558,12 +578,6 @@ export default function App() {
       });
 
   const profileSettingsItems = [
-    ...(hasPermission('settings', 'edit')
-      ? [
-          { label: 'Site Setting', path: '/settings/site', onClick: () => navigate('/settings/site') },
-          { label: 'Social Setting', path: '/settings/social', onClick: () => navigate('/settings/social') },
-        ]
-      : []),
     { label: 'Change Password', path: '/settings/password', onClick: () => navigate('/settings/password') },
   ];
 
@@ -633,7 +647,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fa] font-sans pb-10 text-gray-800 overflow-x-hidden">
+    <div className="min-h-screen bg-[#f4f7fa] font-sans pb-10 text-gray-800 overflow-x-clip">
       {/* Top Navbar */}
       <nav className="w-full bg-white border-b border-gray-200 px-1.5 sm:px-2 py-2.5 flex items-center gap-1.5 sm:gap-2 sticky top-0 z-50">
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
@@ -657,7 +671,7 @@ export default function App() {
               {(!siteSettings.siteTitle || siteSettings.siteTitle === DEFAULT_SITE_TITLE) ? (
                 <>
                   <span className="text-[#111827] font-black">Krishna</span>{' '}
-                  <span className="text-[#2563eb] font-black">Printers</span>
+                  <span className="text-[rgb(25,199,191)] font-black">Printers</span>
                 </>
               ) : (
                 siteSettings.siteTitle
@@ -685,7 +699,8 @@ export default function App() {
                     (item.name === 'Invoices' && location.pathname.includes('/invoice')) ||
                     (item.name === 'Challan' && location.pathname.includes('/challan')) ||
                     (item.name === 'Statements' && location.pathname.includes('/statements')) ||
-                    (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates'))
+                    (item.name === 'Estimate & Quotation' && location.pathname.includes('/estimates')) ||
+                    (item.name === 'Report' && location.pathname.includes('/report'))
                   }
                 />
               );
