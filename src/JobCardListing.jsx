@@ -62,6 +62,7 @@ export default function JobCardListing() {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState([]);
   const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
+  const [stepConfirm, setStepConfirm] = useState(null);
   const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -177,7 +178,13 @@ export default function JobCardListing() {
     }
   };
 
-  const handleStepClick = (cardKey, stepNo) => {
+  const promptStepClick = (cardKey, stepNo) => {
+    setStepConfirm({ cardKey, stepNo });
+  };
+
+  const executeStepClick = () => {
+    if (!stepConfirm) return;
+    const { cardKey, stepNo } = stepConfirm;
     setWorkflowProgress(prev => {
       const current = prev[cardKey] || 0;
       const newVal = current === stepNo ? stepNo - 1 : stepNo;
@@ -185,6 +192,11 @@ export default function JobCardListing() {
       localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(newProgress));
       return newProgress;
     });
+    setStepConfirm(null);
+  };
+
+  const cancelStepClick = () => {
+    setStepConfirm(null);
   };
 
   const getBindingText = (card) => {
@@ -629,15 +641,15 @@ export default function JobCardListing() {
                                       const active = doneSteps + 1 === stepNo;
                                       const current = doneSteps;
                                       return (
-                                        <div key={step.title} className="relative z-10 text-center">
+                                        <div key={step.title} className="relative z-10 text-center flex flex-col items-center">
                                           <div 
-                                            onClick={() => handleStepClick(cardKey, stepNo)}
+                                            onClick={() => promptStepClick(cardKey, stepNo)}
                                             className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
-                                              done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
+                                              done ? 'bg-emerald-500 border-emerald-100 text-white' : active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
                                             }`}
                                             title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
                                           >
-                                            {stepNo}
+                                            {done ? <Check size={14} strokeWidth={4} /> : stepNo}
                                           </div>
                                           <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
                                           <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
@@ -646,9 +658,14 @@ export default function JobCardListing() {
                                           }`}>
                                             {step.owner}
                                           </span>
-                                          <p className={`mt-0.5 text-[8px] font-black ${active ? 'text-blue-600' : done ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                            {done ? 'Done' : active ? 'In Progress' : 'Pending'}
-                                          </p>
+                                          <button
+                                            onClick={() => promptStepClick(cardKey, stepNo)}
+                                            className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${
+                                              done ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : active ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                                            }`}
+                                          >
+                                            {done ? 'Undo' : 'Mark Done'}
+                                          </button>
                                         </div>
                                       );
                                     })}
@@ -899,9 +916,33 @@ export default function JobCardListing() {
         title="Are you sure?"
         message="Are you sure you want to move to trash?"
       />
-    </div>
+
+      {/* Step Confirmation Modal */}
+      {stepConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-zoom-in overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-bold text-gray-900">Confirm Action</h3>
+                <button onClick={cancelStepClick} className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-gray-600 mb-6 text-sm">
+                Are you sure you want to change the status of this workflow step?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button onClick={cancelStepClick} className="px-5 py-2 text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-all active:scale-95">
+                  Cancel
+                </button>
+                <button onClick={executeStepClick} className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md shadow-blue-100 transition-all duration-200 active:scale-95 flex items-center gap-1.5">
+                  <Check size={16} /> Yes, Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
-
-
-
