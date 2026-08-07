@@ -131,22 +131,49 @@ export default function JobCardListing() {
   };
 
   const handleImageUpload = (e, cardKey) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        localStorage.setItem(`krishnaJobQCImage_${cardKey}`, event.target.result);
-        setJobCards(prev => [...prev]); // force re-render to show view button
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      let existing = [];
+      try {
+        const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+        if (data) {
+          existing = data.startsWith('[') ? JSON.parse(data) : [data];
+        }
+      } catch (err) {
+        existing = [];
+      }
+      
+      let loadedCount = 0;
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          existing.push(event.target.result);
+          loadedCount++;
+          if (loadedCount === files.length) {
+            localStorage.setItem(`krishnaJobQCImage_${cardKey}`, JSON.stringify(existing));
+            setJobCards(prev => [...prev]); // force re-render
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
   const handleViewImage = (cardKey) => {
-    const img = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
-    if (img) {
-      const win = window.open();
-      win.document.write(`<body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${img}" style="max-width:100%;max-height:100%;object-fit:contain;" /></body>`);
+    const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+    if (data) {
+      let images = [];
+      try {
+        images = data.startsWith('[') ? JSON.parse(data) : [data];
+      } catch (e) {
+        images = [data];
+      }
+      
+      if (images.length > 0) {
+        const win = window.open();
+        const imgTags = images.map(img => `<img src="${img}" style="max-width:100%;max-height:90vh;object-fit:contain;margin-bottom:20px;box-shadow:0 4px 6px rgba(0,0,0,0.3);border-radius:8px;" />`).join('');
+        win.document.write(`<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;padding:20px;min-height:100vh;overflow-y:auto;">${imgTags}</body>`);
+      }
     }
   };
 
@@ -555,25 +582,36 @@ export default function JobCardListing() {
                                   <div className="relative grid grid-cols-4 gap-4">
                                     <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
                                     
-                                    {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
-                                    <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                                      <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
-                                        <label className="cursor-pointer p-1 hover:bg-gray-100 rounded-full transition-colors" title="Upload Image">
-                                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, cardKey)} />
-                                          <ImagePlus size={14} className="text-gray-500 hover:text-blue-600" />
-                                        </label>
-                                        {localStorage.getItem(`krishnaJobQCImage_${cardKey}`) && (
-                                          <button 
-                                            onClick={() => handleViewImage(cardKey)}
-                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-emerald-500 hover:text-emerald-700" 
-                                            title="View Image"
-                                          >
-                                            <ImageIcon size={14} />
-                                          </button>
-                                        )}
+                                      {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
+                                      <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                                        <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                                          <label className="cursor-pointer p-1 hover:bg-gray-100 rounded-full transition-colors" title="Upload Image">
+                                            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleImageUpload(e, cardKey)} />
+                                            <ImagePlus size={14} className="text-gray-500 hover:text-blue-600" />
+                                          </label>
+                                          {(() => {
+                                            const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+                                            if (!data) return null;
+                                            let count = 1;
+                                            try { count = data.startsWith('[') ? JSON.parse(data).length : 1; } catch (e) {}
+                                            return (
+                                              <button 
+                                                onClick={() => handleViewImage(cardKey)}
+                                                className="p-1 hover:bg-gray-100 rounded-full transition-colors text-emerald-500 hover:text-emerald-700 relative" 
+                                                title="View Images"
+                                              >
+                                                <ImageIcon size={14} />
+                                                {count > 1 && (
+                                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
+                                                    {count}
+                                                  </span>
+                                                )}
+                                              </button>
+                                            );
+                                          })()}
+                                        </div>
+                                        <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Proof</span>
                                       </div>
-                                      <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Proof</span>
-                                    </div>
 
                                     {WORKFLOW_STEPS.map((step, stepIndex) => {
                                       const stepNo = stepIndex + 1;
