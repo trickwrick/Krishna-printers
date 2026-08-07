@@ -943,6 +943,6 @@ export default function JobCardListing() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
