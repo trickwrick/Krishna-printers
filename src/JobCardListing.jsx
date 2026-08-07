@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
@@ -64,6 +64,9 @@ export default function JobCardListing() {
   const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
   const [stepConfirm, setStepConfirm] = useState(null);
   const [imageBlockAlert, setImageBlockAlert] = useState(false);
+  const [paperUsageModalCard, setPaperUsageModalCard] = useState(null);
+  const [paperUsageInput, setPaperUsageInput] = useState('');
+  const [paperBlockAlert, setPaperBlockAlert] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -99,6 +102,33 @@ export default function JobCardListing() {
   useEffect(() => {
     localStorage.setItem('jobCardColumnVisibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
+
+  const handleAddPaperUsage = () => {
+    if (!paperUsageModalCard || !paperUsageInput) return;
+    const cardKey = getCardKey(paperUsageModalCard);
+    const qty = parseInt(paperUsageInput, 10);
+    if (isNaN(qty) || qty <= 0) return;
+
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
+
+    const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+    data.push({
+      qty,
+      userName: currentUser.name,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(data));
+    setPaperUsageInput('');
+    setJobCards(prev => [...prev]); // force re-render
+  };
+
+  const handleMarkPaperComplete = () => {
+    if (!paperUsageModalCard) return;
+    const cardKey = getCardKey(paperUsageModalCard);
+    const currentStatus = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
+    localStorage.setItem(`krishnaJobPaperStatus_${cardKey}`, (!currentStatus).toString());
+    setJobCards(prev => [...prev]); // force re-render
+  };
 
   const loadData = async () => {
     try {
@@ -183,6 +213,16 @@ export default function JobCardListing() {
   const promptStepClick = (cardKey, stepNo) => {
     const current = workflowProgress[cardKey] || 0;
     const isTryingToMarkDone = current < stepNo;
+
+    // Step 3 (Binding & Finish) requires Paper Status to be complete
+    if (stepNo === 3 && isTryingToMarkDone) {
+      const isPaperComplete = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
+      if (!isPaperComplete) {
+        setPaperBlockAlert(true);
+        return;
+      }
+    }
+
     // Step 4 (QC & Delivery) requires at least one image uploaded
     if (stepNo === 4 && isTryingToMarkDone) {
       const imageData = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
@@ -632,6 +672,29 @@ export default function JobCardListing() {
                                   <div className="relative grid grid-cols-4 gap-4">
                                     <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
                                     
+                                      {/* New Icon between Step 2 (Printing) and Step 3 (Binding) */}
+                                      <div className="absolute left-[50%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                                        <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                                          <button 
+                                            onClick={() => setPaperUsageModalCard(card)}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-blue-500 hover:text-blue-700 relative"
+                                            title="Paper Usage Status"
+                                          >
+                                            <Settings size={14} />
+                                          </button>
+                                        </div>
+                                        {localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true' ? (
+                                          <span 
+                                            onClick={() => setPaperUsageModalCard(card)}
+                                            className="text-[8px] font-bold text-emerald-600 mt-1 uppercase tracking-wide bg-emerald-50 px-1 border border-emerald-200 rounded cursor-pointer"
+                                          >
+                                            Paper Done
+                                          </span>
+                                        ) : (
+                                          <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Paper</span>
+                                        )}
+                                      </div>
+
                                       {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
                                       <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
                                         <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
@@ -663,40 +726,60 @@ export default function JobCardListing() {
                                         <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Proof</span>
                                       </div>
 
-                                    {WORKFLOW_STEPS.map((step, stepIndex) => {
-                                      const stepNo = stepIndex + 1;
-                                      const done = doneSteps >= stepNo;
-                                      const active = doneSteps + 1 === stepNo;
-                                      const current = doneSteps;
-                                      return (
-                                        <div key={step.title} className="relative z-10 text-center flex flex-col items-center">
-                                          <div 
-                                            onClick={() => promptStepClick(cardKey, stepNo)}
-                                            className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
-                                              done ? 'bg-emerald-500 border-emerald-100 text-white' : active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
-                                            }`}
-                                            title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
-                                          >
-                                            {done ? <Check size={14} strokeWidth={4} /> : stepNo}
-                                          </div>
-                                          <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
-                                          <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
-                                          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
-                                            done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
-                                          }`}>
-                                            {step.owner}
-                                          </span>
-                                          <button
-                                            onClick={() => promptStepClick(cardKey, stepNo)}
-                                            className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${
-                                              done ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : active ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                                            }`}
-                                          >
-                                            {done ? 'Undo' : 'Mark Done'}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
+                                    {(() => {
+                                      const historyStr = localStorage.getItem('krishnaJobWorkflowHistory');
+                                      let cardHistory = [];
+                                      try {
+                                        if (historyStr) cardHistory = JSON.parse(historyStr)[cardKey] || [];
+                                      } catch (e) {}
+
+                                      return WORKFLOW_STEPS.map((step, stepIndex) => {
+                                        const stepNo = stepIndex + 1;
+                                        const done = doneSteps >= stepNo;
+                                        const active = doneSteps + 1 === stepNo;
+                                        const current = doneSteps;
+
+                                        let completedBy = null;
+                                        if (done) {
+                                          const lastCompletion = cardHistory.slice().reverse().find(h => h.stepNo === stepNo && h.action === 'Completed');
+                                          if (lastCompletion && lastCompletion.user) {
+                                            completedBy = lastCompletion.user;
+                                          }
+                                        }
+
+                                        return (
+                                          <div key={step.title} className="relative z-10 text-center flex flex-col items-center">
+                                            <div 
+                                              onClick={() => promptStepClick(cardKey, stepNo)}
+                                              className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
+                                                done ? 'bg-emerald-500 border-emerald-100 text-white' : active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
+                                              }`}
+                                              title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
+                                            >
+                                              {done ? <Check size={14} strokeWidth={4} /> : stepNo}
+                                            </div>
+                                            <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
+                                            <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
+                                            <span 
+                                              className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
+                                                done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+                                              }`}
+                                              title={done && completedBy ? `Completed by ${completedBy}` : step.owner}
+                                            >
+                                              {done && completedBy ? completedBy : step.owner}
+                                            </span>
+                                              <button
+                                                onClick={() => promptStepClick(cardKey, stepNo)}
+                                                className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${
+                                                  done ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : active ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                                                }`}
+                                              >
+                                                {done ? 'Undo' : 'Mark Done'}
+                                              </button>
+                                            </div>
+                                          );
+                                        });
+                                      })()}
                                   </div>
                                 </div>
                                 {timeLeft && (
@@ -991,6 +1074,133 @@ export default function JobCardListing() {
               >
                 OK, Got it
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paper Incomplete Alert Modal */}
+      {paperBlockAlert && (
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-amber-50 px-5 pt-5 pb-3 border-b border-amber-100 flex items-start gap-3">
+              <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="text-amber-600 text-lg font-black">!</span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Paper Usage Incomplete</h3>
+                <p className="text-sm text-amber-700 mt-1">Please mark <strong>Paper Usage</strong> as complete before moving to <strong>Binding &amp; Finish</strong>.</p>
+              </div>
+            </div>
+            <div className="p-4 flex justify-end">
+              <button
+                onClick={() => setPaperBlockAlert(false)}
+                className="px-6 py-2 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-all active:scale-95"
+              >
+                OK, Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Paper Usage Modal */}
+      {paperUsageModalCard && (
+        <div className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <FileText size={20} className="text-blue-600" />
+                Paper Usage Status
+              </h3>
+              <button
+                onClick={() => setPaperUsageModalCard(null)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto grow">
+              {(() => {
+                const cardKey = getCardKey(paperUsageModalCard);
+                const totalUnits = parseInt(paperUsageModalCard.jobQty) || 0;
+                const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+                const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
+                const remainingUnits = Math.max(0, totalUnits - usedUnits);
+                const isComplete = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
+
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 mb-6">
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-center shadow-inner">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Total Units</p>
+                        <p className="text-xl font-black text-gray-900 mt-1">{totalUnits.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-center shadow-inner">
+                        <p className="text-[10px] font-bold text-rose-600 uppercase tracking-wide">Used</p>
+                        <p className="text-xl font-black text-gray-900 mt-1">{usedUnits.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center shadow-inner">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">Remaining</p>
+                        <p className="text-xl font-black text-gray-900 mt-1">{remainingUnits.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-6 flex gap-2">
+                      <input 
+                        type="number"
+                        placeholder="Qty Used..."
+                        value={paperUsageInput}
+                        onChange={(e) => setPaperUsageInput(e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                      />
+                      <button 
+                        onClick={handleAddPaperUsage}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shrink-0 shadow-md shadow-blue-100"
+                      >
+                        <Pencil size={14} /> Update
+                      </button>
+                    </div>
+
+                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <Calendar size={16} className="text-gray-400" />
+                      Usage History
+                    </h4>
+                    <div className="space-y-2 mb-6">
+                      {data.length === 0 ? (
+                        <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded-xl border border-gray-100">No usage recorded yet.</p>
+                      ) : (
+                        data.map((entry, idx) => (
+                          <div key={idx} className="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 transition-colors">
+                            <div>
+                              <span className="font-black text-rose-600 text-sm block">-{entry.qty.toLocaleString()} units</span>
+                              {entry.userName && (
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mt-1">
+                                  By {entry.userName}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-1 rounded-md">{new Date(entry.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <p className="text-xs text-gray-500 font-medium">
+                        Mark as complete to display a status badge on the timeline.
+                      </p>
+                      <button 
+                        onClick={handleMarkPaperComplete}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap ${isComplete ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 shadow-amber-50' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100'}`}
+                      >
+                        {isComplete ? 'Undo Complete' : 'Mark Complete'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
