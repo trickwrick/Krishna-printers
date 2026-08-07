@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
@@ -62,6 +62,7 @@ export default function JobCardListing() {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState([]);
   const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
+  const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
@@ -491,6 +492,13 @@ export default function JobCardListing() {
                         <td className="py-2 px-0.5 align-top">
                           <div className="flex items-center justify-center gap-0.5">
                             <button
+                              onClick={() => setExpandedRows(prev => ({ ...prev, [cardKey]: !prev[cardKey] }))}
+                              className="text-amber-500 hover:text-amber-700 hover:bg-amber-50 p-0.5 rounded transition-colors focus:outline-none"
+                              title="Toggle Workflow Timeline"
+                            >
+                              {expandedRows[cardKey] ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                            <button
                               onClick={() => openPreview(card)}
                               className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
                               title="Print Preview"
@@ -515,44 +523,52 @@ export default function JobCardListing() {
                         </td>
                       </tr>
                       <tr className={`border-b border-gray-100 ${rowBg}`}>
-                        <td colSpan="20" className="px-12 pb-4 pt-1">
-                          <div className="flex items-center gap-4">
-                            <div className="flex-1 min-w-155">
-                              <div className="relative grid grid-cols-4 gap-4">
-                                <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
-                                {WORKFLOW_STEPS.map((step, stepIndex) => {
-                                  const stepNo = stepIndex + 1;
-                                  const done = doneSteps >= stepNo;
-                                  const active = doneSteps + 1 === stepNo;
-                                  return (
-                                    <div key={step.title} className="relative z-10 text-center">
-                                      <div className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm ${
-                                        done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500'
-                                      }`}>
-                                        {stepNo}
-                                      </div>
-                                      <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
-                                      <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
-                                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
-                                        done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
-                                      }`}>
-                                        {step.owner}
-                                      </span>
-                                      <p className={`mt-0.5 text-[8px] font-black ${active ? 'text-blue-600' : done ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                        {done ? 'Done' : active ? 'In Progress' : 'Pending'}
-                                      </p>
-                                    </div>
-                                  );
-                                })}
+                        <td colSpan="20" className="p-0 border-0">
+                          <div
+                            className={`grid transition-all duration-300 ease-in-out ${
+                              expandedRows[cardKey] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                            }`}
+                          >
+                            <div className="overflow-hidden">
+                              <div className="px-12 pb-4 pt-1 flex items-center gap-4">
+                                <div className="flex-1 min-w-155">
+                                  <div className="relative grid grid-cols-4 gap-4">
+                                    <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
+                                    {WORKFLOW_STEPS.map((step, stepIndex) => {
+                                      const stepNo = stepIndex + 1;
+                                      const done = doneSteps >= stepNo;
+                                      const active = doneSteps + 1 === stepNo;
+                                      return (
+                                        <div key={step.title} className="relative z-10 text-center">
+                                          <div className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm ${
+                                            done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500'
+                                          }`}>
+                                            {stepNo}
+                                          </div>
+                                          <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
+                                          <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
+                                          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
+                                            done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+                                          }`}>
+                                            {step.owner}
+                                          </span>
+                                          <p className={`mt-0.5 text-[8px] font-black ${active ? 'text-blue-600' : done ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                            {done ? 'Done' : active ? 'In Progress' : 'Pending'}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                                {timeLeft && (
+                                  <div className={`w-24 rounded-xl border p-3 text-center shrink-0 ${timeLeft.overdue ? 'bg-red-50 border-red-100 text-red-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                                    <p className="text-[9px] font-black uppercase">Time Left</p>
+                                    <p className="text-2xl font-black leading-none mt-1">{timeLeft.days}</p>
+                                    <p className="text-[10px] font-bold mt-0.5">days</p>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            {timeLeft && (
-                              <div className={`w-24 rounded-xl border p-3 text-center shrink-0 ${timeLeft.overdue ? 'bg-red-50 border-red-100 text-red-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
-                                <p className="text-[9px] font-black uppercase">Time Left</p>
-                                <p className="text-2xl font-black leading-none mt-1">{timeLeft.days}</p>
-                                <p className="text-[10px] font-bold mt-0.5">days</p>
-                              </div>
-                            )}
                           </div>
                         </td>
                       </tr>
