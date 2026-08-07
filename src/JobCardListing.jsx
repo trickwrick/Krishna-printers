@@ -177,6 +177,16 @@ export default function JobCardListing() {
     }
   };
 
+  const handleStepClick = (cardKey, stepNo) => {
+    setWorkflowProgress(prev => {
+      const current = prev[cardKey] || 0;
+      const newVal = current === stepNo ? stepNo - 1 : stepNo;
+      const newProgress = { ...prev, [cardKey]: newVal };
+      localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(newProgress));
+      return newProgress;
+    });
+  };
+
   const getBindingText = (card) => {
     const bindings = [
       { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -617,11 +627,16 @@ export default function JobCardListing() {
                                       const stepNo = stepIndex + 1;
                                       const done = doneSteps >= stepNo;
                                       const active = doneSteps + 1 === stepNo;
+                                      const current = doneSteps;
                                       return (
                                         <div key={step.title} className="relative z-10 text-center">
-                                          <div className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm ${
-                                            done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500'
-                                          }`}>
+                                          <div 
+                                            onClick={() => handleStepClick(cardKey, stepNo)}
+                                            className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
+                                              done || active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
+                                            }`}
+                                            title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
+                                          >
                                             {stepNo}
                                           </div>
                                           <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
