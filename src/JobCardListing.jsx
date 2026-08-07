@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
@@ -128,6 +128,26 @@ export default function JobCardListing() {
   const refreshData = () => {
     setWorkflowProgress(readWorkflowProgress());
     loadData();
+  };
+
+  const handleImageUpload = (e, cardKey) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        localStorage.setItem(`krishnaJobQCImage_${cardKey}`, event.target.result);
+        setJobCards(prev => [...prev]); // force re-render to show view button
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleViewImage = (cardKey) => {
+    const img = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+    if (img) {
+      const win = window.open();
+      win.document.write(`<body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;"><img src="${img}" style="max-width:100%;max-height:100%;object-fit:contain;" /></body>`);
+    }
   };
 
   const getBindingText = (card) => {
@@ -534,6 +554,27 @@ export default function JobCardListing() {
                                 <div className="flex-1 min-w-155">
                                   <div className="relative grid grid-cols-4 gap-4">
                                     <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
+                                    
+                                    {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
+                                    <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                                      <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                                        <label className="cursor-pointer p-1 hover:bg-gray-100 rounded-full transition-colors" title="Upload Image">
+                                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageUpload(e, cardKey)} />
+                                          <ImagePlus size={14} className="text-gray-500 hover:text-blue-600" />
+                                        </label>
+                                        {localStorage.getItem(`krishnaJobQCImage_${cardKey}`) && (
+                                          <button 
+                                            onClick={() => handleViewImage(cardKey)}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-emerald-500 hover:text-emerald-700" 
+                                            title="View Image"
+                                          >
+                                            <ImageIcon size={14} />
+                                          </button>
+                                        )}
+                                      </div>
+                                      <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Proof</span>
+                                    </div>
+
                                     {WORKFLOW_STEPS.map((step, stepIndex) => {
                                       const stepNo = stepIndex + 1;
                                       const done = doneSteps >= stepNo;
