@@ -63,6 +63,7 @@ export default function JobCardListing() {
   const [jobCards, setJobCards] = useState([]);
   const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
   const [stepConfirm, setStepConfirm] = useState(null);
+  const [imageBlockAlert, setImageBlockAlert] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -179,6 +180,16 @@ export default function JobCardListing() {
   };
 
   const promptStepClick = (cardKey, stepNo) => {
+    const current = workflowProgress[cardKey] || 0;
+    const isTryingToMarkDone = current < stepNo;
+    // Step 4 (QC & Delivery) requires at least one image uploaded
+    if (stepNo === 4 && isTryingToMarkDone) {
+      const imageData = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+      if (!imageData) {
+        setImageBlockAlert(true);
+        return;
+      }
+    }
     setStepConfirm({ cardKey, stepNo });
   };
 
@@ -939,6 +950,30 @@ export default function JobCardListing() {
                   <Check size={16} /> Yes, Confirm
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Image Required Alert Modal */}
+      {imageBlockAlert && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-amber-50 px-5 pt-5 pb-3 border-b border-amber-100 flex items-start gap-3">
+              <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="text-amber-600 text-lg font-black">!</span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Image Required</h3>
+                <p className="text-sm text-amber-700 mt-1">Please upload a proof image before marking <strong>QC &amp; Delivery</strong> as done.</p>
+              </div>
+            </div>
+            <div className="p-4 flex justify-end">
+              <button
+                onClick={() => setImageBlockAlert(false)}
+                className="px-6 py-2 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 transition-all active:scale-95"
+              >
+                OK, Got it
+              </button>
             </div>
           </div>
         </div>
