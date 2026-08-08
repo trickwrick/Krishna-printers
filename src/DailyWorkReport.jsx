@@ -172,7 +172,7 @@ export default function DailyWorkReport({ jobCards }) {
                       <div className="text-sm font-semibold text-gray-700 whitespace-nowrap">{c.jobQty || '—'}</div>
 
                       {/* Paper Usage */}
-                      <div className="flex flex-col items-center gap-0.5 min-w-[72px]">
+                      <div className="flex flex-col items-center gap-0.5 min-w-18">
                         {totalUnits > 0 ? (
                           <>
                             <div className="flex items-center gap-1">

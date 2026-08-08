@@ -1558,7 +1558,7 @@ export default function JobCardForm() {
                       ) : (
                         <div className="text-center">
                           <FileText size={32} className="mx-auto text-gray-400 mb-2" />
-                          <p className="text-[10px] text-gray-600 truncate max-w-[150px]">{previewData.jobAttachment.name}</p>
+                          <p className="text-[10px] text-gray-600 truncate max-w-37.5">{previewData.jobAttachment.name}</p>
                         </div>
                       )}
                     </div>

@@ -302,7 +302,7 @@ const Settings = () => {
                 <p className="text-sm text-gray-400 font-medium">No deleted job cards found.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-100 overflow-y-auto pr-2 custom-scrollbar">
                 {deletedJobs.map(job => (
                   <div key={job._id} className="flex items-center justify-between p-4 bg-white border border-gray-100 hover:border-blue-200 shadow-sm hover:shadow-md rounded-xl transition-all group">
                     <div className="min-w-0 flex-1 pr-4">
@@ -338,7 +338,7 @@ const Settings = () => {
                 <p className="text-sm text-gray-400 font-medium">No deleted challans found.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="space-y-3 max-h-100 overflow-y-auto pr-2 custom-scrollbar">
                 {deletedInvoices.map(inv => (
                   <div key={inv._id} className="flex items-center justify-between p-4 bg-white border border-gray-100 hover:border-amber-200 shadow-sm hover:shadow-md rounded-xl transition-all group">
                     <div className="min-w-0 flex-1 pr-4">

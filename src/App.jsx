@@ -579,6 +579,7 @@ export default function App() {
 
   const profileSettingsItems = [
     { label: 'Change Password', path: '/settings/password', onClick: () => navigate('/settings/password') },
+    { label: 'Recycle Bin', path: '/settings/recycle-bin', onClick: () => navigate('/settings/recycle-bin') },
   ];
 
   const staffTeamItems = [
