@@ -24,15 +24,9 @@ export default function DailyWorkReport({ jobCards }) {
     }
   }, [modalOpen]); // Refresh on modal open
 
-  // Group job cards by date based on their creation/job date to split the sections
-  const grouped = useMemo(() => {
-    const map = {};
-    jobCards.forEach((card) => {
-      const date = new Date(card.jobDate || card.createdAt).toISOString().split('T')[0];
-      if (!map[date]) map[date] = [];
-      map[date].push(card);
-    });
-    return Object.entries(map).sort((a, b) => new Date(b[0]) - new Date(a[0]));
+  // Sort job cards by date descending
+  const sortedCards = useMemo(() => {
+    return [...jobCards].sort((a, b) => new Date(b.jobDate || b.createdAt) - new Date(a.jobDate || a.createdAt));
   }, [jobCards]);
 
   const handleOpenModal = (job) => {
@@ -47,26 +41,24 @@ export default function DailyWorkReport({ jobCards }) {
 
   return (
     <div className="space-y-8">
-      {grouped.map(([date, cards]) => {
+      {(() => {
+        const cards = sortedCards;
         const total = cards.length;
         const completed = cards.filter(c => (c.status || 'pending') === 'completed').length;
         const pending = total - completed;
 
-        // Calculate unique active users for this specific date group based on workflow history
+        // Calculate unique active users across all cards
         const activeUsersSet = new Set();
         cards.forEach(c => {
           const history = workflowHistory[c._id] || [];
           history.forEach(h => {
-            // Check if the history record falls on the same date as the section
-            if (isSameDay(new Date(h.timestamp), new Date(date))) {
-               if (h.user) activeUsersSet.add(h.user);
-            }
+            if (h.user) activeUsersSet.add(h.user);
           });
         });
         const activeUsers = activeUsersSet.size;
 
         return (
-          <section key={date} className="bg-transparent space-y-6">
+          <section className="bg-transparent space-y-6">
             
             {/* Dashboard Header */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden">
@@ -75,8 +67,8 @@ export default function DailyWorkReport({ jobCards }) {
               </div>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">{format(new Date(date), 'EEEE, MMMM d, yyyy')}</h2>
-                  <p className="text-sm text-gray-500 font-medium mt-1">Work Activity Dashboard</p>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight">Work Activity Dashboard</h2>
+                  <p className="text-sm text-gray-500 font-medium mt-1">Overall summary of all jobs</p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-4">
@@ -125,9 +117,10 @@ export default function DailyWorkReport({ jobCards }) {
 
             {/* Activity List - Line by Line */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
+              <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
                 <span>#</span>
                 <span>Job / Party</span>
+                <span>Date</span>
                 <span>Qty</span>
                 <span>Paper Usage</span>
                 <span>Status</span>
@@ -156,7 +149,7 @@ export default function DailyWorkReport({ jobCards }) {
                   return (
                     <div
                       key={cardKey}
-                      className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
+                      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
                     >
                       {/* Sr. No */}
                       <span className="text-xs font-black text-gray-400 w-5 text-center">{idx + 1}</span>
@@ -167,13 +160,12 @@ export default function DailyWorkReport({ jobCards }) {
                           <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">#{c.jobNumber}</span>
                           <span className="text-sm font-bold text-gray-900 truncate">{c.jobName || '—'}</span>
                         </div>
-                        <div className="text-xs text-gray-500 truncate">{c.partyName || '—'}
-                          {recentActivity && (
-                            <span className="ml-2 text-[10px] text-indigo-500 font-semibold">
-                              · {recentActivity.user} {recentActivity.action === 'Completed' ? '✓' : '↩'} {WORKFLOW_STEPS[recentActivity.stepNo - 1]?.title}
-                            </span>
-                          )}
-                        </div>
+                        <div className="text-xs text-gray-500 truncate">{c.partyName || '—'}</div>
+                      </div>
+
+                      {/* Date */}
+                      <div className="text-xs font-semibold text-gray-600 whitespace-nowrap">
+                        {format(new Date(c.jobDate || c.createdAt), 'MMM d, yyyy')}
                       </div>
 
                       {/* Qty */}
@@ -227,7 +219,7 @@ export default function DailyWorkReport({ jobCards }) {
             </div>
           </section>
         );
-      })}
+      })()}
 
       {modalOpen && selectedJob && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-gray-900/40 backdrop-blur-md p-4 animate-in fade-in duration-200">
