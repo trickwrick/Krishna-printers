@@ -38,7 +38,9 @@ const invoiceSchema = new mongoose.Schema({
   state: { type: String, default: 'Rajasthan' },
   stateCode: { type: String, default: '08' },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 
 const Invoice = mongoose.model('Invoice', invoiceSchema);

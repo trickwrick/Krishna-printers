@@ -296,10 +296,10 @@ router.get('/plate-used-count', async (req, res) => {
   }
 });
 
-// GET /api/jobcard - Fetch all Job Cards
+// GET /api/jobcard - Fetch all Job Cards (Active Only)
 router.get('/', async (req, res) => {
   try {
-    const jobCards = await JobCard.find().sort({ createdAt: -1 });
+    const jobCards = await JobCard.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(jobCards);
   } catch (err) {
     console.error(`❌ Fetch Error: ${err.message}`);
@@ -318,14 +318,43 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/jobcard/:id
+// GET /api/jobcard/deleted/all - Fetch all deleted Job Cards
+router.get('/deleted/all', async (req, res) => {
+  try {
+    const jobCards = await JobCard.find({ isDeleted: true }).sort({ deletedAt: -1 });
+    res.json(jobCards);
+  } catch (err) {
+    console.error(`❌ Fetch Deleted Error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/jobcard/:id - Soft delete
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await JobCard.findByIdAndDelete(req.params.id);
+    const result = await JobCard.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date()
+    });
     if (!result) return res.status(404).json({ message: "Job Card not found" });
-    res.json({ message: "Job Card deleted successfully" });
+    res.json({ message: "Job Card moved to recycle bin" });
   } catch (err) {
     console.error(`❌ Delete Error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/jobcard/:id/restore - Restore soft-deleted job card
+router.put('/:id/restore', async (req, res) => {
+  try {
+    const result = await JobCard.findByIdAndUpdate(req.params.id, {
+      isDeleted: false,
+      deletedAt: null
+    });
+    if (!result) return res.status(404).json({ message: "Job Card not found" });
+    res.json({ message: "Job Card restored successfully" });
+  } catch (err) {
+    console.error(`❌ Restore Error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });

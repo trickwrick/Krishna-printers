@@ -36,10 +36,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/invoice - Fetch all Invoices
+// GET /api/invoice - Fetch all Invoices (Active Only)
 router.get('/', async (req, res) => {
   try {
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    const invoices = await Invoice.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(invoices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,12 +61,39 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/invoice/:id - Delete an Invoice
+// GET /api/invoice/deleted/all - Fetch all deleted Invoices
+router.get('/deleted/all', async (req, res) => {
+  try {
+    const invoices = await Invoice.find({ isDeleted: true }).sort({ deletedAt: -1 });
+    res.json(invoices);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/invoice/:id - Soft Delete an Invoice
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await Invoice.findByIdAndDelete(req.params.id);
+    const result = await Invoice.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date()
+    });
     if (!result) return res.status(404).json({ message: "Invoice not found" });
-    res.json({ message: "Invoice deleted successfully" });
+    res.json({ message: "Invoice moved to recycle bin" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/invoice/:id/restore - Restore soft-deleted invoice
+router.put('/:id/restore', async (req, res) => {
+  try {
+    const result = await Invoice.findByIdAndUpdate(req.params.id, {
+      isDeleted: false,
+      deletedAt: null
+    });
+    if (!result) return res.status(404).json({ message: "Invoice not found" });
+    res.json({ message: "Invoice restored successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
