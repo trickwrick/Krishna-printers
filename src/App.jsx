@@ -35,6 +35,7 @@ import AddChallan from './AddChallan';
 import ChallanList from './ChallanList';
 import Login from './Login';
 import SettingsPage from './Settings';
+import RecycleBin from './RecycleBin';
 import SiteSettings from './SiteSettings';
 import SocialSettings from './SocialSettings';
 import PaymentTypeManagement from './PaymentTypeManagement';
@@ -972,6 +973,7 @@ export default function App() {
           <Route path="/challan/list" element={<ChallanList />} />
           <Route path="/contact-support" element={<ContactSupport />} />
           <Route path="/settings/password" element={<SettingsPage />} />
+          <Route path="/settings/recycle-bin" element={<RecycleBin />} />
           <Route path="/settings/site" element={<SiteSettings />} />
           <Route path="/settings/social" element={<SocialSettings />} />
           {STAFF_TEAM_ENABLED && (

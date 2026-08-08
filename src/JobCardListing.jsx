@@ -7,7 +7,7 @@ import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { syncPlateUsageFromCards } from './utils/plateUsage';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
-import { deleteLocalJobCard, mergeWithLocalJobCards, migrateLocalJobNumbers } from './utils/localJobCards';
+import { deleteLocalJobCard, mergeWithLocalJobCards, migrateLocalJobNumbers, updateLocalJobCardField } from './utils/localJobCards';
 
 const BINDING_OPTIONS = [
   { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -111,13 +111,23 @@ export default function JobCardListing() {
 
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
 
-    const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
-    data.push({
+    // Validate: qty cannot exceed remaining units
+    const totalUnits = parseInt(paperUsageModalCard?.jobQty) || 0;
+    const existingData = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+    const usedSoFar = existingData.reduce((acc, r) => acc + r.qty, 0);
+    const remaining = Math.max(0, totalUnits - usedSoFar);
+
+    if (totalUnits > 0 && qty > remaining) {
+      alert(`Only ${remaining.toLocaleString()} units remaining. Cannot add ${qty.toLocaleString()} units.`);
+      return;
+    }
+
+    existingData.push({
       qty,
       userName: currentUser.name,
       timestamp: new Date().toISOString()
     });
-    localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(data));
+    localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(existingData));
     setPaperUsageInput('');
     setJobCards(prev => [...prev]); // force re-render
   };
@@ -256,6 +266,30 @@ export default function JobCardListing() {
         user: currentUser.name
       });
       localStorage.setItem('krishnaJobWorkflowHistory', JSON.stringify(history));
+
+      // ── Auto-update job card status based on QC & Delivery (step 4) ──
+      // If step 4 is fully completed → status = 'completed'
+      // If step 4 is reverted (< 4) → status = 'in-progress'
+      const autoStatus = newVal >= 4 ? 'completed' : (newVal > 0 ? 'in-progress' : 'pending');
+
+      // Update local state immediately
+      setJobCards(prevCards =>
+        prevCards.map(c => {
+          const key = c._id || c.jobNumber;
+          if (key === cardKey) return { ...c, status: autoStatus };
+          return c;
+        })
+      );
+
+      // Persist to localJobCards (for local-only cards)
+      updateLocalJobCardField(cardKey, { status: autoStatus });
+
+      // Best-effort server sync
+      fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: autoStatus }),
+      }).catch(() => { /* server unavailable – local already updated */ });
 
       return newProgress;
     });
@@ -727,7 +761,7 @@ export default function JobCardListing() {
                                             );
                                           })()}
                                         </div>
-                                        <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Proof</span>
+                                        <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Challan Proof</span>
                                       </div>
 
                                     {(() => {

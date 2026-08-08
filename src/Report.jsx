@@ -446,14 +446,14 @@ export default function Report() {
             onClick={exportToExcel}
             className="flex items-center gap-2 px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-bold hover:bg-green-100 transition-all shadow-sm"
           >
-            <FileSpreadsheet size={15} />
+            <Download size={15} />
             Excel
           </button>
           <button
             onClick={exportToPDF}
             className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-bold hover:bg-red-100 transition-all shadow-sm"
           >
-            <FileText size={15} />
+            <Download size={15} />
             PDF
           </button>
           <button

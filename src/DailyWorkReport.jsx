@@ -117,13 +117,13 @@ export default function DailyWorkReport({ jobCards }) {
 
             {/* Activity List - Line by Line */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
-                <span>#</span>
+              <div className="grid grid-cols-[1fr_100px_80px_140px_100px_60px] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
                 <span>Job / Party</span>
                 <span>Date</span>
                 <span>Qty</span>
                 <span>Paper Usage</span>
                 <span>Status</span>
+                <span className="text-center">Action</span>
               </div>
               <div className="divide-y divide-gray-50">
                 {cards.map((c, idx) => {
@@ -149,11 +149,8 @@ export default function DailyWorkReport({ jobCards }) {
                   return (
                     <div
                       key={cardKey}
-                      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
+                      className="grid grid-cols-[1fr_100px_80px_140px_100px_60px] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
                     >
-                      {/* Sr. No */}
-                      <span className="text-xs font-black text-gray-400 w-5 text-center">{idx + 1}</span>
-
                       {/* Job / Party */}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
@@ -197,19 +194,21 @@ export default function DailyWorkReport({ jobCards }) {
                         )}
                       </div>
 
-                      {/* Workflow Progress Removed */}
-
-                      {/* Status + Detail button */}
-                      <div className="flex items-center gap-2">
+                      {/* Status */}
+                      <div>
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ring-1 ${statusColor}`}>
                           {c.status || 'pending'}
                         </span>
+                      </div>
+
+                      {/* Action */}
+                      <div className="flex justify-center">
                         <button
                           onClick={() => handleOpenModal(c)}
-                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="View Full Activity"
                         >
-                          <Eye size={14} />
+                          <Eye size={16} />
                         </button>
                       </div>
                     </div>
