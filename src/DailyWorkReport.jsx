@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Eye, X, CheckCircle, Clock, User, FileText, Check, Activity, Layers, Printer, FileDigit, Users, AlertCircle, Hash, Droplets } from 'lucide-react';
+import { Eye, X, CheckCircle, Clock, User, FileText, Check, Activity, Layers, Printer, FileDigit, Users, AlertCircle, Hash, Droplets, PackageCheck } from 'lucide-react';
 
 const WORKFLOW_STEPS = [
   { title: 'Design & Proof', desc: 'Artwork, design & client approval' },
@@ -125,12 +125,11 @@ export default function DailyWorkReport({ jobCards }) {
 
             {/* Activity List - Line by Line */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
+              <div className="grid grid-cols-[auto_1fr_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
                 <span>#</span>
                 <span>Job / Party</span>
                 <span>Qty</span>
                 <span>Paper Usage</span>
-                <span>Workflow</span>
                 <span>Status</span>
               </div>
               <div className="divide-y divide-gray-50">
@@ -157,7 +156,7 @@ export default function DailyWorkReport({ jobCards }) {
                   return (
                     <div
                       key={cardKey}
-                      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
+                      className="grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
                     >
                       {/* Sr. No */}
                       <span className="text-xs font-black text-gray-400 w-5 text-center">{idx + 1}</span>
@@ -206,16 +205,7 @@ export default function DailyWorkReport({ jobCards }) {
                         )}
                       </div>
 
-                      {/* Workflow Progress */}
-                      <div className="flex items-center gap-2 w-24">
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-1.5 bg-blue-500 rounded-full transition-all duration-500"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">{currentProgress}/4</span>
-                      </div>
+                      {/* Workflow Progress Removed */}
 
                       {/* Status + Detail button */}
                       <div className="flex items-center gap-2">
@@ -224,7 +214,7 @@ export default function DailyWorkReport({ jobCards }) {
                         </span>
                         <button
                           onClick={() => handleOpenModal(c)}
-                          className="p-1 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                           title="View Full Activity"
                         >
                           <Eye size={14} />
@@ -306,93 +296,106 @@ export default function DailyWorkReport({ jobCards }) {
                 </div>
               </div>
 
-              {/* Right Column: Workflow Activity Timeline */}
+              {/* Right Column: Paper Usage */}
               <div className="lg:w-2/3">
                 <h4 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2 mb-4">
-                  <Activity size={16} className="text-blue-500" />
-                  Team Activity Timeline
+                  <Droplets size={16} className="text-sky-500" />
+                  Paper Usage Details
                 </h4>
                 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
-                  <div className="space-y-0">
-                    {WORKFLOW_STEPS.map((step, idx) => {
-                      const stepNo = idx + 1;
-                      const cardKey = selectedJob._id;
-                      const currentProgress = workflowProgress[cardKey] || 0;
-                      const isDone = currentProgress >= stepNo;
-                      
-                      const history = workflowHistory[cardKey] || [];
-                      // Get all actions for this specific step, sorted chronologically
-                      const stepHistory = history.filter(h => h.stepNo === stepNo);
+                  {/* ── Paper Usage Section ── */}
+                  {(() => {
+                    const cardKey = selectedJob._id;
+                    const totalUnits = parseInt(selectedJob.jobQty) || 0;
+                    const paperUsageData = (() => { try { return JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]'); } catch { return []; } })();
+                    const usedUnits = paperUsageData.reduce((acc, r) => acc + r.qty, 0);
+                    const paperDone = totalUnits > 0 && usedUnits >= totalUnits;
+                    const remaining = Math.max(0, totalUnits - usedUnits);
+                    const pct = totalUnits > 0 ? Math.min(100, Math.round((usedUnits / totalUnits) * 100)) : 0;
 
-                      return (
-                        <div key={idx} className="relative flex gap-5">
-                          {/* Timeline vertical line */}
-                          {idx !== WORKFLOW_STEPS.length - 1 && (
-                            <div className={`absolute top-10 left-5 w-0.5 h-[calc(100%-0.5rem)] -ml-px ${isDone ? 'bg-blue-500' : 'bg-gray-200'}`}></div>
-                          )}
-                          
-                          {/* Step Indicator */}
-                          <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-sm mt-1 ${
-                            isDone 
-                              ? 'bg-blue-500 border-blue-500 text-white shadow-blue-200' 
-                              : 'bg-white border-gray-300 text-gray-400'
-                          }`}>
-                            {isDone ? <Check size={20} strokeWidth={3} /> : <span className="text-base font-black">{stepNo}</span>}
+                    return (
+                      <div className="mt-2 mb-2">
+                        <div className="flex gap-5">
+                          <div className="w-10 shrink-0 flex flex-col items-center">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-2 shadow-sm ${
+                              paperDone ? 'bg-sky-500 border-sky-500 text-white shadow-sky-200' : 'bg-white border-sky-300 text-sky-400'
+                            }`}>
+                              <Droplets size={18} strokeWidth={2.5} />
+                            </div>
                           </div>
 
-                          {/* Step Content */}
-                          <div className={`flex-1 pb-8 ${!isDone && stepHistory.length === 0 ? 'opacity-50' : ''}`}>
-                            <div className="flex justify-between items-start">
+                          <div className="flex-1 py-1">
+                            <div className="flex justify-between items-start mb-2">
                               <div>
-                                <h5 className="font-bold text-gray-900 text-lg tracking-tight">{step.title}</h5>
-                                <p className="text-sm text-gray-500">{step.desc}</p>
+                                <h5 className="font-bold text-gray-900 text-base tracking-tight flex items-center gap-2">
+                                  Paper Usage
+                                  {paperDone && (
+                                    <span className="text-[10px] font-black uppercase tracking-wide text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">Done</span>
+                                  )}
+                                </h5>
+                                <p className="text-xs text-gray-500">Paper consumed vs. total job quantity</p>
                               </div>
-                              {!isDone && <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-500 text-xs font-bold tracking-wide uppercase">Pending</span>}
+                              {!paperDone && totalUnits > 0 && (
+                                <span className="px-2.5 py-1 rounded-md bg-sky-50 text-sky-600 text-xs font-bold tracking-wide uppercase border border-sky-100">
+                                  {pct}% used
+                                </span>
+                              )}
                             </div>
-                            
-                            {/* History List for this step */}
-                            {stepHistory.length > 0 ? (
-                              <div className="mt-4 space-y-2">
-                                {stepHistory.map((record, hIdx) => (
-                                  <div key={hIdx} className={`flex items-center justify-between p-3 rounded-xl border ${record.action === 'Completed' ? 'bg-blue-50/50 border-blue-100' : 'bg-rose-50/50 border-rose-100'}`}>
+
+                            {/* Progress bar */}
+                            {totalUnits > 0 && (
+                              <div className="mb-3">
+                                <div className="flex justify-between text-[11px] font-semibold text-gray-500 mb-1">
+                                  <span>Used: <strong className="text-gray-800">{usedUnits.toLocaleString()}</strong></span>
+                                  <span>Remaining: <strong className={remaining > 0 ? 'text-rose-600' : 'text-emerald-600'}>{remaining.toLocaleString()}</strong></span>
+                                  <span>Total: <strong className="text-gray-800">{totalUnits.toLocaleString()}</strong></span>
+                                </div>
+                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-2 rounded-full transition-all duration-500 ${paperDone ? 'bg-emerald-500' : 'bg-sky-400'}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Usage log */}
+                            {paperUsageData.length > 0 ? (
+                              <div className="space-y-2">
+                                {paperUsageData.map((entry, eIdx) => (
+                                  <div key={eIdx} className="flex items-center justify-between p-3 rounded-xl border bg-sky-50/50 border-sky-100">
                                     <div className="flex items-center gap-3">
-                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${record.action === 'Completed' ? 'bg-blue-100 text-blue-600' : 'bg-rose-100 text-rose-600'}`}>
+                                      <div className="w-8 h-8 rounded-full flex items-center justify-center bg-sky-100 text-sky-600">
                                         <User size={14} />
                                       </div>
                                       <div>
-                                        <p className="text-sm font-medium text-gray-900">
-                                          <span className="font-bold">{record.user || 'Unknown User'}</span>
-                                        </p>
-                                        <p className={`text-xs font-bold uppercase tracking-wider ${record.action === 'Completed' ? 'text-blue-600' : 'text-rose-600'}`}>
-                                          {record.action}
-                                        </p>
+                                        <p className="text-sm font-bold text-gray-900">{entry.userName || 'Unknown'}</p>
+                                        <p className="text-xs text-sky-700 font-semibold">Used {entry.qty.toLocaleString()} units</p>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-white px-2 py-1 rounded-md border border-gray-100">
                                       <Clock size={12} />
-                                      {format(new Date(record.timestamp), 'MMM d, h:mm a')}
+                                      {format(new Date(entry.timestamp), 'MMM d, h:mm a')}
                                     </div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              isDone && (
-                                <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-500 italic">
-                                  <AlertCircle size={16} />
-                                  Completed (legacy record, no user/time tracked)
-                                </div>
-                              )
+                              <div className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100 text-sm text-gray-400 italic">
+                                <AlertCircle size={15} />
+                                No paper usage recorded yet.
+                              </div>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })()}
+
                 </div>
               </div>
             </div>
-            
           </div>
         </div>
       )}
