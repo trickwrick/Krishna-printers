@@ -174,6 +174,7 @@ export default function JobCardForm() {
       jobName: fd.get('jobName'),
       jobNumber: editData?.jobNumber || 'Auto',
       jobDate,
+      jobAttachment,
       jobAttachmentName: jobAttachment?.name || '',
       dieCuttingType: fd.get('dieCuttingType'),
       digitalPrintout,
@@ -1385,27 +1386,33 @@ export default function JobCardForm() {
                         const cell = row[col.key];
                         return (
                           <td key={col.key} className="border border-gray-200 p-1.5 align-middle">
-                            <div className="flex items-center justify-center gap-2 text-[10px] font-medium text-gray-600">
-                              <label className="flex items-center gap-0.5 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name={`fin-${rowIdx}-${col.key}`}
-                                  checked={cell.ticked === true}
-                                  onChange={() => toggleFinishingTick(rowIdx, col.key, true)}
-                                  className="w-3 h-3 text-emerald-600"
-                                />
-                                <span>Yes</span>
-                              </label>
-                              <label className="flex items-center gap-0.5 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name={`fin-${rowIdx}-${col.key}`}
-                                  checked={cell.ticked === false}
-                                  onChange={() => toggleFinishingTick(rowIdx, col.key, false)}
-                                  className="w-3 h-3 text-gray-400"
-                                />
-                                <span>No</span>
-                              </label>
+                            <div className="flex items-center justify-center gap-1">
+                              {/* Yes button */}
+                              <button
+                                type="button"
+                                onClick={() => toggleFinishingTick(rowIdx, col.key, cell.ticked === true ? null : true)}
+                                className={`flex items-center justify-center w-6 h-6 rounded border-2 transition-all duration-150 ${
+                                  cell.ticked === true
+                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200'
+                                    : 'border-gray-200 text-gray-300 hover:border-emerald-400 hover:text-emerald-400 bg-white'
+                                }`}
+                                title="Yes"
+                              >
+                                <Check size={11} strokeWidth={3} />
+                              </button>
+                              {/* No button */}
+                              <button
+                                type="button"
+                                onClick={() => toggleFinishingTick(rowIdx, col.key, cell.ticked === false ? null : false)}
+                                className={`flex items-center justify-center w-6 h-6 rounded border-2 transition-all duration-150 ${
+                                  cell.ticked === false
+                                    ? 'bg-red-500 border-red-500 text-white shadow-sm shadow-red-200'
+                                    : 'border-gray-200 text-gray-300 hover:border-red-400 hover:text-red-400 bg-white'
+                                }`}
+                                title="No"
+                              >
+                                <X size={11} strokeWidth={3} />
+                              </button>
                             </div>
                           </td>
                         );
@@ -1494,7 +1501,7 @@ export default function JobCardForm() {
                     ['Job Name', previewData.jobName],
                     ['Job Quantity', previewData.jobQty],
                     ['Printing Quantity', previewData.printingQty],
-                    ['Uploaded File', previewData.jobAttachmentName],
+                    ['Uploaded File', previewData.jobAttachment?.name || ''],
                     ['Die Cutting', previewData.dieCuttingType],
                     ['Drip Off Plate', previewData.dripOffPlateType ? `${previewData.dripOffPlateType} Plate` : ''],
                     ['Drip Off Job Size', previewData.dripOffJobSize],
@@ -1538,9 +1545,24 @@ export default function JobCardForm() {
                   </tbody>
                 </table>
 
-                <div className="border border-gray-300 p-3 min-h-24">
-                  <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
-                  <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div className="border border-gray-300 p-3 min-h-24">
+                    <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
+                    <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
+                  </div>
+                  {previewData.jobAttachment && previewData.jobAttachment.dataUrl && (
+                    <div className="border border-gray-300 p-3 min-h-24 flex flex-col items-center justify-center">
+                      <p className="text-[10px] uppercase font-black text-gray-500 mb-1 w-full text-left">Attached File</p>
+                      {previewData.jobAttachment.type?.startsWith('image/') ? (
+                        <img src={previewData.jobAttachment.dataUrl} alt="Attachment" className="max-w-full max-h-32 object-contain" />
+                      ) : (
+                        <div className="text-center">
+                          <FileText size={32} className="mx-auto text-gray-400 mb-2" />
+                          <p className="text-[10px] text-gray-600 truncate max-w-[150px]">{previewData.jobAttachment.name}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

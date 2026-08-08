@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Eye, X, CheckCircle, Clock, User, FileText, Check, Activity, Layers, Printer, FileDigit, Users, AlertCircle, Hash } from 'lucide-react';
+import { Eye, X, CheckCircle, Clock, User, FileText, Check, Activity, Layers, Printer, FileDigit, Users, AlertCircle, Hash, Droplets } from 'lucide-react';
 
 const WORKFLOW_STEPS = [
   { title: 'Design & Proof', desc: 'Artwork, design & client approval' },
@@ -123,74 +123,117 @@ export default function DailyWorkReport({ jobCards }) {
               </div>
             </div>
 
-            {/* Activity Feed (Cards) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              {cards.map((c) => {
-                const history = workflowHistory[c._id] || [];
-                const recentActivity = history.length > 0 ? history[history.length - 1] : null;
-                const currentProgress = workflowProgress[c._id] || 0;
-                const progressPercent = (currentProgress / 4) * 100;
+            {/* Activity List - Line by Line */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 border-b border-gray-100 px-4 py-2.5 gap-x-4">
+                <span>#</span>
+                <span>Job / Party</span>
+                <span>Qty</span>
+                <span>Paper Usage</span>
+                <span>Workflow</span>
+                <span>Status</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {cards.map((c, idx) => {
+                  const cardKey = c._id;
+                  const history = workflowHistory[cardKey] || [];
+                  const recentActivity = history.length > 0 ? history[history.length - 1] : null;
+                  const currentProgress = workflowProgress[cardKey] || 0;
+                  const progressPercent = (currentProgress / 4) * 100;
+                  const statusColor = (c.status || 'pending') === 'completed'
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100'
+                    : (c.status || 'pending') === 'in-progress'
+                      ? 'bg-blue-50 text-blue-700 ring-blue-100'
+                      : (c.status || 'pending') === 'cancelled'
+                        ? 'bg-red-50 text-red-700 ring-red-100'
+                        : 'bg-amber-50 text-amber-700 ring-amber-100';
 
-                return (
-                  <div key={c._id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col group transition-all hover:shadow-md hover:border-blue-200">
-                    <div className="p-5 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 px-2.5 py-1 rounded-md text-xs font-bold tracking-wide mb-2">
-                            <Hash size={12} />
-                            {c.jobNumber}
-                          </div>
-                          <h3 className="text-base font-bold text-gray-900 line-clamp-1" title={c.jobName}>{c.jobName}</h3>
-                          <p className="text-sm text-gray-500 line-clamp-1">{c.partyName}</p>
+                  // Paper usage
+                  const totalUnits = parseInt(c.jobQty) || 0;
+                  const paperUsageData = (() => { try { return JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]'); } catch { return []; } })();
+                  const usedUnits = paperUsageData.reduce((acc, r) => acc + r.qty, 0);
+                  const paperDone = totalUnits > 0 && usedUnits >= totalUnits;
+
+                  return (
+                    <div
+                      key={cardKey}
+                      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-x-4 px-4 py-3 hover:bg-blue-50/30 transition-colors group"
+                    >
+                      {/* Sr. No */}
+                      <span className="text-xs font-black text-gray-400 w-5 text-center">{idx + 1}</span>
+
+                      {/* Job / Party */}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">#{c.jobNumber}</span>
+                          <span className="text-sm font-bold text-gray-900 truncate">{c.jobName || '—'}</span>
                         </div>
-                        <button 
-                          onClick={() => handleOpenModal(c)}
-                          className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-600 hover:text-white shrink-0 shadow-sm focus:opacity-100"
-                          title="View Full Activity"
-                        >
-                          <Eye size={18} />
-                        </button>
+                        <div className="text-xs text-gray-500 truncate">{c.partyName || '—'}
+                          {recentActivity && (
+                            <span className="ml-2 text-[10px] text-indigo-500 font-semibold">
+                              · {recentActivity.user} {recentActivity.action === 'Completed' ? '✓' : '↩'} {WORKFLOW_STEPS[recentActivity.stepNo - 1]?.title}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Progress Bar Mini */}
-                      <div className="mb-4 mt-auto">
-                        <div className="flex justify-between items-end mb-1">
-                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Workflow</span>
-                          <span className="text-xs font-bold text-blue-600">{currentProgress}/4 Steps</span>
-                        </div>
-                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden flex">
-                          <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${progressPercent}%` }}></div>
-                        </div>
-                      </div>
+                      {/* Qty */}
+                      <div className="text-sm font-semibold text-gray-700 whitespace-nowrap">{c.jobQty || '—'}</div>
 
-                      {/* Recent Activity */}
-                      <div className="bg-gray-50 rounded-xl p-3 border border-gray-100/80">
-                        <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                          <Clock size={10} /> Latest Activity
-                        </h4>
-                        {recentActivity ? (
-                          <div className="flex items-start gap-2.5">
-                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
-                              <User size={12} />
+                      {/* Paper Usage */}
+                      <div className="flex flex-col items-center gap-0.5 min-w-[72px]">
+                        {totalUnits > 0 ? (
+                          <>
+                            <div className="flex items-center gap-1">
+                              <Droplets size={11} className={paperDone ? 'text-emerald-500' : 'text-sky-400'} />
+                              <span className="text-[11px] font-bold text-gray-700">
+                                {usedUnits.toLocaleString()}<span className="text-gray-400 font-normal">/{totalUnits.toLocaleString()}</span>
+                              </span>
                             </div>
-                            <div>
-                              <p className="text-sm text-gray-700 font-medium">
-                                <span className="font-bold text-gray-900">{recentActivity.user || 'Unknown'}</span> {recentActivity.action === 'Completed' ? 'marked' : 'reverted'} <span className="font-bold text-indigo-600">{WORKFLOW_STEPS[recentActivity.stepNo - 1]?.title}</span> as {recentActivity.action.toLowerCase()}.
-                              </p>
-                              <p className="text-xs text-gray-500 mt-0.5">{format(new Date(recentActivity.timestamp), 'h:mm a')}</p>
-                            </div>
-                          </div>
+                            {paperDone ? (
+                              <span className="text-[9px] font-black uppercase tracking-wide text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 rounded-full">Done</span>
+                            ) : (
+                              <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                  className="h-1 bg-sky-400 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(100, (usedUnits / totalUnits) * 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="flex items-center gap-2 text-gray-400 text-sm italic py-1">
-                            <AlertCircle size={14} />
-                            No recorded activity yet.
-                          </div>
+                          <span className="text-[11px] text-gray-300">—</span>
                         )}
                       </div>
+
+                      {/* Workflow Progress */}
+                      <div className="flex items-center gap-2 w-24">
+                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-1.5 bg-blue-500 rounded-full transition-all duration-500"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-600 whitespace-nowrap">{currentProgress}/4</span>
+                      </div>
+
+                      {/* Status + Detail button */}
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ring-1 ${statusColor}`}>
+                          {c.status || 'pending'}
+                        </span>
+                        <button
+                          onClick={() => handleOpenModal(c)}
+                          className="p-1 text-gray-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          title="View Full Activity"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </section>
         );

@@ -122,13 +122,7 @@ export default function JobCardListing() {
     setJobCards(prev => [...prev]); // force re-render
   };
 
-  const handleMarkPaperComplete = () => {
-    if (!paperUsageModalCard) return;
-    const cardKey = getCardKey(paperUsageModalCard);
-    const currentStatus = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
-    localStorage.setItem(`krishnaJobPaperStatus_${cardKey}`, (!currentStatus).toString());
-    setJobCards(prev => [...prev]); // force re-render
-  };
+
 
   const loadData = async () => {
     try {
@@ -216,7 +210,12 @@ export default function JobCardListing() {
 
     // Step 3 (Binding & Finish) requires Paper Status to be complete
     if (stepNo === 3 && isTryingToMarkDone) {
-      const isPaperComplete = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
+      const card = jobCards.find(c => getCardKey(c) === cardKey);
+      const totalUnits = parseInt(card?.jobQty) || 0;
+      const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+      const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
+      const isPaperComplete = totalUnits > 0 && usedUnits >= totalUnits;
+      
       if (!isPaperComplete) {
         setPaperBlockAlert(true);
         return;
@@ -683,7 +682,12 @@ export default function JobCardListing() {
                                             <Settings size={14} />
                                           </button>
                                         </div>
-                                        {localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true' ? (
+                                        {(() => {
+                                          const totalUnits = parseInt(card.jobQty) || 0;
+                                          const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+                                          const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
+                                          return totalUnits > 0 && usedUnits >= totalUnits;
+                                        })() ? (
                                           <span 
                                             onClick={() => setPaperUsageModalCard(card)}
                                             className="text-[8px] font-bold text-emerald-600 mt-1 uppercase tracking-wide bg-emerald-50 px-1 border border-emerald-200 rounded cursor-pointer"
@@ -951,14 +955,31 @@ export default function JobCardListing() {
                     </tr>
 
                     <tr className="avoid-break">
-                      <td colSpan={12} className="tax-cell align-top p-0">
+                      <td colSpan={8} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
-                        <div className="job-card-section-body job-card-work-instructions p-2">
+                        <div className="job-card-section-body job-card-work-instructions p-2" style={{ minHeight: '60px' }}>
                           <p className="job-card-work-instructions-text leading-relaxed m-0">
                             {selectedCard.notes?.trim()
                               ? selectedCard.notes
                               : 'Handle with care. Ensure high quality print and accurate alignment.'}
                           </p>
+                        </div>
+                      </td>
+                      <td colSpan={4} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
+                        <div className="job-card-section-body p-2 flex flex-col items-center justify-center" style={{ minHeight: '60px' }}>
+                          {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
+                            selectedCard.jobAttachment.type?.startsWith('image/') ? (
+                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain' }} />
+                            ) : (
+                              <div className="text-center">
+                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
+                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '100px' }}>{selectedCard.jobAttachment.name}</p>
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-gray-400">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1128,7 +1149,7 @@ export default function JobCardListing() {
                 const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
                 const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
                 const remainingUnits = Math.max(0, totalUnits - usedUnits);
-                const isComplete = localStorage.getItem(`krishnaJobPaperStatus_${cardKey}`) === 'true';
+                const isComplete = totalUnits > 0 && usedUnits >= totalUnits;
 
                 return (
                   <>
@@ -1187,16 +1208,10 @@ export default function JobCardListing() {
                       )}
                     </div>
 
-                    <div className="border-t border-gray-100 pt-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="border-t border-gray-100 pt-4 text-center">
                       <p className="text-xs text-gray-500 font-medium">
-                        Mark as complete to display a status badge on the timeline.
+                        Status is automatically marked complete when used quantity meets or exceeds total units.
                       </p>
-                      <button 
-                        onClick={handleMarkPaperComplete}
-                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 whitespace-nowrap ${isComplete ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 shadow-amber-50' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100'}`}
-                      >
-                        {isComplete ? 'Undo Complete' : 'Mark Complete'}
-                      </button>
                     </div>
                   </>
                 );
