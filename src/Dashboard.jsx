@@ -78,9 +78,8 @@ const StatCard = ({ title, value, prefix = '', diff, icon: Icon, gradient, iconB
         </p>
         <div className="flex items-center gap-2 mt-3">
           <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${
-              diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-            }`}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-bold ${diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+              }`}
           >
             {diff >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
             {diff >= 0 ? '+' : ''}
@@ -133,69 +132,69 @@ export default function Dashboard() {
   useEffect(() => {
     const applyDashboardData = (cards) => {
       const safeData = Array.isArray(cards) ? cards : [];
-        const now = new Date();
-        const currentYear = now.getFullYear();
-        const currentMonth = now.getMonth();
-        const todayStr = now.toDateString();
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      const todayStr = now.toDateString();
 
-        let curMonthSum = 0;
-        let prevMonthSum = 0;
-        let curYearSum = 0;
-        let prevYearSum = 0;
-        let monthJobs = 0;
-        let todayJobs = 0;
-        let pendingJobs = 0;
-        let completedJobs = 0;
+      let curMonthSum = 0;
+      let prevMonthSum = 0;
+      let curYearSum = 0;
+      let prevYearSum = 0;
+      let monthJobs = 0;
+      let todayJobs = 0;
+      let pendingJobs = 0;
+      let completedJobs = 0;
 
-        safeData.forEach((card) => {
-          const cardDate = new Date(card.jobDate || card.createdAt);
-          const amt = Number(card.totalAmount) || 0;
-          const cardYear = cardDate.getFullYear();
-          const cardMonth = cardDate.getMonth();
+      safeData.forEach((card) => {
+        const cardDate = new Date(card.jobDate || card.createdAt);
+        const amt = Number(card.totalAmount) || 0;
+        const cardYear = cardDate.getFullYear();
+        const cardMonth = cardDate.getMonth();
 
-          if (cardYear === currentYear) {
-            curYearSum += amt;
-            if (cardMonth === currentMonth) monthJobs += 1;
-          }
-          if (cardYear === currentYear - 1) prevYearSum += amt;
-          if (cardYear === currentYear && cardMonth === currentMonth) curMonthSum += amt;
+        if (cardYear === currentYear) {
+          curYearSum += amt;
+          if (cardMonth === currentMonth) monthJobs += 1;
+        }
+        if (cardYear === currentYear - 1) prevYearSum += amt;
+        if (cardYear === currentYear && cardMonth === currentMonth) curMonthSum += amt;
 
-          const isPrevMonth =
-            currentMonth === 0
-              ? cardYear === currentYear - 1 && cardMonth === 11
-              : cardYear === currentYear && cardMonth === currentMonth - 1;
-          if (isPrevMonth) prevMonthSum += amt;
+        const isPrevMonth =
+          currentMonth === 0
+            ? cardYear === currentYear - 1 && cardMonth === 11
+            : cardYear === currentYear && cardMonth === currentMonth - 1;
+        if (isPrevMonth) prevMonthSum += amt;
 
-          if (cardDate.toDateString() === todayStr) todayJobs += 1;
+        if (cardDate.toDateString() === todayStr) todayJobs += 1;
 
-          const status = card.status || 'pending';
-          if (status === 'pending' || status === 'in-progress') pendingJobs += 1;
-          if (status === 'completed') completedJobs += 1;
-        });
+        const status = card.status || 'pending';
+        if (status === 'pending' || status === 'in-progress') pendingJobs += 1;
+        if (status === 'completed') completedJobs += 1;
+      });
 
-        let monthlyDiff = 0;
-        if (prevMonthSum > 0) monthlyDiff = ((curMonthSum - prevMonthSum) / prevMonthSum) * 100;
-        else if (curMonthSum > 0) monthlyDiff = 100;
+      let monthlyDiff = 0;
+      if (prevMonthSum > 0) monthlyDiff = ((curMonthSum - prevMonthSum) / prevMonthSum) * 100;
+      else if (curMonthSum > 0) monthlyDiff = 100;
 
-        let yearlyDiff = 0;
-        if (prevYearSum > 0) yearlyDiff = ((curYearSum - prevYearSum) / prevYearSum) * 100;
-        else if (curYearSum > 0) yearlyDiff = 100;
+      let yearlyDiff = 0;
+      if (prevYearSum > 0) yearlyDiff = ((curYearSum - prevYearSum) / prevYearSum) * 100;
+      else if (curYearSum > 0) yearlyDiff = 100;
 
-        setStats({
-          monthlyRevenue: curMonthSum,
-          monthlyDiff,
-          yearlyRevenue: curYearSum,
-          yearlyDiff,
-          totalJobs: safeData.length,
-          monthJobs,
-          todayJobs,
-          pendingJobs,
-          completedJobs,
-        });
+      setStats({
+        monthlyRevenue: curMonthSum,
+        monthlyDiff,
+        yearlyRevenue: curYearSum,
+        yearlyDiff,
+        totalJobs: safeData.length,
+        monthJobs,
+        todayJobs,
+        pendingJobs,
+        completedJobs,
+      });
 
-        // Most recent 10 cards for dashboard table
-        const sorted = [...safeData].sort((a, b) => new Date(b.jobDate || b.createdAt) - new Date(a.jobDate || a.createdAt));
-        setRecentCards(sorted.slice(0, 10));
+      // Most recent 10 cards for dashboard table
+      const sorted = [...safeData].sort((a, b) => new Date(b.jobDate || b.createdAt) - new Date(a.jobDate || a.createdAt));
+      setRecentCards(sorted.slice(0, 10));
     };
 
     const loadDashboardData = async () => {
@@ -290,13 +289,13 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3 shrink-0">
-            <button
+            {/* <button
               type="button"
               onClick={() => navigate('/invoice/add')}
               className="bg-white text-blue-700 hover:bg-blue-50 px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md"
             >
               Add Invoice
-            </button>
+            </button> */}
             <button
               type="button"
               onClick={() => navigate('/paper-stock')}
