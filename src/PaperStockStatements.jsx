@@ -112,7 +112,7 @@ const PaperStockStatements = () => {
             Paper Stock Statements
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium italic">
-            Stock add and deduct history — date, time, quantity with party.
+            Stock add deduct history — date, time, quantity with party.
           </p>
         </div>
       </div>
@@ -241,8 +241,8 @@ const PaperStockStatements = () => {
                     </td>
                     <td className="px-6 py-5">
                       <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${item.paperType === 'cover'
-                          ? 'bg-sky-50 text-sky-700 border border-sky-100'
-                          : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                        ? 'bg-sky-50 text-sky-700 border border-sky-100'
+                        : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
                         }`}>
                         {item.paperType === 'cover' ? 'Cover Paper' : 'Inner Paper'}
                       </span>
