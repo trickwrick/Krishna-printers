@@ -112,7 +112,7 @@ const PaperStockStatements = () => {
             Paper Stock Statements
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium italic">
-            Stock add aur deduct ki poori history — date, time, quantity aur party ke saath.
+            Stock add and deduct history — date, time, quantity with party.
           </p>
         </div>
       </div>
@@ -144,9 +144,8 @@ const PaperStockStatements = () => {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 px-4 rounded-xl font-bold uppercase tracking-wider text-xs transition-all ${
-                activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-bold uppercase tracking-wider text-xs transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               {tab === 'Company paper' ? '🏢 Company Paper' : '🎉 Party Paper'}
             </button>
@@ -161,9 +160,8 @@ const PaperStockStatements = () => {
             <button
               key={filter.id}
               onClick={() => setTypeFilter(filter.id)}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
-                typeFilter === filter.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${typeFilter === filter.id ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               {filter.label}
             </button>
@@ -242,11 +240,10 @@ const PaperStockStatements = () => {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                        item.paperType === 'cover'
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${item.paperType === 'cover'
                           ? 'bg-sky-50 text-sky-700 border border-sky-100'
                           : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                      }`}>
+                        }`}>
                         {item.paperType === 'cover' ? 'Cover Paper' : 'Inner Paper'}
                       </span>
                     </td>
