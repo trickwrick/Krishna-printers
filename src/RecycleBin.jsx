@@ -5,6 +5,7 @@ import { API_BASE_URL } from './utils/apiBase';
 const RecycleBin = () => {
   const [deletedJobs, setDeletedJobs] = useState([]);
   const [deletedInvoices, setDeletedInvoices] = useState([]);
+  const [deletedChallans, setDeletedChallans] = useState([]);
   const [loadingDeleted, setLoadingDeleted] = useState(false);
 
   useEffect(() => {
@@ -14,15 +15,19 @@ const RecycleBin = () => {
   const fetchDeletedItems = async () => {
     setLoadingDeleted(true);
     try {
-      const [jobsRes, invRes] = await Promise.all([
+      const [jobsRes, invRes, challanRes] = await Promise.all([
         fetch(`${API_BASE_URL}/api/jobcard/deleted/all`),
-        fetch(`${API_BASE_URL}/api/invoice/deleted/all`)
+        fetch(`${API_BASE_URL}/api/invoice/deleted/all`),
+        fetch(`${API_BASE_URL}/api/challan/deleted/all`)
       ]);
       if (jobsRes.ok) {
         setDeletedJobs(await jobsRes.json());
       }
       if (invRes.ok) {
         setDeletedInvoices(await invRes.json());
+      }
+      if (challanRes.ok) {
+        setDeletedChallans(await challanRes.json());
       }
     } catch (e) {
       console.error("Failed to fetch deleted items:", e);
@@ -41,9 +46,19 @@ const RecycleBin = () => {
   };
 
   const restoreInvoice = async (id) => {
-    if (!window.confirm("Restore this Challan?")) return;
+    if (!window.confirm("Restore this Invoice?")) return;
     try {
       await fetch(`${API_BASE_URL}/api/invoice/${id}/restore`, { method: 'PUT' });
+      fetchDeletedItems();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const restoreChallan = async (id) => {
+    if (!window.confirm("Restore this Challan?")) return;
+    try {
+      await fetch(`${API_BASE_URL}/api/challan/${id}/restore`, { method: 'PUT' });
       fetchDeletedItems();
     } catch (e) {
       console.error(e);
@@ -122,27 +137,27 @@ const RecycleBin = () => {
             <h3 className="font-bold text-gray-700 flex items-center gap-2 border-b border-gray-100 pb-3">
               <div className="w-1.5 h-4 rounded-full bg-amber-500" /> 
               Deleted Challans
-              <span className="ml-auto bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{deletedInvoices.length}</span>
+              <span className="ml-auto bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">{deletedChallans.length}</span>
             </h3>
-            {deletedInvoices.length === 0 ? (
+            {deletedChallans.length === 0 ? (
               <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-6 text-center">
                 <p className="text-sm text-gray-400 font-medium">No deleted challans found.</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-100 overflow-y-auto pr-2 custom-scrollbar">
-                {deletedInvoices.map(inv => (
-                  <div key={inv._id} className="flex items-center justify-between p-4 bg-white border border-gray-100 hover:border-amber-200 shadow-sm hover:shadow-md rounded-xl transition-all group">
+                {deletedChallans.map(ch => (
+                  <div key={ch._id} className="flex items-center justify-between p-4 bg-white border border-gray-100 hover:border-amber-200 shadow-sm hover:shadow-md rounded-xl transition-all group">
                     <div className="min-w-0 flex-1 pr-4">
                       <p className="text-sm font-bold text-gray-800 truncate">
-                        <span className="text-xs text-amber-600 mr-2">#{inv.invoiceNumber}</span>
-                        {inv.partyName}
+                        <span className="text-xs text-amber-600 mr-2">#{ch.challanNo}</span>
+                        {ch.partyName}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Deleted: {inv.deletedAt ? new Date(inv.deletedAt).toLocaleString() : 'Unknown Date'}
+                        Deleted: {ch.deletedAt ? new Date(ch.deletedAt).toLocaleString() : 'Unknown Date'}
                       </p>
                     </div>
                     <button 
-                      onClick={() => restoreInvoice(inv._id)}
+                      onClick={() => restoreChallan(ch._id)}
                       className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white border border-emerald-100 rounded-lg text-xs font-bold transition-all"
                     >
                       <Undo2 size={14} /> Restore
