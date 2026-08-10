@@ -94,7 +94,7 @@ export default function ProcessTimelineModal({ isOpen, onClose, jobCard }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-white rounded-3xl shadow-2xl w-[95%] max-w-6xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col h-[85vh]">
         
         {/* Header */}
@@ -127,7 +127,7 @@ export default function ProcessTimelineModal({ isOpen, onClose, jobCard }) {
             
             <div className="relative">
               {/* Vertical connecting line */}
-              <div className="absolute left-[23px] top-4 bottom-12 w-0.5 bg-gray-100 z-0" />
+              <div className="absolute left-5.75 top-4 bottom-12 w-0.5 bg-gray-100 z-0" />
               
               {STAGES.map((stage) => {
                 const isCompleted = currentStep >= stage.step;
@@ -195,7 +195,7 @@ export default function ProcessTimelineModal({ isOpen, onClose, jobCard }) {
                     <p className="text-sm text-gray-600 font-medium mb-3">{event.details}</p>
                     
                     <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-[9px] font-black text-white">
+                      <div className="w-5 h-5 rounded-full bg-linear-to-tr from-blue-500 to-indigo-500 flex items-center justify-center text-[9px] font-black text-white">
                         {event.userName?.charAt(0).toUpperCase() || 'U'}
                       </div>
                       <span className="text-xs font-bold text-gray-700">{event.userName}</span>
