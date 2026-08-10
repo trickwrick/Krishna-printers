@@ -120,18 +120,8 @@ const Login = () => {
         <div className="absolute bottom-0 left-0 w-full h-2/5 bg-linear-to-t from-[#0c1a4a]/80 to-transparent" />
 
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-              <Printer size={24} />
-            </div>
-            <div>
-              <p className="text-white font-black text-xl tracking-tight leading-none">
-                Krishna
-              </p>
-              <p className="text-blue-200 text-[11px] font-semibold uppercase tracking-[0.2em] mt-1">
-                Printers
-              </p>
-            </div>
+          <div className="inline-flex items-center gap-3 mb-6">
+            <img src="/logo.png" alt="Krishna Printers Logo" className="h-20 w-auto drop-shadow-xl" />
           </div>
         </div>
 
