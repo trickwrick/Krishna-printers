@@ -487,17 +487,10 @@ const PaperStockManagement = () => {
                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold">
                                      {(item.coverGSM !== undefined || item.gsm) ? (
                                        <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-100">
-                                         Cover: {item.coverPartyName ? `${item.coverPartyName} · ` : ''}{item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
+                                         Paper: {item.coverPartyName ? `${item.coverPartyName} · ` : ''}{item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
                                        </span>
                                      ) : (
-                                       <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Cover: --</span>
-                                     )}
-                                     {item.innerGSM ? (
-                                       <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-100">
-                                         Inner: {item.innerPartyName ? `${item.innerPartyName} · ` : ''}{item.innerName || item.name || '--'}{item.innerSupplier ? ` · Supplier: ${item.innerSupplier}` : ''} · {item.innerGSM} GSM{item.innerPaperSize ? ` · ${item.innerPaperSize}` : ''}
-                                       </span>
-                                     ) : (
-                                       <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Inner: --</span>
+                                       <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Paper: --</span>
                                      )}
                                    </div>
                                 </div>
@@ -507,22 +500,12 @@ const PaperStockManagement = () => {
                              <div className="space-y-1.5">
                                {(item.coverGSM !== undefined || item.gsm) && (
                                  <div className="flex items-center gap-2">
-                                   <span className="text-[10px] font-black text-gray-400 uppercase w-12">Cover:</span>
+                                   <span className="text-[10px] font-black text-gray-400 uppercase w-12">Paper:</span>
                                    <span className={`text-sm font-black tracking-tight ${(item.coverQuantity !== undefined ? item.coverQuantity : item.quantity) <= item.lowStockThreshold ? 'text-red-600' : 'text-gray-900'}`}>
                                      {(item.coverQuantity !== undefined ? item.coverQuantity : item.quantity).toLocaleString()} Sheets
                                    </span>
                                  </div>
                                )}
-                               <div className="flex items-center gap-2">
-                                 <span className="text-[10px] font-black text-gray-400 uppercase w-12">Inner:</span>
-                                 {item.innerGSM ? (
-                                   <span className={`text-sm font-black tracking-tight ${(item.innerQuantity || 0) <= item.lowStockThreshold ? 'text-red-600' : 'text-gray-900'}`}>
-                                     {(item.innerQuantity || 0).toLocaleString()} Sheets
-                                   </span>
-                                 ) : (
-                                   <span className="text-xs font-bold text-gray-400 italic">Not set</span>
-                                 )}
-                               </div>
                              </div>
                              {item.description && <p className="text-[9px] text-gray-400 font-medium italic mt-1.5">{item.description}</p>}
                           </td>

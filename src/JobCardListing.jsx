@@ -971,10 +971,8 @@ export default function JobCardListing() {
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Paper &amp; Stock</div>
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
-                            ['Cover Count / GSM', `${selectedCard.coverPaperCount || 0} (${selectedCard.paperGSM || '-'})`],
-                            ['Inner Count / GSM', `${selectedCard.innerPaperCount || 0} (${selectedCard.innerPaperGSM || '-'})`],
-                            ['Cover Details', selectedCard.coverPaperDetails || '-'],
-                            ['Inner Details', selectedCard.innerPaperDetails || '-'],
+                            ['Paper Count / GSM', `${selectedCard.coverPaperCount || 0} (${selectedCard.paperGSM || '-'})`],
+                            ['Paper Details', selectedCard.coverPaperDetails || '-'],
                           ]} />
                         </div>
                       </td>
