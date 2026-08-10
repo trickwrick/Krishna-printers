@@ -180,7 +180,7 @@ const syncStockFromJobChange = async (previousJob, newBody) => {
 // POST /api/jobcard - Save or Update Job Card
 router.post('/', async (req, res) => {
   try {
-    const { partyName } = req.body;
+    const { partyName, userName } = req.body;
     let { jobNumber } = req.body;
 
     // Auto-alias if needed
@@ -205,9 +205,26 @@ router.post('/', async (req, res) => {
 
     if (_id) {
       // UPDATE by _id (most reliable)
+      let updatePayload = { ...req.body, updatedAt: new Date() };
+      
+      // Determine what changed for timeline
+      const timelineEvents = [];
+      if (previousJob) {
+        if (req.body.jobAttachment?.dataUrl && req.body.jobAttachment?.dataUrl !== previousJob.jobAttachment?.dataUrl) {
+           timelineEvents.push({ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' });
+        }
+        if (req.body.paperSource === 'Company paper' && (req.body.coverPaperCount !== previousJob.coverPaperCount || req.body.innerPaperCount !== previousJob.innerPaperCount)) {
+           timelineEvents.push({ action: 'Paper Updated', details: 'Updated paper stock allocation', userName: userName || 'System' });
+        }
+      }
+
+      if (timelineEvents.length > 0) {
+         updatePayload.$push = { timeline: { $each: timelineEvents } };
+      }
+
       jobCard = await JobCard.findByIdAndUpdate(
         _id,
-        { ...req.body, updatedAt: new Date() },
+        updatePayload,
         { new: true }
       );
       if (jobCard) isUpdate = true;
@@ -219,14 +236,31 @@ router.post('/', async (req, res) => {
         // UPDATE by jobNumber (fallback)
         isUpdate = true;
         previousJob = previousJob || existingJob;
+        
+        let updatePayload = { ...req.body, updatedAt: new Date() };
+        const timelineEvents = [];
+        if (req.body.jobAttachment?.dataUrl && req.body.jobAttachment?.dataUrl !== previousJob.jobAttachment?.dataUrl) {
+           timelineEvents.push({ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' });
+        }
+        if (req.body.paperSource === 'Company paper' && (req.body.coverPaperCount !== previousJob.coverPaperCount || req.body.innerPaperCount !== previousJob.innerPaperCount)) {
+           timelineEvents.push({ action: 'Paper Updated', details: 'Updated paper stock allocation', userName: userName || 'System' });
+        }
+        if (timelineEvents.length > 0) {
+           updatePayload.$push = { timeline: { $each: timelineEvents } };
+        }
+
         jobCard = await JobCard.findOneAndUpdate(
           { jobNumber },
-          { ...req.body, updatedAt: new Date() },
+          updatePayload,
           { new: true }
         );
       } else {
         // NEW job card with provided jobNumber
-        jobCard = new JobCard(req.body);
+        const newJobPayload = { ...req.body };
+        if (req.body.jobAttachment?.dataUrl) {
+           newJobPayload.timeline = [{ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' }];
+        }
+        jobCard = new JobCard(newJobPayload);
         await jobCard.save();
       }
     } else if (!isUpdate) {
@@ -239,7 +273,12 @@ router.post('/', async (req, res) => {
       }
       const generatedJobNumber = `JOBKP-${String(nextNum).padStart(4, '0')}`;
       req.body.jobNumber = generatedJobNumber;
-      jobCard = new JobCard(req.body);
+      
+      const newJobPayload = { ...req.body };
+      if (req.body.jobAttachment?.dataUrl) {
+         newJobPayload.timeline = [{ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' }];
+      }
+      jobCard = new JobCard(newJobPayload);
       await jobCard.save();
     }
 
@@ -409,14 +448,24 @@ router.post('/sync-tally-direct', async (req, res) => {
 // PATCH /api/jobcard/:id/status - Update job card status only
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, userName } = req.body;
     const validStatuses = ['pending', 'in-progress', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
     const updated = await JobCard.findByIdAndUpdate(
       req.params.id,
-      { status, updatedAt: new Date() },
+      { 
+        status, 
+        updatedAt: new Date(),
+        $push: {
+          timeline: {
+            action: 'Status Update',
+            details: `Status changed to ${status}`,
+            userName: userName || 'System'
+          }
+        }
+      },
       { new: true }
     );
     if (!updated) return res.status(404).json({ error: 'Job card not found' });

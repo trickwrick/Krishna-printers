@@ -86,7 +86,9 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     const isEstimate = elementId === 'printable-estimate' || element.classList.contains('estimate-print-page');
     const isTaxInvoice = elementId === 'printable-invoice' || elementId === 'printable-challan' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page');
     const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
-    const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate;
+    const isReport = elementId === 'report-table-container';
+    
+    const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isReport;
     const pageMargin = isFullWidth ? '5mm' : '12mm';
     const contentWidth = isFullWidth ? '100%' : '186mm';
     const contentMaxWidth = isFullWidth ? '100%' : '186mm';
@@ -95,6 +97,9 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     const wrapperStyle = isFullWidth
       ? 'width:100%;max-width:100%;margin:0;padding:0;background:#ffffff;box-sizing:border-box;min-height:100vh;'
       : 'width:186mm;max-width:186mm;margin:0 auto;padding:0 4mm;background:white;box-sizing:border-box;';
+
+    const iframeWidth = isReport ? '297mm' : '210mm';
+    const pageOrientation = isReport ? 'landscape' : 'portrait';
 
     // 1. Prepare Styles
     const sanitizedStyles = getSanitizedSystemStyles();
@@ -106,7 +111,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       position: 'fixed',
       left: '-20000px',
       top: '-20000px',
-      width: '210mm', // Lock to A4 width
+      width: iframeWidth,
       height: '4000px'
     });
     document.body.appendChild(iframe);
@@ -119,7 +124,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       <html>
         <head>
           <style>
-            @page { margin: ${pageMargin}; size: A4; }
+            @page { margin: ${pageMargin}; size: A4 ${pageOrientation}; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
             body { 
               margin: 0; 
@@ -131,7 +136,16 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
               justify-content: flex-start !important;
             }
             ${sanitizedStyles}
-            .no-print, button, .job-card-print-page h4 svg, .job-card-print-page svg.lucide, [role="button"] { display: none !important; }
+            .no-print, button:not(.status-badge), .job-card-print-page h4 svg, .job-card-print-page svg.lucide, [role="button"] { display: none !important; }
+            button.status-badge { display: inline-flex !important; }
+            svg.status-icon { display: block !important; }
+            
+            /* Prevent text slicing on truncated elements in html2canvas */
+            .truncate { 
+              white-space: normal !important; 
+              overflow: visible !important; 
+              text-overflow: clip !important;
+            }
             
             .job-card-print-page,
             #printable-inner.job-card-print-page {
@@ -285,6 +299,12 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
               background: white !important;
               display: block !important;
             }
+
+            /* Remove scrollbars and clip for print */
+            .overflow-x-auto, .overflow-y-auto, .overflow-hidden {
+              overflow: visible !important;
+              max-height: none !important;
+            }
           </style>
         </head>
         <body class="bg-white">
@@ -322,7 +342,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
 
     // 6. Save as PDF
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pdf = new jsPDF({ orientation: pageOrientation, unit: 'mm', format: 'a4' });
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     

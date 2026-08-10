@@ -252,43 +252,8 @@ export default function DailyWorkReport({ jobCards }) {
             {/* Modal Content - Scrollable */}
             <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 flex flex-col lg:flex-row gap-8">
               
-              {/* Left Column: Job Specs */}
-              <div className="lg:w-1/3 space-y-4">
-                <h4 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2 mb-4">
-                  <Layers size={16} className="text-indigo-500" />
-                  Job Specifications
-                </h4>
-                
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                    <span className="text-sm text-gray-500 flex items-center gap-2"><FileDigit size={16} className="text-gray-400"/> Total Pages/Copies</span>
-                    <span className="text-base font-black text-gray-900">{selectedJob.totalCopies || '—'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                    <span className="text-sm text-gray-500 flex items-center gap-2"><Printer size={16} className="text-gray-400"/> Print Type</span>
-                    <span className="text-sm font-bold text-gray-900">{selectedJob.printSheet || '—'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-50 pb-3">
-                    <span className="text-sm text-gray-500">Paper Details</span>
-                    <span className="text-sm font-bold text-gray-900 truncate max-w-37.5" title={selectedJob.coverPaperDetails}>{selectedJob.coverPaperDetails || '—'}</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-1">
-                    <span className="text-sm text-gray-500">Plate Size</span>
-                    <span className="text-sm font-bold text-gray-900">{selectedJob.plateSize || '—'}</span>
-                  </div>
-                </div>
-
-                <div className="bg-indigo-600 rounded-2xl shadow-sm shadow-indigo-200 p-5 text-white">
-                  <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-200 mb-1">Current Status</h5>
-                  <div className="text-xl font-black capitalize flex items-center gap-2">
-                    {selectedJob.status === 'completed' ? <CheckCircle size={20} className="text-green-300"/> : <Clock size={20} className="text-amber-300"/>}
-                    {selectedJob.status || 'pending'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: Paper Usage */}
-              <div className="lg:w-2/3">
+              {/* Paper Usage Content */}
+              <div className="w-full">
                 <h4 className="text-sm font-bold text-gray-900 uppercase tracking-widest flex items-center gap-2 mb-4">
                   <Droplets size={16} className="text-sky-500" />
                   Paper Usage Details

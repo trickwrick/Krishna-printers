@@ -85,6 +85,13 @@ const jobCardSchema = new mongoose.Schema({
     enum: ['pending', 'in-progress', 'completed', 'cancelled'], 
     default: 'pending' 
   },
+  
+  timeline: [{
+    action: { type: String, required: true },
+    details: { type: String },
+    userName: { type: String, default: 'System' },
+    timestamp: { type: Date, default: Date.now }
+  }],
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

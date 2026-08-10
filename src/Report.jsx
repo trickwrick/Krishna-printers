@@ -17,12 +17,14 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
+  Eye,
 } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
 import { mergeWithLocalJobCards, updateLocalJobCardField } from './utils/localJobCards';
 import { downloadAsPDF } from './utils/pdfExport';
 import * as XLSX from 'xlsx';
 import DailyWorkReport from './DailyWorkReport';
+import ProcessTimelineModal from './components/ProcessTimelineModal';
 
 const STATUS_CONFIG = {
   pending: {
@@ -94,10 +96,12 @@ const StatusDropdown = ({ jobId, currentStatus, onUpdate }) => {
 
     // Best-effort server sync
     try {
+      const user = JSON.parse(localStorage.getItem('crm_user'));
+      const userName = user?.name || 'System';
       await fetch(`${API_BASE_URL}/api/jobcard/${jobId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, userName }),
       });
     } catch (err) {
       // Server unavailable — local update already applied
@@ -113,11 +117,11 @@ const StatusDropdown = ({ jobId, currentStatus, onUpdate }) => {
       <button
         onClick={() => setOpen(!open)}
         disabled={loading}
-        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase ring-1 transition-all hover:opacity-80 ${cfg.bg} ${cfg.color} ${cfg.ring} ${loading ? 'animate-pulse' : ''}`}
+        className={`status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase ring-1 transition-all hover:opacity-80 ${cfg.bg} ${cfg.color} ${cfg.ring} ${loading ? 'animate-pulse' : ''}`}
       >
-        {loading ? <RefreshCw size={11} className="animate-spin" /> : <cfg.icon size={11} />}
+        {loading ? <RefreshCw size={11} className="animate-spin" /> : <cfg.icon size={11} className="status-icon" />}
         {cfg.label}
-        <ChevronDown size={9} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={9} className={`transition-transform no-print ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -147,6 +151,7 @@ export default function Report() {
     return params.get('type') || 'job-card';
   });
   const [reportDropdownOpen, setReportDropdownOpen] = useState(false);
+  const [selectedTimelineJob, setSelectedTimelineJob] = useState(null);
   const reportRef = useRef(null);
   const [dateDropdownOpen, setDateDropdownOpen] = useState(false);
   const dateRef = useRef(null);
@@ -572,7 +577,7 @@ export default function Report() {
                 <th className="px-5 py-4">Qty</th>
                 <th className="px-5 py-4 text-right">Amount</th>
                 <th className="px-5 py-4">Status</th>
-                <th className="px-5 py-4 text-center">View</th>
+                <th className="px-5 py-4 text-center no-print">View</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -632,14 +637,23 @@ export default function Report() {
                         onUpdate={handleStatusUpdate}
                       />
                     </td>
-                      <td className="px-5 py-4 text-center">
-                      <button
-                        onClick={() => navigate('/job-card-list')}
-                        className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
-                        title="View Job Card"
-                      >
-                        <ExternalLink size={15} />
-                      </button>
+                    <td className="px-5 py-4 text-center no-print">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setSelectedTimelineJob(card)}
+                          className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                          title="View Process Timeline"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          onClick={() => navigate('/job-card-list')}
+                          className="p-1.5 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
+                          title="View Job Card"
+                        >
+                          <ExternalLink size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -650,6 +664,13 @@ export default function Report() {
       </div>
       </>
       )}
+
+      {/* Process Timeline Modal */}
+      <ProcessTimelineModal 
+        isOpen={!!selectedTimelineJob}
+        onClose={() => setSelectedTimelineJob(null)}
+        jobCard={selectedTimelineJob}
+      />
     </div>
   );
 }

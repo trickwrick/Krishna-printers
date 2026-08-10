@@ -989,7 +989,7 @@ export default function JobCardListing() {
                     </tr>
 
                     <tr className="avoid-break">
-                      <td colSpan={8} className="tax-cell align-top p-0">
+                      <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
                         <div className="job-card-section-body job-card-work-instructions p-2" style={{ minHeight: '60px' }}>
                           <p className="job-card-work-instructions-text leading-relaxed m-0">
@@ -999,16 +999,18 @@ export default function JobCardListing() {
                           </p>
                         </div>
                       </td>
-                      <td colSpan={4} className="tax-cell align-top p-0">
+                    </tr>
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
                         <div className="job-card-section-body p-2 flex flex-col items-center justify-center" style={{ minHeight: '60px' }}>
                           {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
                             selectedCard.jobAttachment.type?.startsWith('image/') ? (
-                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '80px', objectFit: 'contain' }} />
+                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '250px', objectFit: 'contain' }} />
                             ) : (
                               <div className="text-center">
-                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
-                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '100px' }}>{selectedCard.jobAttachment.name}</p>
+                                <FileText size={32} className="mx-auto text-gray-400 mb-2" />
+                                <p className="text-[10px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
                               </div>
                             )
                           ) : (
@@ -1208,11 +1210,13 @@ export default function JobCardListing() {
                         placeholder="Qty Used..."
                         value={paperUsageInput}
                         onChange={(e) => setPaperUsageInput(e.target.value)}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                        disabled={isComplete}
+                        className={`flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm ${isComplete ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                       />
                       <button 
                         onClick={handleAddPaperUsage}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 flex items-center gap-2 shrink-0 shadow-md shadow-blue-100"
+                        disabled={isComplete}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shrink-0 ${isComplete ? 'bg-gray-400 cursor-not-allowed text-white shadow-none opacity-60' : 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105 active:scale-95 shadow-md shadow-blue-100'}`}
                       >
                         <Pencil size={14} /> Update
                       </button>

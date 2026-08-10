@@ -1545,25 +1545,23 @@ export default function JobCardForm() {
                   </tbody>
                 </table>
 
-                <div className="grid grid-cols-2 gap-3 mb-5">
-                  <div className="border border-gray-300 p-3 min-h-24">
-                    <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
-                    <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
-                  </div>
-                  {previewData.jobAttachment && previewData.jobAttachment.dataUrl && (
-                    <div className="border border-gray-300 p-3 min-h-24 flex flex-col items-center justify-center">
-                      <p className="text-[10px] uppercase font-black text-gray-500 mb-1 w-full text-left">Attached File</p>
-                      {previewData.jobAttachment.type?.startsWith('image/') ? (
-                        <img src={previewData.jobAttachment.dataUrl} alt="Attachment" className="max-w-full max-h-32 object-contain" />
-                      ) : (
-                        <div className="text-center">
-                          <FileText size={32} className="mx-auto text-gray-400 mb-2" />
-                          <p className="text-[10px] text-gray-600 truncate max-w-37.5">{previewData.jobAttachment.name}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="mb-5 border border-gray-300 p-3 min-h-24">
+                  <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
+                  <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
                 </div>
+                {previewData.jobAttachment && previewData.jobAttachment.dataUrl && (
+                  <div className="mb-5 border border-gray-300 p-3 min-h-24 flex flex-col items-center justify-center">
+                    <p className="text-[10px] uppercase font-black text-gray-500 mb-1 w-full text-left">Attached File</p>
+                    {previewData.jobAttachment.type?.startsWith('image/') ? (
+                      <img src={previewData.jobAttachment.dataUrl} alt="Attachment" className="max-w-full max-h-64 object-contain" />
+                    ) : (
+                      <div className="text-center">
+                        <FileText size={32} className="mx-auto text-gray-400 mb-2" />
+                        <p className="text-[10px] text-gray-600 truncate max-w-xs mx-auto">{previewData.jobAttachment.name}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="p-4 border-t bg-white flex justify-end gap-3 no-print">
