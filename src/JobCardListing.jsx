@@ -384,14 +384,35 @@ export default function JobCardListing() {
 
   const confirmDelete = async () => {
     if (cardToDelete) {
-      const card = jobCards.find((item) => item._id === cardToDelete);
+      const card = jobCards.find((item) => item._id === cardToDelete || item.jobNumber === cardToDelete);
+      const deleteTarget = card?._id || card?.jobNumber || cardToDelete;
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/jobcard/${deleteTarget}`, {
+          method: "DELETE"
+        });
+        if (response.ok) {
+          if (card?.localOnly) {
+            deleteLocalJobCard(cardToDelete);
+          }
+          setJobCards(jobCards.filter(item => item._id !== cardToDelete && item.jobNumber !== cardToDelete));
+          setIsDeleteModalOpen(false);
+          setCardToDelete(null);
+          return;
+        }
+      } catch (error) {
+        console.error("Error deleting job card on server:", error);
+      }
+
       if (card?.localOnly) {
         deleteLocalJobCard(cardToDelete);
         try {
+          const payload = { ...card, isDeleted: true, deletedAt: new Date() };
+          delete payload._id;
           await fetch(`${API_BASE_URL}/api/jobcard`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...card, isDeleted: true, deletedAt: new Date() })
+            body: JSON.stringify(payload)
           });
         } catch (e) {
           console.error("Failed to sync soft delete to server:", e);
@@ -399,22 +420,6 @@ export default function JobCardListing() {
         setJobCards(jobCards.filter((item) => item._id !== cardToDelete));
         setIsDeleteModalOpen(false);
         setCardToDelete(null);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/jobcard/${cardToDelete}`, {
-          method: "DELETE"
-        });
-        if (response.ok) {
-          setJobCards(jobCards.filter(card => card._id !== cardToDelete));
-          setIsDeleteModalOpen(false);
-          setCardToDelete(null);
-        } else {
-          console.error("Failed to delete job card");
-        }
-      } catch (error) {
-        console.error("Error deleting job card:", error);
       }
     }
   };

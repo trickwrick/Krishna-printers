@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 const router = express.Router();
 import JobCard from '../models/JobCard.js';
 import Notification from '../models/Notification.js';
@@ -191,7 +192,11 @@ router.post('/', async (req, res) => {
     // Check if updating existing job card
     let jobCard;
     let isUpdate = false;
-    const { _id } = req.body;
+    let _id = req.body._id;
+    if (_id && !mongoose.Types.ObjectId.isValid(_id)) {
+      delete req.body._id;
+      _id = null;
+    }
     let previousJob = null;
 
     if (_id) {
@@ -371,10 +376,21 @@ router.get('/:id', async (req, res) => {
 // DELETE /api/jobcard/:id - Soft delete
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await JobCard.findByIdAndUpdate(req.params.id, {
-      isDeleted: true,
-      deletedAt: new Date()
-    });
+    const { id } = req.params;
+    let result = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      result = await JobCard.findByIdAndUpdate(id, {
+        isDeleted: true,
+        deletedAt: new Date()
+      });
+    }
+    if (!result) {
+      result = await JobCard.findOneAndUpdate(
+        { $or: [{ _id: id }, { jobNumber: id }] },
+        { isDeleted: true, deletedAt: new Date() },
+        { new: true }
+      );
+    }
     if (!result) return res.status(404).json({ message: "Job Card not found" });
     res.json({ message: "Job Card moved to recycle bin" });
   } catch (err) {
@@ -386,10 +402,21 @@ router.delete('/:id', async (req, res) => {
 // PUT /api/jobcard/:id/restore - Restore soft-deleted job card
 router.put('/:id/restore', async (req, res) => {
   try {
-    const result = await JobCard.findByIdAndUpdate(req.params.id, {
-      isDeleted: false,
-      deletedAt: null
-    });
+    const { id } = req.params;
+    let result = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      result = await JobCard.findByIdAndUpdate(id, {
+        isDeleted: false,
+        deletedAt: null
+      });
+    }
+    if (!result) {
+      result = await JobCard.findOneAndUpdate(
+        { $or: [{ _id: id }, { jobNumber: id }] },
+        { isDeleted: false, deletedAt: null },
+        { new: true }
+      );
+    }
     if (!result) return res.status(404).json({ message: "Job Card not found" });
     res.json({ message: "Job Card restored successfully" });
   } catch (err) {
