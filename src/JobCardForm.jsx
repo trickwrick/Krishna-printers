@@ -484,15 +484,30 @@ export default function JobCardForm() {
       bindingPukki: fd.get('bindingPukki') === 'on',
     };
 
-    const saveLocalAndOpenList = () => {
-      const saved = saveLocalJobCard(jobCard);
-      rememberPlateUsage(saved.plateSize || plateSize.join(', '), saved.plateUseCount);
+    const saveAndOpenList = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/jobcard`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(jobCard)
+        });
+        if (response.ok) {
+          const savedData = await response.json();
+          rememberPlateUsage(savedData.plateSize || plateSize.join(', '), savedData.plateUseCount);
+        } else {
+          console.warn("Backend save failed, saving locally...");
+          saveLocalJobCard(jobCard);
+        }
+      } catch (err) {
+        console.error("Server save error:", err);
+        saveLocalJobCard(jobCard);
+      }
       window.dispatchEvent(new Event('jobCardsUpdated'));
       window.dispatchEvent(new Event('fetchNotifications'));
       navigate('/job-card-list');
     };
 
-    saveLocalAndOpenList();
+    await saveAndOpenList();
   };
 
   return (

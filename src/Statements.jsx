@@ -500,7 +500,6 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                   <h3>{SELLER.name}</h3>
                   <p>{SELLER.address}</p>
                   <p>{SELLER.tel}, {SELLER.email}</p>
-                  <p><span className="financial-statement-label">MSME REGD NO :-</span> {SELLER.msmeRegNo}</p>
                   <p><span className="financial-statement-label">GSTIN :</span> {SELLER.gstin}</p>
                 </div>
 

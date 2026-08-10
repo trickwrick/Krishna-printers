@@ -499,7 +499,11 @@ const ChallanList = () => {
                       <td colSpan={taxColCount} className="tax-cell text-center align-middle py-2">
                         <CompanyBrandName uppercase />
                         <p className="tax-header-line">{SELLER.address}</p>
-                        <p className="tax-header-line">{SELLER.tel}, {SELLER.email}</p>
+                        {(SELLER.tel || SELLER.email) && (
+                          <p className="tax-header-line">
+                            {[SELLER.tel, SELLER.email].filter(Boolean).join(', ')}
+                          </p>
+                        )}
                         <SellerGstinMsmeLines />
                       </td>
                     </tr>

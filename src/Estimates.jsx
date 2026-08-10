@@ -315,7 +315,7 @@ export default function Estimates() {
                       </div>
                     </td>
                     <td className="py-4 px-3 sm:px-4 align-top">
-                      <p className="font-bold text-gray-900 text-xs sm:text-sm break-words">{item.partyName}</p>
+                      <p className="font-bold text-gray-900 text-xs sm:text-sm wrap-break-word">{item.partyName}</p>
                       <p className="text-[10px] text-gray-400 font-medium uppercase mt-0.5 tracking-tight line-clamp-1">{item.address || 'No Address'}</p>
                     </td>
                     <td className="py-4 px-3 sm:px-4 align-top">
@@ -331,7 +331,7 @@ export default function Estimates() {
                       </div>
                     </td>
                     <td className="py-4 px-3 sm:px-4 bg-orange-50/30 align-top">
-                      <div className="relative max-w-[130px] mx-auto">
+                      <div className="relative max-w-32.5 mx-auto">
                         <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 text-orange-400" size={14} />
                         <input
                           type="number"
@@ -396,7 +396,7 @@ export default function Estimates() {
 
       {isModalOpen && selectedEstimate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 overflow-y-auto print-modal-overlay">
-          <div className="print-modal-shell bg-white border border-gray-300 w-full max-w-full relative h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
+          <div className="print-modal-shell bg-white border border-gray-300 w-full max-w-full relative h-dvh sm:h-auto max-h-dvh sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
             <div className="p-4 border-b flex justify-between items-center bg-white modal-header no-print">
               <h2 className="text-xl font-bold text-gray-800">Quotation Preview</h2>
               <div className="flex items-center gap-3">
@@ -432,7 +432,11 @@ export default function Estimates() {
                       <td colSpan={ESTIMATE_COL_COUNT} className="tax-cell text-center align-middle py-2">
                         <CompanyBrandName uppercase />
                         <p className="tax-header-line">{SELLER.address}</p>
-                        <p className="tax-header-line">{SELLER.tel}, {SELLER.email}</p>
+                        {(SELLER.tel || SELLER.email) && (
+                          <p className="tax-header-line">
+                            {[SELLER.tel, SELLER.email].filter(Boolean).join(', ')}
+                          </p>
+                        )}
                         <SellerGstinMsmeLines />
                       </td>
                     </tr>

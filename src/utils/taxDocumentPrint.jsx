@@ -6,12 +6,12 @@ export const SELLER = {
   name: 'KRISHNA PRINTERS',
   brandName: 'Krishna',
   brandSuffix: 'Printers',
-  address: '',
+  address: 'F-113 Kartarpura Ind. area, Road no 4 22 Godam, Bank of Baroda ke Pass, Jaipur, Rajasthan 302006',
   office: '',
   factory: '',
-  gstin: '',
+  gstin: '08AJYPS6620D1ZQ',
   msmeRegNo: '',
-  pan: '',
+  pan: 'AJYPS6620D',
   state: 'Rajasthan',
   stateCode: '08',
   tel: '',
@@ -75,7 +75,6 @@ export const TaxFieldsTable = ({ rows }) => (
 
 export const SellerGstinMsmeLines = () => (
   <>
-    <p className="tax-header-line"><span className="tax-field-label">MSME REGD NO :-</span> {SELLER.msmeRegNo}</p>
     <p className="tax-header-line"><span className="tax-field-label">GSTIN :</span> {SELLER.gstin}</p>
   </>
 );
@@ -758,24 +757,39 @@ export const JobCardLetterhead = ({ docTitle = 'JOB CARD' }) => (
         <span className="company-brand-accent" style={{ color: '#000000' }}>{SELLER.brandSuffix}</span>
       </h1>
       <div className="space-y-0.5">
-        <p className="job-card-letterhead-line text-[10px] text-gray-800 leading-snug">
-          <span className="text-blue-600 font-bold uppercase">Office:</span>{' '}
-          <span className="font-semibold">{SELLER.office}</span>
-        </p>
-        <p className="job-card-letterhead-line text-[10px] text-gray-800 leading-snug">
-          <span className="text-blue-600 font-bold uppercase">Factory:</span>{' '}
-          <span className="font-semibold">{SELLER.factory}</span>
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-          <p className="job-card-letterhead-line text-[10px] font-semibold text-gray-800 flex items-center gap-1">
-            <Phone size={10} className="text-blue-500 shrink-0" strokeWidth={2.5} />
-            {SELLER.tel}
+        {SELLER.address ? (
+          <p className="job-card-letterhead-line text-[10px] text-gray-800 leading-snug whitespace-pre-wrap max-w-md">
+            <span className="font-semibold">{SELLER.address}</span>
           </p>
-          <p className="job-card-letterhead-line text-[10px] font-semibold text-gray-800 flex items-center gap-1">
-            <Mail size={10} className="text-blue-500 shrink-0" strokeWidth={2.5} />
-            {SELLER.email}
-          </p>
-        </div>
+        ) : (
+          <>
+            <p className="job-card-letterhead-line text-[10px] text-gray-800 leading-snug">
+              <span className="text-blue-600 font-bold uppercase">Office:</span>{' '}
+              <span className="font-semibold">{SELLER.office}</span>
+            </p>
+            <p className="job-card-letterhead-line text-[10px] text-gray-800 leading-snug">
+              <span className="text-blue-600 font-bold uppercase">Factory:</span>{' '}
+              <span className="font-semibold">{SELLER.factory}</span>
+            </p>
+          </>
+        )}
+        
+        {(SELLER.tel || SELLER.email) && (
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+            {SELLER.tel && (
+              <p className="job-card-letterhead-line text-[10px] font-semibold text-gray-800 flex items-center gap-1">
+                <Phone size={10} className="text-blue-500 shrink-0" strokeWidth={2.5} />
+                {SELLER.tel}
+              </p>
+            )}
+            {SELLER.email && (
+              <p className="job-card-letterhead-line text-[10px] font-semibold text-gray-800 flex items-center gap-1">
+                <Mail size={10} className="text-blue-500 shrink-0" strokeWidth={2.5} />
+                {SELLER.email}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
     <div className="text-right flex flex-col items-end shrink-0">
@@ -786,10 +800,6 @@ export const JobCardLetterhead = ({ docTitle = 'JOB CARD' }) => (
         <span>
           GSTIN:{' '}
           <span className="text-gray-900 font-black normal-case tracking-normal">{SELLER.gstin}</span>
-        </span>
-        <span>
-          MSME REGD NO:-{' '}
-          <span className="text-gray-900 font-black normal-case tracking-normal">{SELLER.msmeRegNo}</span>
         </span>
         <span>
           PAN:{' '}

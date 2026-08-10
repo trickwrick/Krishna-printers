@@ -37,6 +37,8 @@ const challanSchema = new mongoose.Schema({
   vehicleNo: { type: String, default: '' },
   state: { type: String, default: 'Rajasthan' },
   stateCode: { type: String, default: '08' },
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });

@@ -346,17 +346,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/jobcard/:id - Fetch single Job Card
-router.get('/:id', async (req, res) => {
-  try {
-    const jobCard = await JobCard.findById(req.params.id);
-    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
-    res.json(jobCard);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // GET /api/jobcard/deleted/all - Fetch all deleted Job Cards
 router.get('/deleted/all', async (req, res) => {
   try {
@@ -364,6 +353,17 @@ router.get('/deleted/all', async (req, res) => {
     res.json(jobCards);
   } catch (err) {
     console.error(`❌ Fetch Deleted Error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/jobcard/:id - Fetch single Job Card
+router.get('/:id', async (req, res) => {
+  try {
+    const jobCard = await JobCard.findById(req.params.id);
+    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
+    res.json(jobCard);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

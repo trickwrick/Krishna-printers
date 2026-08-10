@@ -387,6 +387,15 @@ export default function JobCardListing() {
       const card = jobCards.find((item) => item._id === cardToDelete);
       if (card?.localOnly) {
         deleteLocalJobCard(cardToDelete);
+        try {
+          await fetch(`${API_BASE_URL}/api/jobcard`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...card, isDeleted: true, deletedAt: new Date() })
+          });
+        } catch (e) {
+          console.error("Failed to sync soft delete to server:", e);
+        }
         setJobCards(jobCards.filter((item) => item._id !== cardToDelete));
         setIsDeleteModalOpen(false);
         setCardToDelete(null);
@@ -889,15 +898,22 @@ export default function JobCardListing() {
                         <div className="flex justify-between items-start gap-4 p-2">
                           <div className="job-card-company-header flex-1 min-w-0">
                             <CompanyBrandName className="text-left job-card-brand leading-none mb-1" large />
-                            <p className="tax-header-line text-left">Office: {SELLER.office}</p>
-                            <p className="tax-header-line text-left">Factory: {SELLER.factory}</p>
-                            <p className="tax-header-line text-left">{SELLER.tel}, {SELLER.email}</p>
+                            {SELLER.address ? (
+                              <p className="tax-header-line text-left whitespace-pre-wrap leading-tight max-w-sm my-1">{SELLER.address}</p>
+                            ) : (
+                              <>
+                                <p className="tax-header-line text-left">Office: {SELLER.office}</p>
+                                <p className="tax-header-line text-left">Factory: {SELLER.factory}</p>
+                              </>
+                            )}
+                            {(SELLER.tel || SELLER.email) && (
+                              <p className="tax-header-line text-left">
+                                {[SELLER.tel, SELLER.email].filter(Boolean).join(', ')}
+                              </p>
+                            )}
                             <p className="tax-header-line text-left">
                               <span className="tax-field-label">GSTIN :</span> {SELLER.gstin}
                               <span className="ml-4 tax-field-label">PAN :</span> {SELLER.pan}
-                            </p>
-                            <p className="tax-header-line text-left">
-                              <span className="tax-field-label">MSME REGD NO :-</span> {SELLER.msmeRegNo}
                             </p>
                           </div>
                           <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[11px] font-black uppercase tracking-widest shrink-0">

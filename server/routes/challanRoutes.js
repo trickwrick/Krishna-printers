@@ -36,10 +36,20 @@ router.post('/', async (req, res) => {
   }
 });
 
+// GET /api/challan/deleted/all - Fetch all deleted Challans
+router.get('/deleted/all', async (req, res) => {
+  try {
+    const challans = await Challan.find({ isDeleted: true }).sort({ deletedAt: -1 });
+    res.json(challans);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/challan - Fetch all Challans
 router.get('/', async (req, res) => {
   try {
-    const challans = await Challan.find().sort({ createdAt: -1 });
+    const challans = await Challan.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     res.json(challans);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,12 +71,29 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/challan/:id - Delete a Challan
+// DELETE /api/challan/:id - Soft Delete a Challan
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await Challan.findByIdAndDelete(req.params.id);
+    const result = await Challan.findByIdAndUpdate(req.params.id, {
+      isDeleted: true,
+      deletedAt: new Date()
+    });
     if (!result) return res.status(404).json({ message: "Challan not found" });
-    res.json({ message: "Challan deleted successfully" });
+    res.json({ message: "Challan moved to recycle bin" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/challan/:id/restore - Restore soft-deleted challan
+router.put('/:id/restore', async (req, res) => {
+  try {
+    const result = await Challan.findByIdAndUpdate(req.params.id, {
+      isDeleted: false,
+      deletedAt: null
+    });
+    if (!result) return res.status(404).json({ message: "Challan not found" });
+    res.json({ message: "Challan restored successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
