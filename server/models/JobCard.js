@@ -44,6 +44,8 @@ const jobCardSchema = new mongoose.Schema({
   plateQty: { type: String, default: "0" },
   printingQty: { type: String, default: "0" },
   lamination: { type: String },
+  laminationSide: { type: String },
+  laminationSize: { type: String },
   bindingCenterPin: { type: Boolean, default: false },
   bindingSilai: { type: Boolean, default: false },
   bindingSidePin: { type: Boolean, default: false },
@@ -63,9 +65,12 @@ const jobCardSchema = new mongoose.Schema({
   bindingNote: { type: String },
   filePath: { type: String },
   plateSize: { type: String },
-  plateUseCount: { type: Number },
+  plateUseCount: { type: String },
   plateNo: { type: String },
   platePrice: { type: Number, default: 0 },
+  dripOffPlateType: { type: String },
+  dripOffJobSize: { type: String },
+  dripOffQty: { type: String },
 
   // Job Summary
   plateFrom: { type: String },
