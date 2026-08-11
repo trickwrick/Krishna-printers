@@ -1042,38 +1042,6 @@ export default function JobCardListing() {
 
                     <tr className="avoid-break">
                       <td colSpan={12} className="tax-cell align-top p-0">
-                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
-                        <div className="job-card-section-body job-card-work-instructions p-1.5" style={{ minHeight: '30px' }}>
-                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[11px]">
-                            {selectedCard.notes?.trim()
-                              ? selectedCard.notes
-                              : 'Handle with care. Ensure high quality print and accurate alignment.'}
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr className="avoid-break">
-                      <td colSpan={12} className="tax-cell align-top p-0">
-                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
-                        <div className="job-card-section-body p-1.5 flex flex-col items-center justify-center" style={{ minHeight: '40px' }}>
-                          {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
-                            selectedCard.jobAttachment.type?.startsWith('image/') ? (
-                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} />
-                            ) : (
-                              <div className="text-center">
-                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
-                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
-                              </div>
-                            )
-                          ) : (
-                            <span className="text-[9px] text-gray-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-
-                    <tr className="avoid-break">
-                      <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Finishing Processes</div>
                         <div className="job-card-section-body p-1" style={{ minHeight: '30px' }}>
                           {(() => {
@@ -1112,6 +1080,37 @@ export default function JobCardListing() {
                               </table>
                             );
                           })()}
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
+                        <div className="job-card-section-body job-card-work-instructions p-1.5" style={{ minHeight: '30px' }}>
+                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[11px]">
+                            {selectedCard.notes?.trim()
+                              ? selectedCard.notes
+                              : 'Handle with care. Ensure high quality print and accurate alignment.'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
+                        <div className="job-card-section-body p-1.5 flex flex-col items-center justify-center" style={{ minHeight: '40px' }}>
+                          {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
+                            selectedCard.jobAttachment.type?.startsWith('image/') ? (
+                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} />
+                            ) : (
+                              <div className="text-center">
+                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
+                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[9px] text-gray-400">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
