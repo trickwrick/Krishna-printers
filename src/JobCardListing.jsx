@@ -995,7 +995,7 @@ export default function JobCardListing() {
                                         return (
                                           <span key={size}>
                                             <span className="font-semibold">{size}</span>
-                                            <span className="text-[10px] text-gray-500 ml-1">(Qty: {d.qty}, {d.color})</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
                                           </span>
                                         );
                                       })}
@@ -1006,7 +1006,7 @@ export default function JobCardListing() {
                               return selectedCard.plateSize || '-';
                             })()],
                             ...(selectedCard.plateType === 'Old' || selectedCard.plateType === 'Old Plate' 
-                                ? [['Plate Number', selectedCard.plateUseCount || '-']] 
+                                ? [['Plate Used', selectedCard.plateUseCount || '-']] 
                                 : []),
                             ['Plate Qty', selectedCard.plateQty ?? 0],
                             ['Print Side', selectedCard.printSheet || 'Single Side'],

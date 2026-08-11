@@ -1278,7 +1278,7 @@ export default function JobCardForm() {
                       <div key={size} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <span className="font-semibold text-gray-800 w-24 shrink-0">{size}</span>
                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <label className="text-xs text-gray-500 shrink-0">Qty:</label>
+                          <label className="text-xs text-gray-500 shrink-0">Set:</label>
                           <div className="flex items-center border border-gray-300 rounded-md bg-white">
                             <button
                               type="button"
@@ -1322,7 +1322,7 @@ export default function JobCardForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {plateType === 'Old Plate' && (
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1">Plate Used</label>
                     {plateSize.length > 0 ? (
                       <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
                         {plateSize.map((size) => (
@@ -1615,7 +1615,7 @@ export default function JobCardForm() {
                                 return (
                                   <span key={size}>
                                     <span className="font-semibold">{size}</span>
-                                    <span className="text-[10px] text-gray-500 ml-1">(Qty: {d.qty}, {d.color})</span>
+                                    <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
                                   </span>
                                 );
                               })}
@@ -1626,7 +1626,7 @@ export default function JobCardForm() {
                       return previewData.plateSize || '-';
                     })()],
                     ...(previewData.plateType === 'Old' || previewData.plateType === 'Old Plate' 
-                        ? [['Plate No.', previewData.plateUseCount || '-']] 
+                        ? [['Plate Used', previewData.plateUseCount || '-']] 
                         : []),
                     ['Sides', previewData.printSheet],
                     ['Lamination', (
