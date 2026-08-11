@@ -16,6 +16,7 @@ import {
 import { SELLER } from './utils/taxDocumentPrint';
 import { printElement } from './utils/printDocument';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 import {
   buildFinancialStatement,
   formatStatementDate,
@@ -344,10 +345,12 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                         <p className="text-[10px] font-black text-emerald-600 uppercase mt-0.5">Verified Inflow</p>
                       </td>
                       <td className="px-8 py-5 text-center">
-                        <button onClick={() => handleDelete(item._id)}
-                          className="p-2.5 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all">
-                          <Trash2 size={16} />
-                        </button>
+                        {hasPermission('statements', 'delete') && (
+                          <button onClick={() => handleDelete(item._id)}
+                            className="p-2.5 text-red-400 hover:text-white hover:bg-red-500 rounded-xl transition-all">
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -467,14 +470,16 @@ const Statements = ({ defaultTab = 'transactions' }) => {
                   onChange={(e) => setInvoiceSearch(e.target.value)}
                 />
               </div>
-              <button
-                type="button"
-                onClick={handlePrintStatement}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all"
-              >
-                <Printer size={16} />
-                Print Statement
-              </button>
+              {hasPermission('statements', 'print') && (
+                <button
+                  type="button"
+                  onClick={handlePrintStatement}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all"
+                >
+                  <Printer size={16} />
+                  Print Statement
+                </button>
+              )}
             </div>
           </div>
 

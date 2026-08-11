@@ -16,6 +16,7 @@ import { getBillToDetails, getShipToDetails } from './utils/shipAddress';
 import { numberToWords } from './utils/numberToWords';
 import { SELLER, fmtTaxDate, fmtAmt, getStateFromGst, formatStateWithCode, TaxFieldsTable, SellerGstinMsmeLines, TaxDocumentSignaturesRow, TaxTermsAndReceiverSignature, TaxBankAndAuthorisedSignature, buildTaxItemLine, getEmptyProductRowCount, CompanyBrandName, TaxCopyBox, TaxCopyTypeControls, DEFAULT_TAX_COPY_SELECTION, getSelectedCopyIds, getPreviewHighlightCopy, TaxInvoiceColGroup, getTaxTableColCount, getTaxTableHalfColSpans, getTaxChargeSubRowCount, TaxClassicItemsBlock, buildTaxAnalysisGroups, TaxAnalysisSection } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 
 const InvoiceList = () => {
   const navigate = useNavigate();
@@ -221,12 +222,14 @@ const InvoiceList = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 border-b border-gray-50">
             <h2 className="text-lg font-bold text-gray-800">Invoice Listings</h2>
-            <button
-              onClick={() => navigate('/invoice/add')}
-              className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
-            >
-              <Plus size={18} /> Add New
-            </button>
+            {hasPermission('invoice', 'create') && (
+              <button
+                onClick={() => navigate('/invoice/add')}
+                className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
+              >
+                <Plus size={18} /> Add New
+              </button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -302,27 +305,33 @@ const InvoiceList = () => {
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-center">
                         <div className="flex justify-center items-center gap-2 sm:gap-3">
-                          <button
-                            onClick={() => openPreview(inv)}
-                            className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90"
-                            title="Print / View Invoice"
-                          >
-                            <Printer size={16} />
-                          </button>
-                          <button
-                            onClick={() => navigate('/invoice/add', { state: { editData: mergeDocumentForPrint(inv) } })}
-                            className="bg-teal-50 text-teal-600 p-2 rounded-lg hover:bg-teal-100 transition-all active:scale-90"
-                            title="Edit invoice"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(inv._id)}
-                            className="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition-all active:scale-90"
-                            title="Delete invoice"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {hasPermission('invoice', 'print') && (
+                            <button
+                              onClick={() => openPreview(inv)}
+                              className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90"
+                              title="Print / View Invoice"
+                            >
+                              <Printer size={16} />
+                            </button>
+                          )}
+                          {hasPermission('invoice', 'edit') && (
+                            <button
+                              onClick={() => navigate('/invoice/add', { state: { editData: mergeDocumentForPrint(inv) } })}
+                              className="bg-teal-50 text-teal-600 p-2 rounded-lg hover:bg-teal-100 transition-all active:scale-90"
+                              title="Edit invoice"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                          {hasPermission('invoice', 'delete') && (
+                            <button
+                              onClick={() => handleDelete(inv._id)}
+                              className="bg-red-50 text-red-500 p-2 rounded-lg hover:bg-red-100 transition-all active:scale-90"
+                              title="Delete invoice"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

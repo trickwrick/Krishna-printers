@@ -18,6 +18,7 @@ import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import { mergeItemNotes } from './utils/itemNoteStorage';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 import {
   SELLER,
   fmtTaxDate,
@@ -251,13 +252,15 @@ export default function Estimates() {
           />
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={openAddForm}
-            className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-orange-100 active:scale-95"
-          >
-            <Plus size={18} />
-            Add New Estimate & Quotation
-          </button>
+          {hasPermission('estimates', 'create') && (
+            <button
+              onClick={openAddForm}
+              className="inline-flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg shadow-orange-100 active:scale-95"
+            >
+              <Plus size={18} />
+              Add New Estimate & Quotation
+            </button>
+          )}
           <button
             onClick={loadData}
             className="p-3 text-gray-600 hover:bg-orange-50 hover:text-orange-600 rounded-2xl transition-all border border-gray-100 active:rotate-180 duration-500 group"
@@ -344,46 +347,52 @@ export default function Estimates() {
                     </td>
                     <td className="py-4 px-3 sm:px-4 text-center align-top">
                       <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openEditForm(item)}
-                          className="p-2 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
-                          title="Edit Estimate"
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => handlePrint(item)}
-                          className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
-                          title="Print Quotation"
-                        >
-                          <Printer size={18} />
-                        </button>
-                        <button
-                          onClick={() => updatePrice(item._id)}
-                          disabled={saveStatus[item._id] === 'saving'}
-                          className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:shadow-none shrink-0 ${saveStatus[item._id] === 'saved'
-                            ? 'bg-green-600 text-white shadow-green-100'
-                            : saveStatus[item._id] === 'error'
-                              ? 'bg-red-600 text-white shadow-red-100'
-                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100'
-                            }`}
-                          title={saveStatus[item._id] === 'saved' ? 'Saved' : 'Update Price'}
-                        >
-                          {saveStatus[item._id] === 'saving' ? (
-                            <RefreshCw size={14} className="animate-spin" />
-                          ) : saveStatus[item._id] === 'saved' ? (
-                            <Check size={14} />
-                          ) : (
-                            <Save size={14} />
-                          )}
-                          <span className="hidden xl:inline">
-                            {saveStatus[item._id] === 'saving'
-                              ? 'Saving...'
-                              : saveStatus[item._id] === 'saved'
-                                ? 'Saved!'
-                                : 'Update'}
-                          </span>
-                        </button>
+                        {hasPermission('estimates', 'edit') && (
+                          <button
+                            onClick={() => openEditForm(item)}
+                            className="p-2 bg-orange-50 text-orange-600 hover:bg-orange-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                            title="Edit Estimate"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                        )}
+                        {hasPermission('estimates', 'print') && (
+                          <button
+                            onClick={() => handlePrint(item)}
+                            className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                            title="Print Quotation"
+                          >
+                            <Printer size={18} />
+                          </button>
+                        )}
+                        {hasPermission('estimates', 'edit') && (
+                          <button
+                            onClick={() => updatePrice(item._id)}
+                            disabled={saveStatus[item._id] === 'saving'}
+                            className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:shadow-none shrink-0 ${saveStatus[item._id] === 'saved'
+                              ? 'bg-green-600 text-white shadow-green-100'
+                              : saveStatus[item._id] === 'error'
+                                ? 'bg-red-600 text-white shadow-red-100'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-100'
+                              }`}
+                            title={saveStatus[item._id] === 'saved' ? 'Saved' : 'Update Price'}
+                          >
+                            {saveStatus[item._id] === 'saving' ? (
+                              <RefreshCw size={14} className="animate-spin" />
+                            ) : saveStatus[item._id] === 'saved' ? (
+                              <Check size={14} />
+                            ) : (
+                              <Save size={14} />
+                            )}
+                            <span className="hidden xl:inline">
+                              {saveStatus[item._id] === 'saving'
+                                ? 'Saving...'
+                                : saveStatus[item._id] === 'saved'
+                                  ? 'Saved!'
+                                  : 'Update'}
+                            </span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

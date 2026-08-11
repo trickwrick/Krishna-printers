@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Database, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 
 const PlateStockManagement = () => {
   const [stock, setStock] = useState([]);
@@ -138,14 +139,16 @@ const PlateStockManagement = () => {
           </h1>
           <p className="text-sm text-gray-500 mt-1 font-medium italic">Track inventory for Plates.</p>
         </div>
-        <button
-          onClick={() => { setIsAdding(!isAdding); setEditingId(null); setCurrentQuantity(0); }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${
-            isAdding ? 'bg-gray-100 text-gray-600' : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-        >
-          {isAdding ? 'Back to List' : <><Plus size={18} /> Add Plate Stock</>}
-        </button>
+        {hasPermission('paperStock', 'create') && (
+          <button
+            onClick={() => { setIsAdding(!isAdding); setEditingId(null); setCurrentQuantity(0); }}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all shadow-lg active:scale-95 ${
+              isAdding ? 'bg-gray-100 text-gray-600' : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            {isAdding ? 'Back to List' : <><Plus size={18} /> Add Plate Stock</>}
+          </button>
+        )}
       </div>
 
       {message.text && (
@@ -402,18 +405,22 @@ const PlateStockManagement = () => {
                           </td>
                           <td className="px-6 py-5">
                              <div className="flex justify-center gap-2">
-                                <button 
-                                  onClick={() => handleEdit(item)}
-                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => handleDelete(item._id)}
-                                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                {hasPermission('paperStock', 'edit') && (
+                                  <button 
+                                    onClick={() => handleEdit(item)}
+                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                )}
+                                {hasPermission('paperStock', 'delete') && (
+                                  <button 
+                                    onClick={() => handleDelete(item._id)}
+                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
                              </div>
                           </td>
                         </tr>

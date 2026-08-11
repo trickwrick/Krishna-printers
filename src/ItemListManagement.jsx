@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Package } from 'lucide-react';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 
 const EMPTY_FORM = {
   name: '',
@@ -229,13 +230,15 @@ const ItemListManagement = () => {
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95"
-              >
-                {isSaving ? 'Saving...' : (editingId ? 'Update Item' : 'Save Item')}
-              </button>
+              {hasPermission('itemList', editingId ? 'edit' : 'create') && (
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full bg-blue-800 hover:bg-blue-900 disabled:opacity-60 text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95"
+                >
+                  {isSaving ? 'Saving...' : (editingId ? 'Update Item' : 'Save Item')}
+                </button>
+              )}
               {editingId && (
                 <button
                   type="button"
@@ -302,22 +305,26 @@ const ItemListManagement = () => {
                         <td className="px-4 py-3 text-sm text-center text-gray-700">{item.gstPercent ?? 18}%</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-center items-center gap-3">
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(item)}
-                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(item._id)}
-                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {hasPermission('itemList', 'edit') && (
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(item)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
+                            {hasPermission('itemList', 'delete') && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(item._id)}
+                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
 import { mergeWithLocalJobCards } from './utils/localJobCards';
+import { hasPermission } from './utils/permissions';
 
 const STORAGE_KEY = 'dailyProductionEntries';
 
@@ -246,12 +247,14 @@ const DetailDrawer = ({ job, entries, onClose, onAddEntry, onDeleteEntry }) => {
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                 All Entries <span className="text-gray-600 font-black">({jobEntries.length})</span>
               </p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20"
-              >
-                <PlusCircle size={13} /> Add Entry
-              </button>
+              {hasPermission('jobCard', 'create') && (
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20"
+                >
+                  <PlusCircle size={13} /> Add Entry
+                </button>
+              )}
             </div>
 
             {jobEntries.length === 0 ? (
@@ -278,12 +281,14 @@ const DetailDrawer = ({ job, entries, onClose, onAddEntry, onDeleteEntry }) => {
                       <p className="text-base font-black text-blue-700">{Number(entry.qty).toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400">pieces</p>
                     </div>
-                    <button
-                      onClick={() => onDeleteEntry(entry.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 transition"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {hasPermission('jobCard', 'delete') && (
+                      <button
+                        onClick={() => onDeleteEntry(entry.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-100 text-red-400 hover:text-red-600 transition"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

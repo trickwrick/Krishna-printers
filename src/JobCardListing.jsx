@@ -8,6 +8,7 @@ import { syncPlateUsageFromCards } from './utils/plateUsage';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
 import { deleteLocalJobCard, mergeWithLocalJobCards, migrateLocalJobNumbers, updateLocalJobCardField } from './utils/localJobCards';
+import { hasPermission } from './utils/permissions';
 
 const BINDING_OPTIONS = [
   { key: 'bindingCenterPin', label: 'Center Pin' },
@@ -462,13 +463,15 @@ export default function JobCardListing() {
           </h1>
           <p className="text-gray-500 mt-1 font-medium text-sm sm:text-base italic">Manage and view all your job cards</p>
         </div>
-        <button
-          onClick={() => navigate('/job-card')}
-          className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-blue-100 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
-        >
-          <PlusSquare size={20} />
-          Add New Job Card
-        </button>
+        {hasPermission('jobCard', 'create') && (
+          <button
+            onClick={() => navigate('/job-card')}
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-xl shadow-blue-100 hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+          >
+            <PlusSquare size={20} />
+            Add New Job Card
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -682,27 +685,33 @@ export default function JobCardListing() {
                             >
                               {expandedRows[cardKey] ? <EyeOff size={13} /> : <Eye size={13} />}
                             </button>
-                            <button
-                              onClick={() => openPreview(card)}
-                              className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
-                              title="Print Preview"
-                            >
-                              <Printer size={13} />
-                            </button>
-                            <button
-                              onClick={() => navigate('/job-card', { state: { editData: card } })}
-                              className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
-                              title="Edit"
-                            >
-                              <Pencil size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(card._id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
-                              title="Delete"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {hasPermission('jobCard', 'print') && (
+                              <button
+                                onClick={() => openPreview(card)}
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
+                                title="Print Preview"
+                              >
+                                <Printer size={13} />
+                              </button>
+                            )}
+                            {hasPermission('jobCard', 'edit') && (
+                              <button
+                                onClick={() => navigate('/job-card', { state: { editData: card } })}
+                                className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
+                                title="Edit"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
+                            {hasPermission('jobCard', 'delete') && (
+                              <button
+                                onClick={() => handleDelete(card._id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
+                                title="Delete"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

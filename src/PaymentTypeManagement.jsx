@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { API_BASE_URL } from './utils/apiBase';
+import { hasPermission } from './utils/permissions';
 
 const PaymentTypeManagement = () => {
   const [paymentTypes, setPaymentTypes] = useState([]);
@@ -119,12 +120,14 @@ const PaymentTypeManagement = () => {
                   This name is appears on your site
                 </p>
               </div>
-              <button
-                type="submit"
-                className="w-full flex items-center justify-center gap-2 bg-[#3b4180] hover:bg-[#2d3264] text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 shadow-indigo-100"
-              >
-                {editingId ? 'Update' : 'Save'}
-              </button>
+              {hasPermission('payments', editingId ? 'edit' : 'create') && (
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-2 bg-[#3b4180] hover:bg-[#2d3264] text-white py-3 rounded-lg font-bold shadow-md transition-all active:scale-95 shadow-indigo-100"
+                >
+                  {editingId ? 'Update' : 'Save'}
+                </button>
+              )}
               {editingId && (
                 <button
                   type="button"
@@ -167,20 +170,24 @@ const PaymentTypeManagement = () => {
                         <td className="px-6 py-4 text-sm font-semibold text-gray-800">{pt.name}</td>
                         <td className="px-6 py-4">
                           <div className="flex justify-center items-center gap-4">
-                            <button
-                              onClick={() => handleEdit(pt)}
-                              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(pt._id)}
-                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {hasPermission('payments', 'edit') && (
+                              <button
+                                onClick={() => handleEdit(pt)}
+                                className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                title="Edit"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
+                            {hasPermission('payments', 'delete') && (
+                              <button
+                                onClick={() => handleDelete(pt._id)}
+                                className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
