@@ -992,13 +992,13 @@ tr.tax-terms-bank-section {
   body.printing-job-card .job-card-print-table .tax-field-colon {
     font-weight: 900 !important;
     color: #000 !important;
-    font-size: 10px !important;
+    font-size: 11px !important;
   }
 
   body.printing-job-card .job-card-print-table .tax-field-value {
-    font-weight: 800 !important;
+    font-weight: 900 !important;
     color: #000 !important;
-    font-size: 11px !important;
+    font-size: 12px !important;
   }
 
   body.printing-job-card .job-card-print-table .tax-cell {

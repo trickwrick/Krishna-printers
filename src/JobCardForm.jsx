@@ -140,6 +140,16 @@ export default function JobCardForm() {
       ? editData.plateSize
       : editData.plateSize.split(',').map((s) => s.trim()).filter(Boolean);
   });
+  const [plateSizeDetails, setPlateSizeDetails] = useState(() => {
+    if (editData?.plateDetails) {
+      try {
+        return JSON.parse(editData.plateDetails);
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
   const [plateUseCount, setPlateUseCount] = useState({});
   const [jobCards, setJobCards] = useState([]);
   const [partySuggestions, setPartySuggestions] = useState([]);
@@ -181,6 +191,14 @@ export default function JobCardForm() {
       digitalPrintoutRemark,
       plateType: plateType === 'Old Plate' ? 'Old' : 'New',
       plateSize: plateSize.join(', '),
+      plateDetails: (() => {
+        if (!plateSize.length) return undefined;
+        const fullDetails = {};
+        plateSize.forEach(size => {
+          fullDetails[size] = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+        });
+        return JSON.stringify(fullDetails);
+      })(),
       plateUseCount: Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', '),
       paper: selectedPaper,
       paperGSM,
@@ -433,6 +451,16 @@ export default function JobCardForm() {
     });
   };
 
+  const handlePlateDetailsChange = (size, field, value) => {
+    setPlateSizeDetails(prev => ({
+      ...prev,
+      [size]: {
+        ...(prev[size] || { qty: 1, color: 'Single color' }),
+        [field]: value
+      }
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -456,6 +484,14 @@ export default function JobCardForm() {
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
       jobAttachment,
       plateSize: plateSize.length ? plateSize.join(', ') : undefined,
+      plateDetails: (() => {
+        if (!plateSize.length) return undefined;
+        const fullDetails = {};
+        plateSize.forEach(size => {
+          fullDetails[size] = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+        });
+        return JSON.stringify(fullDetails);
+      })(),
       plateUseCount: Object.keys(plateUseCount).length
         ? Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', ')
         : undefined,
@@ -1237,34 +1273,76 @@ export default function JobCardForm() {
                   })}
                 </div>
                 {plateSize.length > 0 && (
-                  <p className="mt-2 text-xs text-indigo-600 font-medium">
-                    Selected: {plateSize.join(' · ')}
-                  </p>
+                  <div className="mt-4 space-y-3">
+                    {plateSize.map((size) => (
+                      <div key={size} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <span className="font-semibold text-gray-800 w-24 shrink-0">{size}</span>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <label className="text-xs text-gray-500 shrink-0">Qty:</label>
+                          <div className="flex items-center border border-gray-300 rounded-md bg-white">
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+                              onClick={() => handlePlateDetailsChange(size, 'qty', Math.max(1, (plateSizeDetails[size]?.qty || 1) - 1))}
+                            >-</button>
+                            <input
+                              type="number"
+                              className="w-12 text-center text-sm border-x border-gray-300 py-1 focus:outline-none"
+                              value={plateSizeDetails[size]?.qty || 1}
+                              onChange={(e) => handlePlateDetailsChange(size, 'qty', parseInt(e.target.value) || 1)}
+                              min="1"
+                            />
+                            <button
+                              type="button"
+                              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
+                              onClick={() => handlePlateDetailsChange(size, 'qty', (plateSizeDetails[size]?.qty || 1) + 1)}
+                            >+</button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
+                          <label className="text-xs text-gray-500 shrink-0">Color:</label>
+                          <select
+                            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:outline-none w-full max-w-50"
+                            value={plateSizeDetails[size]?.color || 'Single color'}
+                            onChange={(e) => handlePlateDetailsChange(size, 'color', e.target.value)}
+                          >
+                            <option value="Single color">Single color</option>
+                            <option value="Multi color">Multi color</option>
+                            <option value="CMYK">CMYK</option>
+                            <option value="Panton">Panton</option>
+                            <option value="Black&White">Black&White</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
-                  {plateSize.length > 0 ? (
-                    <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
-                      {plateSize.map((size) => (
-                        <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                          <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
-                          <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <input
-                      type="text"
-                      readOnly
-                      value=""
-                      placeholder="Auto"
-                      className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
-                    />
-                  )}
-                </div>
+                {plateType === 'Old Plate' && (
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">Plate Number</label>
+                    {plateSize.length > 0 ? (
+                      <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
+                        {plateSize.map((size) => (
+                          <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                            <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
+                            <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        readOnly
+                        value=""
+                        placeholder="Auto"
+                        className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
+                      />
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-col">
                   <label className="text-sm font-medium text-gray-700 mb-1">Quantity Of Plates</label>
                   <input
@@ -1524,17 +1602,51 @@ export default function JobCardForm() {
                     ['Digital Printout', previewData.digitalPrintout],
                     ['Digital Printout Remark', previewData.digitalPrintoutRemark],
                     ['Plate Type', previewData.plateType],
-                    ['Plate Size', previewData.plateSize],
-                    ['Plate No.', previewData.plateUseCount],
+                    ['Plate Size', (() => {
+                      if (previewData.plateDetails) {
+                        try {
+                          const details = JSON.parse(previewData.plateDetails);
+                          const sizes = previewData.plateSize.split(',').map(s => s.trim()).filter(Boolean);
+                          return (
+                            <div className="flex flex-col gap-1">
+                              {sizes.map(size => {
+                                const d = details[size];
+                                if (!d) return <span key={size}>{size}</span>;
+                                return (
+                                  <span key={size}>
+                                    <span className="font-semibold">{size}</span>
+                                    <span className="text-[10px] text-gray-500 ml-1">(Qty: {d.qty}, {d.color})</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          );
+                        } catch(e) {}
+                      }
+                      return previewData.plateSize || '-';
+                    })()],
+                    ...(previewData.plateType === 'Old' || previewData.plateType === 'Old Plate' 
+                        ? [['Plate No.', previewData.plateUseCount || '-']] 
+                        : []),
                     ['Sides', previewData.printSheet],
-                    ['Lamination', previewData.lamination],
-                    ['Lamination Side', previewData.laminationSide],
-                    ['Lamination Size', previewData.laminationSize],
+                    ['Lamination', (
+                      <div className="flex flex-col">
+                        <span>{previewData.lamination || '-'}</span>
+                        {(previewData.laminationSide || previewData.laminationSize) && (
+                          <span className="text-[9px] text-gray-500 font-bold leading-tight mt-0.5">
+                            {[
+                              previewData.laminationSide && `Side: ${previewData.laminationSide}`,
+                              previewData.laminationSize && `Size: ${previewData.laminationSize}`
+                            ].filter(Boolean).join(' | ')}
+                          </span>
+                        )}
+                      </div>
+                    )],
                     ['Paper', [previewData.paper, previewData.paperGSM && `${previewData.paperGSM} GSM`].filter(Boolean).join(' - ')],
                   ].map(([label, value]) => (
-                    <div key={label} className="border border-gray-300 p-2">
-                      <p className="text-[10px] uppercase font-black text-gray-500">{label}</p>
-                      <p className="font-bold">{value || '-'}</p>
+                    <div key={label} className="border border-gray-400 p-2 bg-white">
+                      <p className="text-[10px] uppercase font-black text-gray-800">{label}</p>
+                      <p className="font-black text-gray-900 mt-0.5">{value || '-'}</p>
                     </div>
                   ))}
                 </div>

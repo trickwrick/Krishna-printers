@@ -65,6 +65,7 @@ const jobCardSchema = new mongoose.Schema({
   bindingNote: { type: String },
   filePath: { type: String },
   plateSize: { type: String },
+  plateDetails: { type: String },
   plateUseCount: { type: String },
   plateNo: { type: String },
   platePrice: { type: Number, default: 0 },

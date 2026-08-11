@@ -982,8 +982,32 @@ export default function JobCardListing() {
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
                             ['Plate Type', selectedCard.plateType || 'New'],
-                            ['Plate Size', selectedCard.plateSize || '-'],
-                            ['Plate Number', selectedCard.plateUseCount || '-'],
+                            ['Plate Size', (() => {
+                              if (selectedCard.plateDetails) {
+                                try {
+                                  const details = JSON.parse(selectedCard.plateDetails);
+                                  const sizes = selectedCard.plateSize.split(',').map(s => s.trim()).filter(Boolean);
+                                  return (
+                                    <div className="flex flex-col gap-1">
+                                      {sizes.map(size => {
+                                        const d = details[size];
+                                        if (!d) return <span key={size}>{size}</span>;
+                                        return (
+                                          <span key={size}>
+                                            <span className="font-semibold">{size}</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">(Qty: {d.qty}, {d.color})</span>
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                } catch(e) {}
+                              }
+                              return selectedCard.plateSize || '-';
+                            })()],
+                            ...(selectedCard.plateType === 'Old' || selectedCard.plateType === 'Old Plate' 
+                                ? [['Plate Number', selectedCard.plateUseCount || '-']] 
+                                : []),
                             ['Plate Qty', selectedCard.plateQty ?? 0],
                             ['Print Side', selectedCard.printSheet || 'Single Side'],
                             ['Lamination', (
