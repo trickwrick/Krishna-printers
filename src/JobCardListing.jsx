@@ -938,32 +938,28 @@ export default function JobCardListing() {
                     </tr>
 
                     <tr>
-                      <td colSpan={6} className="tax-cell align-top job-card-meta-cell p-1.5">
-                        <TaxFieldsTable rows={[
-                          ['Job Number', selectedCard.jobNumber],
-                          ['Job Date', fmtTaxDate(selectedCard.jobDate)],
-                          ['Job Qty', selectedCard.jobQty || '-'],
-                          ['Item Name', selectedCard.jobName || '-'],
-                        ]} />
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Job Details</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Job Number', selectedCard.jobNumber],
+                            ['Job Date', fmtTaxDate(selectedCard.jobDate)],
+                            ['Job Qty', selectedCard.jobQty || '-'],
+                            ['Item Name', selectedCard.jobName || '-'],
+                            ['Item Size', selectedCard.pageSize || '-'],
+                            ['Color Detail', selectedCard.printingType || '-'],
+                          ]} />
+                        </div>
                       </td>
-                      <td colSpan={6} className="tax-cell align-top job-card-meta-cell p-1.5">
-                        <TaxFieldsTable rows={[
-                          ['Party Name', selectedCard.partyName],
-                          ['Contact', selectedCard.contactNo || '-'],
-                          ['GST No.', selectedCard.gstNo || '-'],
-                          ['Item Size', selectedCard.pageSize || '-'],
-                        ]} />
-                      </td>
-                    </tr>
-
-                    <tr>
-                      <td colSpan={12} className="tax-cell align-top p-0">
+                      <td colSpan={6} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Party Details</div>
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
+                            ['Party Name', selectedCard.partyName],
                             ['Address', selectedCard.address || '-'],
+                            ['Contact', selectedCard.contactNo || '-'],
                             ['E-MAIL', selectedCard.emailId || '-'],
-                            ['Color Detail', selectedCard.printingType || '-'],
+                            ['GST No.', selectedCard.gstNo || '-'],
                           ]} />
                         </div>
                       </td>
@@ -989,7 +985,20 @@ export default function JobCardListing() {
                             ['Plate Size', selectedCard.plateSize || '-'],
                             ['Plate Number', selectedCard.plateUseCount || '-'],
                             ['Plate Qty', selectedCard.plateQty ?? 0],
-                            ['Lamination', selectedCard.lamination || '-'],
+                            ['Print Side', selectedCard.printSheet || 'Single Side'],
+                            ['Lamination', (
+                              <div className="flex flex-col">
+                                <span>{selectedCard.lamination || '-'}</span>
+                                {(selectedCard.laminationSide || selectedCard.laminationSize) && (
+                                  <span className="text-[9px] text-gray-500 font-bold leading-tight mt-0.5">
+                                    {[
+                                      selectedCard.laminationSide && `Side: ${selectedCard.laminationSide}`,
+                                      selectedCard.laminationSize && `Size: ${selectedCard.laminationSize}`
+                                    ].filter(Boolean).join(' | ')}
+                                  </span>
+                                )}
+                              </div>
+                            )],
                             ['Printing Qty', selectedCard.printingQty || 0],
                           ]} />
                         </div>
@@ -997,7 +1006,7 @@ export default function JobCardListing() {
                     </tr>
 
                     <tr>
-                      <td colSpan={6} className="tax-cell align-top p-0">
+                      <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Paper &amp; Stock</div>
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
@@ -1006,11 +1015,26 @@ export default function JobCardListing() {
                           ]} />
                         </div>
                       </td>
+                    </tr>
+
+                    <tr>
                       <td colSpan={6} className="tax-cell align-top p-0">
-                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Post-Press / Binding</div>
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Die Cutting &amp; Drip Off</div>
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
-                            ['Binding Options', getBindingLabel(selectedCard)],
+                            ['Die Cutting', selectedCard.dieCuttingType || '-'],
+                            ['Drip Off Plate', selectedCard.dripOffPlateType ? `${selectedCard.dripOffPlateType} Plate` : '-'],
+                            ['Drip Off Size', selectedCard.dripOffJobSize || '-'],
+                            ['Drip Off Qty', selectedCard.dripOffQty || '-'],
+                          ]} />
+                        </div>
+                      </td>
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Digital Printout</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Required', selectedCard.digitalPrintout || '-'],
+                            ['Remark', selectedCard.digitalPrintoutRemark || '-'],
                           ]} />
                         </div>
                       </td>
@@ -1019,8 +1043,8 @@ export default function JobCardListing() {
                     <tr className="avoid-break">
                       <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
-                        <div className="job-card-section-body job-card-work-instructions p-2" style={{ minHeight: '60px' }}>
-                          <p className="job-card-work-instructions-text leading-relaxed m-0">
+                        <div className="job-card-section-body job-card-work-instructions p-1.5" style={{ minHeight: '30px' }}>
+                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[11px]">
                             {selectedCard.notes?.trim()
                               ? selectedCard.notes
                               : 'Handle with care. Ensure high quality print and accurate alignment.'}
@@ -1031,19 +1055,63 @@ export default function JobCardListing() {
                     <tr className="avoid-break">
                       <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
-                        <div className="job-card-section-body p-2 flex flex-col items-center justify-center" style={{ minHeight: '60px' }}>
+                        <div className="job-card-section-body p-1.5 flex flex-col items-center justify-center" style={{ minHeight: '40px' }}>
                           {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
                             selectedCard.jobAttachment.type?.startsWith('image/') ? (
-                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '250px', objectFit: 'contain' }} />
+                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} />
                             ) : (
                               <div className="text-center">
-                                <FileText size={32} className="mx-auto text-gray-400 mb-2" />
-                                <p className="text-[10px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
+                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
+                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
                               </div>
                             )
                           ) : (
-                            <span className="text-[10px] text-gray-400">-</span>
+                            <span className="text-[9px] text-gray-400">-</span>
                           )}
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Finishing Processes</div>
+                        <div className="job-card-section-body p-1" style={{ minHeight: '30px' }}>
+                          {(() => {
+                            let fRows = [];
+                            try { fRows = JSON.parse(selectedCard.bindingNote); } catch(e){}
+                            if (!fRows || !fRows.length) return <div className="text-center p-1"><span className="text-[9px] text-gray-400">-</span></div>;
+                            
+                            const cols = [
+                              { key: 'lamination', label: 'Lamination' },
+                              { key: 'dripoff', label: 'Dripoff' },
+                              { key: 'uv', label: 'U.V.' },
+                              { key: 'halfCut', label: 'Half Cut' },
+                              { key: 'die', label: 'Die' },
+                              { key: 'dieCutting', label: 'Die Cutting' },
+                              { key: 'cutting', label: 'Cutting' },
+                              { key: 'creasingFold', label: 'Creasing/Fold' },
+                            ];
+                            return (
+                              <table className="w-full border-collapse text-[8.5px] my-0.5 text-black">
+                                <thead>
+                                  <tr className="bg-gray-100">
+                                    {cols.map(c => <th key={c.key} className="border border-gray-400 p-0.5 text-center font-bold">{c.label}</th>)}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {fRows.map((r, i) => (
+                                    <tr key={i}>
+                                      {cols.map(c => (
+                                        <td key={c.key} className="border border-gray-400 p-0.5 text-center font-bold">
+                                          {r[c.key]?.ticked === true ? 'Yes' : r[c.key]?.ticked === false ? 'No' : '-'}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>
