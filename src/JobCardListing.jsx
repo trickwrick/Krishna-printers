@@ -1249,7 +1249,7 @@ export default function JobCardListing() {
                       {data.length === 0 ? (
                         <p className="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded-xl border border-gray-100">No usage recorded yet.</p>
                       ) : (
-                        data.map((entry, idx) => (
+                        [...data].reverse().map((entry, idx) => (
                           <div key={idx} className="flex justify-between items-center p-3 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-gray-200 transition-colors">
                             <div>
                               <span className="font-black text-rose-600 text-sm block">-{entry.qty.toLocaleString()} units</span>
