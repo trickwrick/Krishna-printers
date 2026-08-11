@@ -184,7 +184,7 @@ const PaperStockStatements = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-[300px]">
+        <div className="overflow-x-auto h-75 financial-statement-table-wrap">
           <table className="w-full text-left whitespace-nowrap">
             <thead>
               <tr className="bg-gray-50/50 text-[11px] font-black uppercase text-gray-900 tracking-[0.12em] border-b border-gray-100">
