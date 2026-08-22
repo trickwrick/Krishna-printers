@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
+import { getJobAttachments } from './utils/jobAttachments';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { syncPlateUsageFromCards } from './utils/plateUsage';
@@ -1121,20 +1122,34 @@ export default function JobCardListing() {
                     </tr>
                     <tr className="avoid-break">
                       <td colSpan={12} className="tax-cell align-top p-0">
-                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached File</div>
-                        <div className="job-card-section-body p-1.5 flex flex-col items-center justify-center" style={{ minHeight: '40px' }}>
-                          {selectedCard.jobAttachment && selectedCard.jobAttachment.dataUrl ? (
-                            selectedCard.jobAttachment.type?.startsWith('image/') ? (
-                              <img src={selectedCard.jobAttachment.dataUrl} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} />
-                            ) : (
-                              <div className="text-center">
-                                <FileText size={24} className="mx-auto text-gray-400 mb-1" />
-                                <p className="text-[9px] text-gray-600 truncate" style={{ maxWidth: '200px' }}>{selectedCard.jobAttachment.name}</p>
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached Files</div>
+                        <div className="job-card-section-body p-1.5" style={{ minHeight: '40px' }}>
+                          {(() => {
+                            const attachments = getJobAttachments(selectedCard);
+                            if (!attachments.length) {
+                              return <span className="text-[9px] text-gray-400">-</span>;
+                            }
+                            return (
+                              <div className="grid grid-cols-2 gap-2 w-full">
+                                {attachments.map((attachment, index) => (
+                                  <div key={`${attachment.name}-${index}`} className="border border-gray-200 p-1 flex flex-col items-center justify-center min-h-[90px]">
+                                    {attachment.type?.startsWith('image/') ? (
+                                      <img
+                                        src={attachment.dataUrl}
+                                        alt={attachment.name}
+                                        style={{ width: '100%', maxHeight: '90px', objectFit: 'contain' }}
+                                      />
+                                    ) : (
+                                      <div className="text-center">
+                                        <FileText size={20} className="mx-auto text-gray-400 mb-1" />
+                                        <p className="text-[8px] text-gray-600 truncate px-1" style={{ maxWidth: '100%' }}>{attachment.name}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            )
-                          ) : (
-                            <span className="text-[9px] text-gray-400">-</span>
-                          )}
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>

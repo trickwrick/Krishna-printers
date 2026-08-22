@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { parse } from "url";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
@@ -12,11 +13,8 @@ import next from "next";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, "..");
-const isDev = process.env.NODE_ENV !== "production";
-const nextApp = next({ dev: isDev, dir: rootDir });
-const nextHandler = nextApp.getRequestHandler();
 
-// Load ENV. Root .env wins locally; server/.env remains a packaged fallback.
+// Load ENV before Next.js boot so PORT is available to the custom server.
 const rootEnvPath = path.join(rootDir, ".env");
 const serverEnvPath = path.join(__dirname, ".env");
 const loadedEnvFiles = [];
@@ -33,6 +31,19 @@ const loadEnvFile = (filePath) => {
 
 loadEnvFile(rootEnvPath);
 loadEnvFile(serverEnvPath);
+
+const isDev = process.env.NODE_ENV !== "production";
+const PORT = Number(process.env.PORT) || 5011;
+const hostname = "localhost";
+const nextApp = next({
+    dev: isDev,
+    dir: rootDir,
+    hostname,
+    port: PORT,
+    customServer: true,
+    webpack: true,
+});
+const nextHandler = nextApp.getRequestHandler();
 
 const maskMongoUri = (uri = "") => (
     uri.replace(/\/\/([^:/@]+):([^@]*)@/i, (_, username) => `//${username}:****@`)
@@ -114,7 +125,7 @@ import { seedStaffAndRoles } from "./utils/seedStaff.js";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 /* ================= DB CONNECT ================= */
 const connectDB = async () => {
@@ -183,7 +194,8 @@ app.use("/api", (req, res) => {
 
 /* ================= NEXT FRONTEND ROUTING ================= */
 app.use((req, res) => {
-    return nextHandler(req, res);
+    const parsedUrl = parse(req.url, true);
+    return nextHandler(req, res, parsedUrl);
 });
 
 /* ================= SERVER START ================= */
@@ -209,9 +221,7 @@ const startServer = async (port) => {
 };
 
 /* ================= INIT ================= */
-const PORT = process.env.PORT || 5011;
-
-connectDB();      // ✅ ONLY ONE TIME
+connectDB();
 startServer(PORT).catch((error) => {
   console.error("Failed to start Next server:", error);
   process.exit(1);

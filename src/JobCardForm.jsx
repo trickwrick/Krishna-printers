@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { API_BASE_URL } from './utils/apiBase';
 import { printElement } from './utils/printDocument';
 import { mergeWithLocalJobCards, saveLocalJobCard } from './utils/localJobCards';
+import { getJobAttachments, readFileAsAttachment, MAX_JOB_ATTACHMENTS } from './utils/jobAttachments';
 
 const PLATE_SIZES = ['530x650', '560x670', '700x945', '800x1030', '715x915', '820x1030'];
 
@@ -160,7 +161,7 @@ export default function JobCardForm() {
   const [emailId, setEmailId] = useState(editData?.emailId || '');
   const [gstNo, setGstNo] = useState(editData?.gstNo || '');
   const [jobQty, setJobQty] = useState(editData?.jobQty || '');
-  const [jobAttachment, setJobAttachment] = useState(editData?.jobAttachment || null);
+  const [jobAttachments, setJobAttachments] = useState(() => getJobAttachments(editData));
   const [shipPartyName, setShipPartyName] = useState(editData?.shipPartyName || '');
   const [shipAddress, setShipAddress] = useState(editData?.shipAddress || '');
   const [shipContactNo, setShipContactNo] = useState(editData?.shipContactNo || '');
@@ -184,8 +185,8 @@ export default function JobCardForm() {
       jobName: fd.get('jobName'),
       jobNumber: editData?.jobNumber || 'Auto',
       jobDate,
-      jobAttachment,
-      jobAttachmentName: jobAttachment?.name || '',
+      jobAttachments,
+      jobAttachmentNames: jobAttachments.map((item) => item.name).filter(Boolean).join(', '),
       dieCuttingType: fd.get('dieCuttingType'),
       digitalPrintout,
       digitalPrintoutRemark,
@@ -229,34 +230,32 @@ export default function JobCardForm() {
     printElement('printable-inner');
   };
 
-  const handleJobAttachmentChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleJobAttachmentsChange = async (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!files.length) return;
 
-    const allowedTypes = ['application/pdf'];
-    const isAllowed = allowedTypes.includes(file.type) || file.type.startsWith('image/');
-    if (!isAllowed) {
-      alert('Only PDF and image files are allowed.');
-      event.target.value = '';
+    const remainingSlots = MAX_JOB_ATTACHMENTS - jobAttachments.length;
+    if (remainingSlots <= 0) {
+      alert(`Maximum ${MAX_JOB_ATTACHMENTS} files allowed.`);
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File size should be 2MB or less.');
-      event.target.value = '';
-      return;
+    const selectedFiles = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      alert(`Only ${remainingSlots} more file(s) can be added. Maximum ${MAX_JOB_ATTACHMENTS} files allowed.`);
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setJobAttachment({
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        dataUrl: reader.result,
-      });
-    };
-    reader.readAsDataURL(file);
+    try {
+      const uploaded = await Promise.all(selectedFiles.map((file) => readFileAsAttachment(file)));
+      setJobAttachments((current) => [...current, ...uploaded].slice(0, MAX_JOB_ATTACHMENTS));
+    } catch (error) {
+      alert(error.message || 'Could not upload file.');
+    }
+  };
+
+  const removeJobAttachment = (index) => {
+    setJobAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
   };
 
   const validateForm = (fd) => {
@@ -482,7 +481,8 @@ export default function JobCardForm() {
       shipContactNo: useShipAddress ? (fd.get('shipContactNo') || '') : '',
       shipEmailId: useShipAddress ? (fd.get('shipEmailId') || '') : '',
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
-      jobAttachment,
+      jobAttachments,
+      jobAttachment: jobAttachments[0] || null,
       plateSize: plateSize.length ? plateSize.join(', ') : undefined,
       plateDetails: (() => {
         if (!plateSize.length) return undefined;
@@ -669,31 +669,49 @@ export default function JobCardForm() {
                   placeholder="e.g. 1000, 50 Books"
                 />
               </div>
-              <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload</label>
+              <div className="flex flex-col sm:col-span-2">
+                <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload (Max {MAX_JOB_ATTACHMENTS})</label>
                 <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3">
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
-                    <FileText size={16} />
-                    Choose File
-                    <input
-                      type="file"
-                      accept="application/pdf,image/*"
-                      onChange={handleJobAttachmentChange}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="mt-2 text-xs text-gray-500">PDF/image up to 2MB.</p>
-                  {jobAttachment?.name && (
-                    <div className="mt-3 rounded-lg border border-blue-100 bg-white p-2">
-                      <p className="truncate text-sm font-bold text-gray-800">{jobAttachment.name}</p>
-                      <button
-                        type="button"
-                        onClick={() => setJobAttachment(null)}
-                        className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
-                      >
-                        <X size={14} />
-                        Remove
-                      </button>
+                  {jobAttachments.length < MAX_JOB_ATTACHMENTS && (
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700">
+                      <ImagePlus size={16} />
+                      Add File ({jobAttachments.length}/{MAX_JOB_ATTACHMENTS})
+                      <input
+                        type="file"
+                        accept="application/pdf,image/*"
+                        multiple
+                        onChange={handleJobAttachmentsChange}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                  <p className="mt-2 text-xs text-gray-500">Up to {MAX_JOB_ATTACHMENTS} PDF/image files, 2MB each. These will appear on print.</p>
+                  {jobAttachments.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      {jobAttachments.map((attachment, index) => (
+                        <div key={`${attachment.name}-${index}`} className="rounded-lg border border-blue-100 bg-white p-2">
+                          {attachment.type?.startsWith('image/') ? (
+                            <img
+                              src={attachment.dataUrl}
+                              alt={attachment.name}
+                              className="mb-2 h-24 w-full rounded object-contain bg-gray-50"
+                            />
+                          ) : (
+                            <div className="mb-2 flex h-24 items-center justify-center rounded bg-gray-50">
+                              <FileText size={28} className="text-gray-400" />
+                            </div>
+                          )}
+                          <p className="truncate text-xs font-bold text-gray-800">{attachment.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => removeJobAttachment(index)}
+                            className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                          >
+                            <X size={14} />
+                            Remove
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1594,7 +1612,7 @@ export default function JobCardForm() {
                     ['Job Name', previewData.jobName],
                     ['Job Quantity', previewData.jobQty],
                     ['Printing Quantity', previewData.printingQty],
-                    ['Uploaded File', previewData.jobAttachment?.name || ''],
+                    ['Uploaded Files', previewData.jobAttachmentNames || ''],
                     ['Die Cutting', previewData.dieCuttingType],
                     ['Drip Off Plate', previewData.dripOffPlateType ? `${previewData.dripOffPlateType} Plate` : ''],
                     ['Drip Off Job Size', previewData.dripOffJobSize],
@@ -1676,17 +1694,23 @@ export default function JobCardForm() {
                   <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
                   <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
                 </div>
-                {previewData.jobAttachment && previewData.jobAttachment.dataUrl && (
-                  <div className="mb-5 border border-gray-300 p-3 min-h-24 flex flex-col items-center justify-center">
-                    <p className="text-[10px] uppercase font-black text-gray-500 mb-1 w-full text-left">Attached File</p>
-                    {previewData.jobAttachment.type?.startsWith('image/') ? (
-                      <img src={previewData.jobAttachment.dataUrl} alt="Attachment" className="max-w-full max-h-64 object-contain" />
-                    ) : (
-                      <div className="text-center">
-                        <FileText size={32} className="mx-auto text-gray-400 mb-2" />
-                        <p className="text-[10px] text-gray-600 truncate max-w-xs mx-auto">{previewData.jobAttachment.name}</p>
-                      </div>
-                    )}
+                {previewData.jobAttachments?.length > 0 && (
+                  <div className="mb-5 border border-gray-300 p-3 min-h-24">
+                    <p className="text-[10px] uppercase font-black text-gray-500 mb-2 w-full text-left">Attached Files</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {previewData.jobAttachments.map((attachment, index) => (
+                        <div key={`${attachment.name}-${index}`} className="border border-gray-200 p-2 flex flex-col items-center justify-center min-h-28">
+                          {attachment.type?.startsWith('image/') ? (
+                            <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-32 object-contain" />
+                          ) : (
+                            <div className="text-center">
+                              <FileText size={28} className="mx-auto text-gray-400 mb-2" />
+                              <p className="text-[10px] text-gray-600 truncate max-w-xs mx-auto">{attachment.name}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

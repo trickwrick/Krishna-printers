@@ -16,6 +16,12 @@ const jobCardSchema = new mongoose.Schema({
     size: { type: Number, default: 0 },
     dataUrl: { type: String, default: '' },
   },
+  jobAttachments: [{
+    name: { type: String, default: '' },
+    type: { type: String, default: '' },
+    size: { type: Number, default: 0 },
+    dataUrl: { type: String, default: '' },
+  }],
   jobDate: { type: Date, default: Date.now },
   useShipAddress: { type: Boolean, default: false },
   shipPartyName: { type: String, default: '' },

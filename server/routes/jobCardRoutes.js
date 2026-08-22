@@ -22,6 +22,35 @@ const computePlateUseCount = async (plateSize, editingId) => {
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const getJobAttachments = (job = {}) => {
+  if (Array.isArray(job.jobAttachments) && job.jobAttachments.length) {
+    return job.jobAttachments.filter((item) => item?.dataUrl);
+  }
+  if (job.jobAttachment?.dataUrl) return [job.jobAttachment];
+  return [];
+};
+
+const attachmentsChanged = (previousJob, nextPayload) => {
+  const previous = JSON.stringify(getJobAttachments(previousJob));
+  const next = JSON.stringify(getJobAttachments(nextPayload));
+  return previous !== next && getJobAttachments(nextPayload).length > 0;
+};
+
+const buildAttachmentTimelineEvent = (payload, userName) => {
+  const attachments = getJobAttachments(payload);
+  if (!attachments.length) return null;
+
+  const details = attachments.length === 1
+    ? `Uploaded ${attachments[0].name || 'attachment'}`
+    : `Uploaded ${attachments.length} files`;
+
+  return {
+    action: 'Image Upload',
+    details,
+    userName: userName || 'System',
+  };
+};
+
 const getCoverUsage = (job) => {
   if (!job || job.paperSource !== 'Company paper' || !job.paper || !job.paperGSM) return null;
   const qty = Number(job.coverPaperCount) > 0 ? Number(job.coverPaperCount) : Number(job.jobQty) || 0;
@@ -215,8 +244,9 @@ router.post('/', async (req, res) => {
       // Determine what changed for timeline
       const timelineEvents = [];
       if (previousJob) {
-        if (req.body.jobAttachment?.dataUrl && req.body.jobAttachment?.dataUrl !== previousJob.jobAttachment?.dataUrl) {
-           timelineEvents.push({ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' });
+        if (attachmentsChanged(previousJob, req.body)) {
+           const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
+           if (attachmentEvent) timelineEvents.push(attachmentEvent);
         }
         if (req.body.paperSource === 'Company paper' && (req.body.coverPaperCount !== previousJob.coverPaperCount || req.body.innerPaperCount !== previousJob.innerPaperCount)) {
            timelineEvents.push({ action: 'Paper Updated', details: 'Updated paper stock allocation', userName: userName || 'System' });
@@ -244,8 +274,9 @@ router.post('/', async (req, res) => {
         
         let updatePayload = { ...req.body, updatedAt: new Date() };
         const timelineEvents = [];
-        if (req.body.jobAttachment?.dataUrl && req.body.jobAttachment?.dataUrl !== previousJob.jobAttachment?.dataUrl) {
-           timelineEvents.push({ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' });
+        if (attachmentsChanged(previousJob, req.body)) {
+           const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
+           if (attachmentEvent) timelineEvents.push(attachmentEvent);
         }
         if (req.body.paperSource === 'Company paper' && (req.body.coverPaperCount !== previousJob.coverPaperCount || req.body.innerPaperCount !== previousJob.innerPaperCount)) {
            timelineEvents.push({ action: 'Paper Updated', details: 'Updated paper stock allocation', userName: userName || 'System' });
@@ -262,8 +293,9 @@ router.post('/', async (req, res) => {
       } else {
         // NEW job card with provided jobNumber
         const newJobPayload = { ...req.body };
-        if (req.body.jobAttachment?.dataUrl) {
-           newJobPayload.timeline = [{ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' }];
+        if (getJobAttachments(req.body).length) {
+           const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
+           newJobPayload.timeline = attachmentEvent ? [attachmentEvent] : [];
         }
         jobCard = new JobCard(newJobPayload);
         await jobCard.save();
@@ -280,8 +312,9 @@ router.post('/', async (req, res) => {
       req.body.jobNumber = generatedJobNumber;
       
       const newJobPayload = { ...req.body };
-      if (req.body.jobAttachment?.dataUrl) {
-         newJobPayload.timeline = [{ action: 'Image Upload', details: `Uploaded ${req.body.jobAttachment.name || 'attachment'}`, userName: userName || 'System' }];
+      if (getJobAttachments(req.body).length) {
+         const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
+         newJobPayload.timeline = attachmentEvent ? [attachmentEvent] : [];
       }
       jobCard = new JobCard(newJobPayload);
       await jobCard.save();
