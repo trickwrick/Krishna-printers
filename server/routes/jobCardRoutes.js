@@ -376,7 +376,9 @@ router.get('/plate-used-count', async (req, res) => {
 // GET /api/jobcard - Fetch all Job Cards (Active Only)
 router.get('/', async (req, res) => {
   try {
-    const jobCards = await JobCard.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
+    const jobCards = await JobCard.find({ isDeleted: { $ne: true } })
+      .select('-jobAttachments.dataUrl -jobAttachment.dataUrl')
+      .sort({ createdAt: -1 });
     res.json(jobCards);
   } catch (err) {
     console.error(`❌ Fetch Error: ${err.message}`);
@@ -387,8 +389,10 @@ router.get('/', async (req, res) => {
 // GET /api/jobcard/deleted/all - Fetch all deleted Job Cards
 router.get('/deleted/all', async (req, res) => {
   try {
-    const jobCards = await JobCard.find({ isDeleted: true }).sort({ deletedAt: -1 });
-    res.json(jobCards);
+    const deletedJobCards = await JobCard.find({ isDeleted: true })
+      .select('-jobAttachments.dataUrl -jobAttachment.dataUrl')
+      .sort({ deletedAt: -1 });
+    res.json(deletedJobCards);
   } catch (err) {
     console.error(`❌ Fetch Deleted Error: ${err.message}`);
     res.status(500).json({ error: err.message });

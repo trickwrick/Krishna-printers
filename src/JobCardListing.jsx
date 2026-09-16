@@ -431,10 +431,42 @@ export default function JobCardListing() {
 
   const [selectedCard, setSelectedCard] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
-  const openPreview = (card) => {
-    setSelectedCard(card);
-    setIsModalOpen(true);
+  const openPreview = async (card) => {
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}`);
+      if (res.ok) {
+        setSelectedCard(await res.json());
+        setIsModalOpen(true);
+      } else {
+        alert('Failed to load full job card details');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error fetching full job card');
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleEditClick = async (card) => {
+    setIsActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}`);
+      if (res.ok) {
+        const fullCard = await res.json();
+        navigate('/job-card', { state: { editData: fullCard } });
+      } else {
+        alert('Failed to load full job card details for editing');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error fetching full job card');
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   const closePreview = () => {
@@ -684,7 +716,8 @@ export default function JobCardListing() {
                             {hasPermission('jobCard', 'print') && (
                               <button
                                 onClick={() => openPreview(card)}
-                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none"
+                                disabled={isActionLoading}
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
                                 title="Print Preview"
                               >
                                 <Printer size={13} />
@@ -692,8 +725,9 @@ export default function JobCardListing() {
                             )}
                             {hasPermission('jobCard', 'edit') && (
                               <button
-                                onClick={() => navigate('/job-card', { state: { editData: card } })}
-                                className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
+                                onClick={() => handleEditClick(card)}
+                                disabled={isActionLoading}
+                                className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
                                 title="Edit"
                               >
                                 <Pencil size={13} />
