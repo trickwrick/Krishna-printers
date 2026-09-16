@@ -626,7 +626,7 @@ const AddChallan = () => {
                     className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                   />
                   {isPartyDropdownOpen && filteredPartySuggestions.length > 0 && (
-                    <div className="absolute z-50 mt-1 w-full min-w-[220px] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                    <div className="absolute z-50 mt-1 w-full min-w-55 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
                       <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wide">
                         Existing parties
                       </div>
@@ -763,7 +763,7 @@ const AddChallan = () => {
             Item Details
           </div>
           <div className="overflow-x-auto overflow-y-visible -mx-1 px-1">
-            <table className="crm-items-table w-full text-left border-collapse min-w-[760px]">
+            <table className="crm-items-table w-full text-left border-collapse min-w-190">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-56">Description *</th>
@@ -944,7 +944,7 @@ const AddChallan = () => {
       </form>
 
       {isAddPartyModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white w-full max-w-lg rounded-2xl border border-gray-100 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
               <div>

@@ -141,7 +141,30 @@ export const buildPaperStockHistory = (stocks = [], jobs = []) => {
     }
   });
 
+  // Sort chronologically (oldest first) to calculate running balances
+  transactions.sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+
+  // Calculate running balances per paper Name & Type combination
+  const runningBalances = {};
+  transactions.forEach((tx) => {
+    const key = `${tx.paperName}-${tx.paperType}`;
+    if (runningBalances[key] === undefined) {
+      runningBalances[key] = 0;
+    }
+    
+    if (tx.transactionType === 'add') {
+      runningBalances[key] += tx.quantity;
+    } else {
+      runningBalances[key] -= tx.quantity;
+    }
+    
+    tx.balanceAfter = runningBalances[key];
+  });
+
+  // Return sorted reverse-chronologically (newest first) for the UI
   return transactions.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 };

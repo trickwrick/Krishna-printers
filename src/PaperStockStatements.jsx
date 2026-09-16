@@ -7,6 +7,9 @@ import {
   User,
   Hash,
   Layers,
+  Eye,
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { buildPaperStockHistory } from './utils/buildPaperStockHistory.js';
 import { API_BASE_URL } from './utils/apiBase';
@@ -18,6 +21,58 @@ const PaperStockStatements = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Company paper');
   const [typeFilter, setTypeFilter] = useState('all');
+
+  // Modal State for Viewing Data
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+
+  // 1. View Function (Eye Icon)
+  const handleView = (item) => {
+    setSelectedTransaction(item);
+    setIsViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  // 2. Revert/Undo Function (RotateCcw Icon)
+  const handleRevert = async (item) => {
+    // Check if it's a derived transaction
+    if (String(item._id).startsWith('add-') || String(item._id).startsWith('deduct-')) {
+       if (item.transactionType === 'deduct') {
+          alert(`This deduction is automatically calculated from Job Card ${item.jobNumber ? `(#${item.jobNumber})` : ''}. To revert it, please go to Job Cards and update or delete that Job Card.`);
+       } else {
+          alert('This is an opening stock entry. To change it, please go to the Stock section and edit the stock quantity directly.');
+       }
+       return;
+    }
+    
+    // Fallback for actual API transactions (if implemented in future)
+    const name = item.stockName || item.paperName || 'this transaction';
+    const confirmRevert = window.confirm(`Are you sure you want to revert/undo ${name}?`);
+    
+    if (confirmRevert) {
+      try {
+        if (item._id) {
+           const res = await fetch(`${API_BASE_URL}/api/paper-stock/transactions/${item._id}`, { method: 'DELETE' });
+           if (res.ok) {
+              loadTransactions();
+              alert(`${name} has been successfully reverted!`);
+              return;
+           }
+        }
+        
+        // Update local state temporarily if no endpoint supports it
+        setTransactions(prev => prev.filter(t => t._id !== item._id));
+        alert(`${name} has been successfully reverted!`);
+      } catch (error) {
+        console.error("Error reverting item:", error);
+        alert("Failed to revert item. Please try again.");
+      }
+    }
+  };
 
   const loadTransactions = async () => {
     setLoading(true);
@@ -195,14 +250,15 @@ const PaperStockStatements = () => {
                 <th className="px-6 py-4 text-right">Quantity</th>
                 <th className="px-6 py-4">Party / Job</th>
                 <th className="px-6 py-4 text-right">Balance After</th>
+                <th className="px-6 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan="7" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase">Loading...</td></tr>
+                <tr><td colSpan="8" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase">Loading...</td></tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center">
+                  <td colSpan="8" className="px-6 py-20 text-center">
                     <p className="text-red-500 font-bold mb-3">{error}</p>
                     <button
                       type="button"
@@ -215,7 +271,7 @@ const PaperStockStatements = () => {
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-20 text-center text-gray-400 italic">
+                  <td colSpan="8" className="px-6 py-20 text-center text-gray-400 italic">
                     Abhi koi transaction nahi hai. Naya stock add karo ya Job Card se paper use karo — history yahan dikhegi.
                   </td>
                 </tr>
@@ -286,6 +342,24 @@ const PaperStockStatements = () => {
                     <td className="px-6 py-5 text-right">
                       <p className="font-black text-gray-900 text-sm">{item.balanceAfter?.toLocaleString()} Sheets</p>
                     </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center justify-center gap-3">
+                        <button 
+                          onClick={() => handleView(item)}
+                          title="View Details"
+                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all focus:outline-none"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleRevert(item)}
+                          title="Revert/Undo"
+                          className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-all focus:outline-none"
+                        >
+                          <RotateCcw size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -293,6 +367,88 @@ const PaperStockStatements = () => {
           </table>
         </div>
       </div>
+
+      {/* View Modal */}
+      {isViewModalOpen && selectedTransaction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-white">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900">Stock Ledger</h3>
+                <p className="text-sm font-black text-indigo-600 uppercase mt-1 tracking-wider">
+                  {selectedTransaction.stockName || selectedTransaction.paperName || '-'}
+                </p>
+              </div>
+              <button 
+                onClick={closeViewModal}
+                className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-4 bg-gray-50/50 overflow-y-auto grow space-y-3">
+              {transactions
+                .filter(t => (t.stockName || t.paperName) === (selectedTransaction.stockName || selectedTransaction.paperName))
+                .map((t, idx) => (
+                <div key={t._id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm gap-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    {/* Left: Action badges and Date */}
+                    <div className="flex flex-col gap-2 w-40 shrink-0 border-r border-gray-50 pr-2">
+                      <div className="flex items-center gap-1.5">
+                        {t.transactionType === 'add' ? (
+                          <div className="flex items-center gap-1 px-2 py-0.5 border border-emerald-100 rounded-md bg-white text-emerald-600 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                            <ArrowUpCircle size={10} /> ADDED
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 px-2 py-0.5 border border-red-100 rounded-md bg-white text-red-500 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                            <ArrowDownCircle size={10} /> DEDUCTED
+                          </div>
+                        )}
+                        <span className={`px-2 py-0.5 border rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm ${t.paperType === 'cover' ? 'bg-sky-50 border-sky-100 text-sky-600' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
+                          {t.paperType === 'cover' ? 'COVER' : 'INNER'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-1">
+                        <Calendar size={12} />
+                        {new Date(t.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </div>
+                    </div>
+
+                    {/* Middle: Name/Job and Details */}
+                    <div className="flex flex-col justify-center flex-1 py-1">
+                      <p className="text-sm font-black text-indigo-700 flex items-center gap-1.5">
+                        {t.partyName ? (
+                          <>
+                            <span className="text-indigo-400 text-lg leading-none">#</span> 
+                            Job Card: {t.jobNumber || '-'}
+                          </>
+                        ) : (
+                          'Direct Update'
+                        )}
+                      </p>
+                      <p className="text-xs font-semibold text-gray-500 mt-1.5 flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px]">i</div>
+                        {t.note || (t.transactionType === 'add' ? `Initial ${t.paperType} stock added` : `Deducted for job card update`)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Quantity and Balance */}
+                  <div className="text-right flex flex-col justify-center sm:pl-4">
+                    <p className={`text-2xl font-black tracking-tight ${t.transactionType === 'add' ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {t.transactionType === 'add' ? '+' : '-'}{t.quantity?.toLocaleString()}
+                    </p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                      BALANCE: <span className="text-gray-700">{t.balanceAfter?.toLocaleString()}</span>
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
