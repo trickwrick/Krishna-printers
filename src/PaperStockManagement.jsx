@@ -288,7 +288,7 @@ const PaperStockManagement = () => {
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6 text-gray-800 animate-in fade-in duration-500">
+    <div className="w-full max-w-350 mx-auto p-4 sm:p-6 lg:p-8 space-y-6 text-gray-800 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
@@ -801,8 +801,6 @@ const PaperStockManagement = () => {
               </button>
             </form>
           </div>
-        </div>
-      )}
         </div>
       )}
     </div>
