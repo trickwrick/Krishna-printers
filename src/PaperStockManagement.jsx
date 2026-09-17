@@ -668,7 +668,7 @@ const PaperStockManagement = () => {
             
             <div className="flex justify-between items-start p-6 border-b border-gray-100 bg-gray-50/50">
               <div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">Stock Add History</h3>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">Stock History (Add/Deduct)</h3>
                 <p className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">{viewingStock.coverName || viewingStock.innerName}</p>
               </div>
               <button 
