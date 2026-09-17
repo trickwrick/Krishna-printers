@@ -16,6 +16,8 @@ const PaperStockManagement = () => {
   const [stock, setStock] = useState([]);
   const [isAdding, setIsAdding] = useState(false);
     const [viewingStock, setViewingStock] = useState(null);
+  const [stockHistory, setStockHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [currentStock, setCurrentStock] = useState({ cover: 0, inner: 0 });
   const [loading, setLoading] = useState(true);
@@ -53,6 +55,27 @@ const PaperStockManagement = () => {
   useEffect(() => {
     fetchStock();
   }, []);
+
+  
+  useEffect(() => {
+    if (viewingStock) {
+      setLoadingHistory(true);
+      fetch(`${API_BASE_URL}/api/paper-stock/transactions`)
+        .then(res => res.json())
+        .then(data => {
+          const filtered = data.filter(t => t.stockId === viewingStock._id && t.transactionType === 'add');
+          setStockHistory(filtered);
+          setLoadingHistory(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingHistory(false);
+        });
+    } else {
+      setStockHistory([]);
+    }
+  }, [viewingStock]);
+
 
   const fetchStock = async () => {
     try {
