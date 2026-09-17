@@ -105,7 +105,7 @@ router.post('/', async (req, res) => {
 // PUT /api/paper-stock/:id - Update stock item
 router.put('/:id', async (req, res) => {
   try {
-    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
+    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource, isQuickAdd, challanNo, invoiceNo, createdAt } = req.body;
     const resolvedCoverName = (coverName || '').trim();
     const resolvedInnerName = (innerName || '').trim();
     const resolvedName = name?.trim()
@@ -143,7 +143,10 @@ router.put('/:id', async (req, res) => {
         quantity: coverAdded,
         paperSource: paperSource || existing.paperSource || 'Company paper',
         balanceAfter: Number(updated.coverQuantity || 0),
-        note: 'Cover stock added',
+        note: isQuickAdd ? 'Quick Add' : 'Cover stock added',
+          challanNo: challanNo || '',
+          invoiceNo: invoiceNo || '',
+          createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
       });
     }
 
@@ -157,7 +160,10 @@ router.put('/:id', async (req, res) => {
         quantity: innerAdded,
         paperSource: paperSource || existing.paperSource || 'Company paper',
         balanceAfter: Number(updated.innerQuantity || 0),
-        note: 'Inner stock added',
+        note: isQuickAdd ? 'Quick Add' : 'Inner stock added',
+          challanNo: challanNo || '',
+          invoiceNo: invoiceNo || '',
+          createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
       });
     }
 

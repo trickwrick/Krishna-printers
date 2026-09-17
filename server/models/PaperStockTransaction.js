@@ -10,6 +10,8 @@ const paperStockTransactionSchema = new mongoose.Schema({
   partyName: { type: String, trim: true, default: '' },
   jobNumber: { type: String, trim: true, default: '' },
   jobCardId: { type: mongoose.Schema.Types.ObjectId, ref: 'JobCard' },
+  challanNo: { type: String, trim: true, default: '' },
+  invoiceNo: { type: String, trim: true, default: '' },
   paperSource: { type: String, default: 'Company paper' },
   balanceAfter: { type: Number, default: 0 },
   note: { type: String, trim: true, default: '' },
