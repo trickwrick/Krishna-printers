@@ -788,14 +788,10 @@ const PaperStockManagement = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 border-t border-slate-100 pt-4">
+              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                 <div>
                   <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Challan No.</label>
                   <input type="text" placeholder="Optional" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-sky-500" value={addStockForm.challanNo} onChange={e => setAddStockForm({...addStockForm, challanNo: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Invoice No.</label>
-                  <input type="text" placeholder="Optional" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:border-sky-500" value={addStockForm.invoiceNo} onChange={e => setAddStockForm({...addStockForm, invoiceNo: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Date</label>
