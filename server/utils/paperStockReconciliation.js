@@ -2,9 +2,10 @@ import PaperStock from '../models/PaperStock.js';
 import PaperStockTransaction from '../models/PaperStockTransaction.js';
 import JobCard from '../models/JobCard.js';
 
-export const reconcilePaperStock = async () => {
+export const reconcilePaperStock = async (stockId = null) => {
   try {
-    const allStocks = await PaperStock.find();
+    const query = stockId ? { _id: stockId } : {};
+    const allStocks = await PaperStock.find(query);
     let reconciledCount = 0;
 
     for (const stock of allStocks) {

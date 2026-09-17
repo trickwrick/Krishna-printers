@@ -3,6 +3,7 @@ const router = express.Router();
 import PaperStock from '../models/PaperStock.js';
 import PaperStockTransaction from '../models/PaperStockTransaction.js';
 import { logPaperStockTransaction } from '../utils/paperStockTransactions.js';
+import { reconcilePaperStock } from '../utils/paperStockReconciliation.js';
 import { backfillPaperStockTransactionsIfEmpty } from '../utils/backfillPaperStockTransactions.js';
 
 // GET /api/paper-stock/transactions - Stock add/deduct history
@@ -172,6 +173,21 @@ router.delete('/:id', async (req, res) => {
     const deleted = await PaperStock.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Item not found" });
     res.json({ message: "Item deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Reconcile single stock
+router.post('/reconcile/:id', async (req, res) => {
+  try {
+    const result = await reconcilePaperStock(req.params.id);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json({ error: result.error });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

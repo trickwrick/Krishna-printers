@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight } from 'lucide-react';
+import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight, RefreshCw } from 'lucide-react';
 import { mergePaperSizes, rememberPaperSizes } from './utils/paperStockSizes';
 import { API_BASE_URL } from './utils/apiBase';
 import { hasPermission } from './utils/permissions';
@@ -167,6 +167,23 @@ const PaperStockManagement = () => {
     setIsAdding(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  
+  const handleSync = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/paper-stock/reconcile/${id}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert('Stock Reconciled Successfully');
+        fetchStock();
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (err) {
+      alert('Error reconciling stock: ' + err.message);
+    }
+  };
+
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this paper stock?")) return;
