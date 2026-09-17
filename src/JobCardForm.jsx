@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
+import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
 import { printElement } from './utils/printDocument';
 import { mergeWithLocalJobCards, saveLocalJobCard } from './utils/localJobCards';
@@ -225,14 +226,14 @@ export default function JobCardForm() {
       lamination,
       laminationSide,
       laminationSize,
-      finishingBinding: fd.get('finishingBinding'),
-      finishingBindingQty: fd.get('finishingBindingQty'),
-      finishingDieCutting: fd.get('finishingDieCutting'),
-      finishingDieCuttingQty: fd.get('finishingDieCuttingQty'),
-      finishingDripOff: fd.get('finishingDripOff'),
-      finishingDripOffQty: fd.get('finishingDripOffQty'),
-      finishingLamination: fd.get('finishingLamination'),
-      finishingLaminationQty: fd.get('finishingLaminationQty'),
+      finishingBinding: finishingBinding || '',
+      finishingBindingQty: finishingBindingQty || '',
+      finishingDieCutting: finishingDieCutting || '',
+      finishingDieCuttingQty: finishingDieCuttingQty || '',
+      finishingDripOff: finishingDripOff || '',
+      finishingDripOffQty: finishingDripOffQty || '',
+      finishingLamination: finishingLamination || '',
+      finishingLaminationQty: finishingLaminationQty || '',
     };
   };
 
@@ -1559,105 +1560,226 @@ export default function JobCardForm() {
               </button>
             </div>
             <div className="p-6 overflow-y-auto grow a4-page-container bg-gray-50">
-              <div id="printable-inner" className="job-card-print-page a4-page bg-white mx-auto p-6 text-gray-900">
-                <div className="border-b-2 border-gray-900 pb-4 mb-5 flex justify-between gap-4">
-                  <div>
-                    <h2 className="text-3xl font-black tracking-tight">Krishna Printers</h2>
-                    <p className="text-sm font-semibold text-gray-600 mt-1">Job Card</p>
-                  </div>
-                  <div className="text-right text-sm">
-                    <p><span className="font-bold">Job No:</span> {previewData.jobNumber}</p>
-                    <p><span className="font-bold">Date:</span> {new Date(previewData.jobDate).toLocaleDateString('en-IN')}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-sm mb-5">
-                  {[
-                    ['Party Name', previewData.partyName],
-                    ['Job Name', previewData.jobName],
-                    ['Printing Qty', previewData.printingQty],
-                    ['Uploaded Files', previewData.jobAttachmentNames || ''],
-                    ['Digital Printout', `${previewData.digitalPrintout || ''} ${previewData.digitalPrintoutRemark ? '- ' + previewData.digitalPrintoutRemark : ''}`.trim().replace(/^-|-$/g, '').trim()],
-                    ['Plate Type', previewData.plateType],
-                    ['Plate Size', (() => {
-                      if (previewData.plateDetails) {
-                        try {
-                          const details = JSON.parse(previewData.plateDetails);
-                          const sizes = previewData.plateSize ? previewData.plateSize.split(',').map(s => s.trim()).filter(Boolean) : [];
-                          if (sizes.length === 0) return '-';
-                          return (
-                            <div className="flex flex-col gap-1">
-                              {sizes.map(size => {
-                                const d = details[size];
-                                if (!d) return <span key={size}>{size}</span>;
-                                return (
-                                  <span key={size}>
-                                    <span className="font-semibold">{size}</span>
-                                    <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          );
-                        } catch(e) {}
-                      }
-                      return previewData.plateSize || '-';
-                    })()],
-                    ...(previewData.plateType === 'Old' || previewData.plateType === 'Old Plate' 
-                        ? [['Plate Used', previewData.plateUseCount || '-']] 
-                        : []),
-                    ['Sides', previewData.printSheet],
-                    ['Paper', [previewData.paper, previewData.paperGSM && `${previewData.paperGSM} GSM`].filter(Boolean).join(' - ')],
-                  ].map(([label, value]) => (
-                    <div key={label} className="border border-gray-400 p-2 bg-white">
-                      <p className="text-[10px] uppercase font-black text-gray-800">{label}</p>
-                      <p className="font-black text-gray-900 mt-0.5">{value || '-'}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
-                  {[
-                    ['Binding', previewData.finishingBinding, previewData.finishingBindingQty],
-                    ['Die Cutting', previewData.finishingDieCutting, previewData.finishingDieCuttingQty],
-                    ['Drip Off/Aqua', previewData.finishingDripOff, previewData.finishingDripOffQty],
-                    ['Lamination', previewData.finishingLamination, previewData.finishingLaminationQty],
-                  ].map(([label, val, qty]) => (
-                    <div key={label} className="border border-gray-400 p-2 bg-white flex flex-col justify-between">
-                      <p className="text-[10px] uppercase font-black text-gray-800 mb-1">{label}</p>
-                      <div>
-                        <p className="font-black text-gray-900">{val || '-'}</p>
-                        {val && qty && <p className="text-[10px] text-gray-600 font-bold mt-1">Qty: {qty}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mb-5 border border-gray-300 p-3 min-h-24">
-                  <p className="text-[10px] uppercase font-black text-gray-500 mb-1">Remarks</p>
-                  <p className="text-sm font-semibold whitespace-pre-wrap">{previewData.notes || '-'}</p>
-                </div>
-                {previewData.jobAttachments?.length > 0 && (
-                  <div className="mb-5 border border-gray-300 p-3 min-h-24">
-                    <p className="text-[10px] uppercase font-black text-gray-500 mb-2 w-full text-left">Attached Files</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {previewData.jobAttachments.map((attachment, index) => (
-                        <div key={`${attachment.name}-${index}`} className="border border-gray-200 p-2 flex flex-col items-center justify-center min-h-28">
-                          {attachment.type?.startsWith('image/') ? (
-                            <img src={attachment.dataUrl} alt={attachment.name} className="max-w-full max-h-32 object-contain" />
-                          ) : (
-                            <div className="text-center">
-                              <FileText size={28} className="mx-auto text-gray-400 mb-2" />
-                              <p className="text-[10px] text-gray-600 truncate max-w-xs mx-auto">{attachment.name}</p>
-                            </div>
-                          )}
+              <div id="printable-inner" className="bg-white w-full shadow-none tax-invoice-print-page">
+<table className="tax-invoice job-card-print-table w-full border-collapse text-black" style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                  <colgroup>
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                    <col style={{ width: '8.33%' }} />
+                  </colgroup>
+                  <tbody>
+                    <tr>
+                      <td colSpan={12} className="tax-cell align-top p-0 job-card-top-header">
+                        <div className="flex justify-between items-start gap-4 p-2">
+                          <div className="job-card-company-header flex-1 min-w-0">
+                            <CompanyBrandName className="text-left job-card-brand leading-none mb-1" large />
+                            {SELLER.address ? (
+                              <p className="tax-header-line text-left whitespace-pre-wrap leading-tight max-w-sm my-1">{SELLER.address}</p>
+                            ) : (
+                              <>
+                                <p className="tax-header-line text-left">Office: {SELLER.office}</p>
+                                <p className="tax-header-line text-left">Factory: {SELLER.factory}</p>
+                              </>
+                            )}
+                            {(SELLER.tel || SELLER.email) && (
+                              <p className="tax-header-line text-left">
+                                {[SELLER.tel, SELLER.email].filter(Boolean).join(', ')}
+                              </p>
+                            )}
+                            <p className="tax-header-line text-left">
+                              <span className="tax-field-label">GSTIN :</span> {SELLER.gstin}
+                              <span className="ml-4 tax-field-label">PAN :</span> {SELLER.pan}
+                            </p>
+                          </div>
+                          <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[11px] font-black uppercase tracking-widest shrink-0">
+                            JOB CARD
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Job Details</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Job Number', previewData.jobNumber],
+                            ['Job Date', fmtTaxDate(previewData.jobDate)],
+                            ['Item Name', previewData.jobName || '-'],
+                            ['Item Size', previewData.pageSize || '-'],
+                            ['Color Detail', previewData.printingType || '-'],
+                            ['Printing Qty', previewData.printingQty || '-'],
+                          ]} />
+                        </div>
+                      </td>
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Party Details</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Party Name', previewData.partyName],
+                            ['Address', previewData.address || '-'],
+                            ['Contact', previewData.contactNo || '-'],
+                            ['E-MAIL', previewData.emailId || '-'],
+                            ['GST No.', previewData.gstNo || '-'],
+                          ]} />
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Computer Details</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Compose', previewData.compose || 'No'],
+                            ['Design', previewData.design || 'No'],
+                            ['Digital Printout', previewData.digitalPrintout || 'No'],
+                            ['Printout Remark', previewData.digitalPrintoutRemark || '-'],
+                            ['Paper Source', previewData.paperSource || 'Company paper'],
+                            ['Paper Type', previewData.paper || '-'],
+                          ]} />
+                        </div>
+                      </td>
+                      <td colSpan={6} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Press Details</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Plate Type', previewData.plateType || 'New'],
+                            ['Plate Size', (() => {
+                              if (previewData.plateDetails) {
+                                try {
+                                  const details = JSON.parse(previewData.plateDetails);
+                                  const sizes = previewData.plateSize.split(',').map(s => s.trim()).filter(Boolean);
+                                  return (
+                                    <div className="flex flex-col gap-1">
+                                      {sizes.map(size => {
+                                        const d = details[size];
+                                        if (!d) return <span key={size}>{size}</span>;
+                                        return (
+                                          <span key={size}>
+                                            <span className="font-semibold">{size}</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                } catch(e) {}
+                              }
+                              return previewData.plateSize || '-';
+                            })()],
+                            ...(previewData.plateType === 'Old' || previewData.plateType === 'Old Plate' 
+                                ? [['Plate Used', previewData.plateUseCount || '-']] 
+                                : []),
+                            ['Plate Qty', previewData.plateQty ?? 0],
+                            ['Print Side', previewData.printSheet || 'Single Side'],
+                          ]} />
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Paper &amp; Stock</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Paper Count / GSM', `${previewData.paper || 0} (${previewData.paperGSM || '-'})`],
+                            ['Paper Details', previewData.paper || '-'],
+                          ]} />
+                        </div>
+                      </td>
+                    </tr>
+
+
+
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Finishing Processes</div>
+                        <div className="job-card-section-body p-1.5">
+                          <TaxFieldsTable rows={[
+                            ['Binding', previewData.finishingBinding ? `${previewData.finishingBinding} (Qty: ${previewData.finishingBindingQty || '-'})` : '-'],
+                            ['Die Cutting', previewData.finishingDieCutting ? `${previewData.finishingDieCutting} (Qty: ${previewData.finishingDieCuttingQty || '-'})` : '-'],
+                            ['Drip Off/Aqua', previewData.finishingDripOff ? `${previewData.finishingDripOff} (Qty: ${previewData.finishingDripOffQty || '-'})` : '-'],
+                            ['Lamination', previewData.finishingLamination ? `${previewData.finishingLamination} (Qty: ${previewData.finishingLaminationQty || '-'})` : '-'],
+                          ]} />
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
+                        <div className="job-card-section-body job-card-work-instructions p-1.5" style={{ minHeight: '30px' }}>
+                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[11px]">
+                            {previewData.notes?.trim()
+                              ? previewData.notes
+                              : 'Handle with care. Ensure high quality print and accurate alignment.'}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="avoid-break">
+                      <td colSpan={12} className="tax-cell align-top p-0">
+                        <div className="tax-blue job-card-section-title text-center py-1 px-2">Attached Files</div>
+                        <div className="job-card-section-body p-1.5" style={{ minHeight: '40px' }}>
+                          {(() => {
+                            const attachments = previewData.jobAttachments || [];
+                            if (!attachments.length) {
+                              return <span className="text-[9px] text-gray-400">-</span>;
+                            }
+                            return (
+                              <div className="grid grid-cols-2 gap-2 w-full">
+                                {attachments.map((attachment, index) => (
+                                  <div key={`${attachment.name}-${index}`} className="border border-gray-200 p-1 flex flex-col items-center justify-center min-h-22.5">
+                                    {attachment.type?.startsWith('image/') ? (
+                                      <img
+                                        src={attachment.dataUrl}
+                                        alt={attachment.name}
+                                        style={{ width: '100%', maxHeight: '90px', objectFit: 'contain' }}
+                                      />
+                                    ) : (
+                                      <div className="text-center">
+                                        <FileText size={20} className="mx-auto text-gray-400 mb-1" />
+                                        <p className="text-[8px] text-gray-600 truncate px-1" style={{ maxWidth: '100%' }}>{attachment.name}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td colSpan={6} className="tax-cell align-bottom text-center" style={{ height: '72px' }}>
+                        <div className="pt-10">
+                          <div className="border-t border-black mx-8 pt-1">
+                            <span className="text-[10px] font-bold uppercase">Office Signature</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td colSpan={6} className="tax-cell align-bottom text-center" style={{ height: '72px' }}>
+                        <div className="pt-10">
+                          <div className="border-t border-black mx-8 pt-1">
+                            <span className="text-[10px] font-bold uppercase">Press Signature</span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+</div>
+</div>
             <div className="p-4 border-t bg-white flex justify-end gap-3 no-print">
               <button
                 type="button"
