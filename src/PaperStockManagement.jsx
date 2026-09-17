@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight, RefreshCw, Eye } from 'lucide-react';
 import { mergePaperSizes, rememberPaperSizes } from './utils/paperStockSizes';
 import { API_BASE_URL } from './utils/apiBase';
 import { hasPermission } from './utils/permissions';
@@ -545,22 +545,38 @@ const PaperStockManagement = () => {
                           </td>
                           <td className="px-6 py-5">
                              <div className="flex justify-center gap-2">
-                                {hasPermission('paperStock', 'edit') && (
-                                  <button 
-                                    onClick={() => handleEdit(item)}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  <button
+                                    onClick={() => alert('View Statements feature coming soon')}
+                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                    title="View Stock Statements"
                                   >
-                                    <Edit2 size={16} />
+                                    <Eye size={16} />
                                   </button>
-                                )}
-                                {hasPermission('paperStock', 'delete') && (
-                                  <button 
-                                    onClick={() => handleDelete(item._id)}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                )}
+                                  {hasPermission('paperStock', 'edit') && (
+                                    <button
+                                      onClick={() => alert('Quick Add feature coming soon')}
+                                      className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg transition-all"
+                                      title="Quick Add Quantity"
+                                    >
+                                      <Plus size={16} />
+                                    </button>
+                                  )}
+                                  {hasPermission('paperStock', 'edit') && (
+                                    <button 
+                                      onClick={() => handleEdit(item)}
+                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                  )}
+                                  {hasPermission('paperStock', 'delete') && (
+                                    <button 
+                                      onClick={() => handleDelete(item._id)}
+                                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
                              </div>
                           </td>
                         </tr>
