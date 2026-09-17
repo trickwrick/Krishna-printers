@@ -287,7 +287,7 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex flex-1 justify-center shrink-0 -my-4 sm:-my-8 z-0">
-             <img src="/machine.png" alt="Printing Machine" className="h-48 sm:h-72 object-contain mix-blend-multiply transition-all duration-500 hover:scale-105" />
+            <img src="/machine.png" alt="Printing Machine" className="h-32 sm:h-44 object-contain mix-blend-multiply transition-all duration-500 scale-125 sm:scale-150 hover:scale-[1.6]" />
           </div>
           <div className="flex flex-wrap gap-3 shrink-0 relative z-20">
             {/* <button
