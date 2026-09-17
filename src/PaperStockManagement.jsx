@@ -596,7 +596,7 @@ const PaperStockManagement = () => {
       )}
     
       {viewingStock && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             
             <div className="flex justify-between items-start p-6 border-b border-gray-100 bg-gray-50/50">
