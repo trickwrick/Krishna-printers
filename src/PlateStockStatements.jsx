@@ -28,7 +28,7 @@ const PlateStockStatements = () => {
         // Server likely hasn't restarted yet — show empty state gracefully
         setTransactions([]);
         if (txRes.status === 404) {
-          setError('API route not found. Please restart the server (npm run dev) to load the new Plate Stock routes.');
+          setError('Plate Stock data abhi available nahi hai. Kuch der baad try karein.');
         } else {
           setError(`Server error ${txRes.status}. Please try again.`);
         }
@@ -39,7 +39,7 @@ const PlateStockStatements = () => {
     } catch (err) {
       console.error('Fetch error:', err);
       setTransactions([]);
-      setError('Server se connect nahi ho pa raha. Please restart the server and try again.');
+      setError('Server se connect nahi ho pa raha. Kuch der baad try karein.');
     } finally {
       setLoading(false);
     }
