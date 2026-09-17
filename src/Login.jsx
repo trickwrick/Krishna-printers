@@ -120,8 +120,9 @@ const Login = () => {
         <div className="absolute bottom-0 left-0 w-full h-2/5 bg-linear-to-t from-[#0c1a4a]/80 to-transparent" />
 
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-3 mb-6">
+          <div className="inline-flex items-center gap-4 mb-6">
             <img src="/logo.png" alt="Krishna Printers Logo" className="h-20 w-auto drop-shadow-xl" />
+            <span className="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-md">PrintoSync</span>
           </div>
         </div>
 
