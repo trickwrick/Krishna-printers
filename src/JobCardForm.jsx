@@ -234,6 +234,9 @@ export default function JobCardForm() {
       finishingDripOffQty: finishingDripOffQty || '',
       finishingLamination: finishingLamination || '',
       finishingLaminationQty: finishingLaminationQty || '',
+      coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
+      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: Number(fd.get('innerPaperCount')) || 0 }] : [],
+      // Boolean conversion for binding checkboxes
     };
   };
 

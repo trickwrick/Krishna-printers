@@ -36,6 +36,22 @@ const jobCardSchema = new mongoose.Schema({
   pageCount: { type: String },
   compose: { type: String, default: 'No' },
   design: { type: String, default: 'No' },
+  
+  // New Multiple Paper Lines structure
+  coverPaperLines: [{
+    stockId: { type: mongoose.Schema.Types.ObjectId, ref: 'PaperStock' },
+    paperName: { type: String, trim: true },
+    gsm: { type: String, trim: true },
+    quantity: { type: Number, default: 0 }
+  }],
+  innerPaperLines: [{
+    stockId: { type: mongoose.Schema.Types.ObjectId, ref: 'PaperStock' },
+    paperName: { type: String, trim: true },
+    gsm: { type: String, trim: true },
+    quantity: { type: Number, default: 0 }
+  }],
+
+  // Deprecated singular fields (kept for backward compatibility with old Job Cards)
   coverPaperCount: { type: Number, default: 0 },
   coverPaperDetails: { type: String },
   innerPaper: { type: String },
@@ -52,6 +68,14 @@ const jobCardSchema = new mongoose.Schema({
   lamination: { type: String },
   laminationSide: { type: String },
   laminationSize: { type: String },
+  finishingBinding: { type: String },
+  finishingBindingQty: { type: String },
+  finishingDieCutting: { type: String },
+  finishingDieCuttingQty: { type: String },
+  finishingDripOff: { type: String },
+  finishingDripOffQty: { type: String },
+  finishingLamination: { type: String },
+  finishingLaminationQty: { type: String },
   bindingCenterPin: { type: Boolean, default: false },
   bindingSilai: { type: Boolean, default: false },
   bindingSidePin: { type: Boolean, default: false },

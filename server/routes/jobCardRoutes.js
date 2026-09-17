@@ -5,6 +5,7 @@ import JobCard from '../models/JobCard.js';
 import Notification from '../models/Notification.js';
 import PaperStock from '../models/PaperStock.js';
 import { logPaperStockTransaction } from '../utils/paperStockTransactions.js';
+import { syncPaperStockWithJob } from '../utils/paperStockSync.js';
 
 const computePlateUseCount = async (plateSize, editingId) => {
   if (!plateSize) return undefined;
@@ -323,11 +324,7 @@ router.post('/', async (req, res) => {
 
     // --- AUTO STOCK DEDUCTION LOGIC ---
     try {
-      await syncStockFromJobChange(previousJob, {
-        ...req.body,
-        _id: jobCard?._id || req.body._id,
-        jobNumber: jobCard?.jobNumber || req.body.jobNumber,
-      });
+      await syncPaperStockWithJob({ ...req.body, _id: jobCard?._id || req.body._id }, previousJob);
     } catch (stockErr) {
       console.error("⚠️ Stock deduction failed:", stockErr.message);
       // We don't fail the whole job creation just because stock update failed
