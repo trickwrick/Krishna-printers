@@ -159,7 +159,7 @@ const DropdownMenu = ({ title, icon: Icon, items, isActive }) => {
   );
 };
 
-const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, location, onContactSupport, onLogout }) => {
+const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, showSettings, location, onContactSupport, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStaffOpen, setIsStaffOpen] = useState(false);
@@ -319,7 +319,7 @@ const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, location, o
       >
         <div className="pt-2">
           <div className="bg-white border border-gray-100 rounded-xl shadow-2xl p-2 space-y-1">
-            {renderFlyout({
+            {showSettings && renderFlyout({
               isSubOpen: isSettingsOpen,
               setSubOpen: setIsSettingsOpen,
               otherClose: () => setIsStaffOpen(false),
@@ -590,6 +590,7 @@ export default function App() {
   ];
 
   const showStaffTeamMenu = STAFF_TEAM_ENABLED && canAccessStaffTeam();
+  const showSettingsMenu = hasPermission('settings', 'view');
 
   const handleLogout = () => {
     clearSession();
@@ -782,6 +783,7 @@ export default function App() {
             settingsItems={profileSettingsItems}
             staffTeamItems={staffTeamItems}
             showStaffTeam={showStaffTeamMenu}
+            showSettings={showSettingsMenu}
             location={location}
             onContactSupport={() => navigate('/contact-support')}
             onLogout={handleLogout}
@@ -873,43 +875,47 @@ export default function App() {
             </div>
 
             <div className="mt-6 pt-4 border-t border-gray-100 space-y-1">
-              <button
-                type="button"
-                onClick={() => setIsMobileSettingsOpen((prev) => !prev)}
-                className={`flex items-center justify-between w-full px-4 py-2.5 text-sm rounded-xl transition ${
-                  isMobileSettingsOpen || location.pathname.startsWith('/settings')
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Settings size={16} className={isMobileSettingsOpen ? 'text-blue-600' : 'text-gray-400'} />
-                  <span className="font-semibold">Settings</span>
-                </div>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-200 ${
-                    isMobileSettingsOpen ? 'text-blue-600 rotate-180' : 'text-gray-400'
-                  }`}
-                />
-              </button>
-              {isMobileSettingsOpen && profileSettingsItems.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => {
-                    item.onClick();
-                    setIsMobileMenuOpen(false);
-                    setIsMobileSettingsOpen(false);
-                  }}
-                  className={`flex items-center gap-3 w-[calc(100%-1.5rem)] ml-6 px-4 py-2.5 text-sm font-semibold rounded-xl transition ${
-                    location.pathname === item.path
-                      ? 'bg-blue-50 text-blue-600'
-                      : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+              {showSettingsMenu && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileSettingsOpen((prev) => !prev)}
+                    className={`flex items-center justify-between w-full px-4 py-2.5 text-sm rounded-xl transition ${
+                      isMobileSettingsOpen || location.pathname.startsWith('/settings')
+                        ? 'bg-blue-50 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Settings size={16} className={isMobileSettingsOpen ? 'text-blue-600' : 'text-gray-400'} />
+                      <span className="font-semibold">Settings</span>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-200 ${
+                        isMobileSettingsOpen ? 'text-blue-600 rotate-180' : 'text-gray-400'
+                      }`}
+                    />
+                  </button>
+                  {isMobileSettingsOpen && profileSettingsItems.map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        item.onClick();
+                        setIsMobileMenuOpen(false);
+                        setIsMobileSettingsOpen(false);
+                      }}
+                      className={`flex items-center gap-3 w-[calc(100%-1.5rem)] ml-6 px-4 py-2.5 text-sm font-semibold rounded-xl transition ${
+                        location.pathname === item.path
+                          ? 'bg-blue-50 text-blue-600'
+                          : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </>
+              )}
               {showStaffTeamMenu && (
                 <>
                   <div className="flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider mt-3">
