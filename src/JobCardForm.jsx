@@ -669,10 +669,6 @@ export default function JobCardForm() {
                 <input type="text" name="gstNo" value={gstNo} onChange={(e) => setGstNo(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter GST number" />
               </div>
               <div className="flex flex-col">
-                <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
-                <input type="text" name="printingQty" value={printingQty} onChange={(e) => setPrintingQty(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Quantity" />
-              </div>
-              <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Date</label>
                 <DatePicker
                   selected={jobDate}
@@ -680,6 +676,10 @@ export default function JobCardForm() {
                   wrapperClassName="w-full"
                   className="w-full h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
+                <input type="text" name="printingQty" value={printingQty} onChange={(e) => setPrintingQty(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Quantity" />
               </div>
               <div className="flex flex-col sm:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload (Max {MAX_JOB_ATTACHMENTS})</label>
