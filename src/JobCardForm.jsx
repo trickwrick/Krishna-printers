@@ -670,7 +670,7 @@ export default function JobCardForm() {
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
-                <input type="number" name="printingQty" value={printingQty} onChange={(e) => setPrintingQty(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Quantity" />
+                <input type="text" name="printingQty" value={printingQty} onChange={(e) => setPrintingQty(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Quantity" />
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Date</label>
@@ -1107,69 +1107,7 @@ export default function JobCardForm() {
               </div>
 
               <div className="space-y-4">
-                {/* Lamination Dropdown */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                  <div className="flex flex-col sm:w-56 shrink-0">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Lamination</label>
-                    <select
-                      name="lamination"
-                      value={lamination}
-                      onChange={(e) => {
-                        setLamination(e.target.value);
-                        if (!e.target.value) {
-                          setLaminationSide('');
-                          setLaminationSize('');
-                        }
-                      }}
-                      className="h-10 border border-gray-200 rounded-lg px-4 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    >
-                      <option value="">Select Lamination</option>
-                      <option value="MATT">MATT</option>
-                      <option value="GLOSS">GLOSS</option>
-                      <option value="THERMAL MATT">THERMAL MATT</option>
-                      <option value="THERMAL GLOSS">THERMAL GLOSS</option>
-                      <option value="VELVET">VELVET</option>
-                    </select>
-                  </div>
 
-                  {/* Side + Size — shown only when a lamination is selected */}
-                  {lamination && (
-                    <div className="flex flex-col sm:flex-row gap-4 flex-1 animate-in fade-in slide-in-from-left-2 duration-200">
-                      {/* Side */}
-                      <div className="flex flex-col">
-                        <label className="text-sm font-medium text-gray-700 mb-1">Side</label>
-                        <div className="flex items-center gap-4 h-10">
-                          {['Single', 'Both'].map((side) => (
-                            <label key={side} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="radio"
-                                name="laminationSide"
-                                value={side}
-                                checked={laminationSide === side}
-                                onChange={() => setLaminationSide(side)}
-                                className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                              />
-                              <span className="text-sm text-gray-700">{side}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Size */}
-                      <div className="flex flex-col flex-1">
-                        <label className="text-sm font-medium text-gray-700 mb-1">Size</label>
-                        <input
-                          type="text"
-                          name="laminationSize"
-                          value={laminationSize}
-                          onChange={(e) => setLaminationSize(e.target.value)}
-                          className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                          placeholder="e.g. A4, 10x15"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           </div>          {/* Section 5: Paper Details */}
@@ -1367,7 +1305,7 @@ export default function JobCardForm() {
               {/* 1. Binding */}
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Binding</label>
+                  <label className="text-sm font-bold text-gray-800 mb-1">Binding</label>
                   <select
                     name="finishingBinding"
                     value={finishingBinding}
@@ -1404,7 +1342,7 @@ export default function JobCardForm() {
               {/* 2. Die cutting */}
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Die cutting</label>
+                  <label className="text-sm font-bold text-gray-800 mb-1">Die cutting</label>
                   <select
                     name="finishingDieCutting"
                     value={finishingDieCutting}
@@ -1438,7 +1376,7 @@ export default function JobCardForm() {
               {/* 3. Drip off / Aqua */}
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Drip off / Aqua</label>
+                  <label className="text-sm font-bold text-gray-800 mb-1">Drip off / Aqua</label>
                   <select
                     name="finishingDripOff"
                     value={finishingDripOff}
@@ -1473,7 +1411,7 @@ export default function JobCardForm() {
               {/* 4. Lamination */}
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col">
-                  <label className="text-sm font-medium text-gray-700 mb-1">Lamination</label>
+                  <label className="text-sm font-bold text-gray-800 mb-1">Lamination</label>
                   <select
                     name="finishingLamination"
                     value={finishingLamination}
