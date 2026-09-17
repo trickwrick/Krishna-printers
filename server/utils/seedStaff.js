@@ -23,6 +23,10 @@ export async function seedStaffAndRoles() {
   }
 
   const adminEmail = 'krishna.printers@gmail.com';
+  
+  // Clean up old admin to prevent dual login
+  await User.deleteOne({ email: 'admin@gmail.com' });
+  
   let admin = await User.findOne({ email: adminEmail });
   if (!admin) {
     admin = await User.create({
