@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layers, Plus, Search, AlertTriangle, Edit2, Trash2, CheckCircle2, Info, ArrowUpRight, RefreshCw, Eye, X } from 'lucide-react';
+import ActionButtons from './ActionButtons';
 import { mergePaperSizes, rememberPaperSizes } from './utils/paperStockSizes';
 import { API_BASE_URL } from './utils/apiBase';
 import { hasPermission } from './utils/permissions';
@@ -139,6 +140,32 @@ const PaperStockManagement = () => {
 
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
+
+  
+  const handleDuplicate = (item) => {
+    setEditingId(null);
+    setFormData({
+      coverPartyName: item.coverPartyName || '',
+      coverName: item.coverName || '',
+      coverSupplier: item.coverSupplier || '',
+      innerPartyName: item.innerPartyName || '',
+      innerName: item.innerName || '',
+      innerSupplier: item.innerSupplier || '',
+      gsm: item.gsm || '',
+      coverGSM: item.coverGSM || '',
+      innerGSM: item.innerGSM || '',
+      coverPaperSize: item.coverPaperSize || '',
+      innerPaperSize: item.innerPaperSize || '',
+      description: item.description || '',
+      paperSource: item.paperSource || 'Company paper',
+      coverQuantity: '',
+      innerQuantity: ''
+    });
+    setCurrentStock({ cover: 0, inner: 0 });
+    setIsAdding(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
 
   const handleEdit = (item) => {
     setCurrentStock({
@@ -545,66 +572,17 @@ const PaperStockManagement = () => {
                              {new Date(item.updatedAt).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-5">
-                             <div className="flex justify-center gap-2">
-                                  
-                                  <button
-                                    onClick={() => setViewingStock(item)}
-                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                                    title="View Stock Details"
-                                  >
-                                    <Eye size={16} />
-                                  </button>
+                             
+                              <ActionButtons
+                                recordId={item._id}
+                                onRowView={() => setViewingStock(item)}
+                                onRowAdd={() => handleDuplicate(item)}
+                                onRowEdit={() => handleEdit(item)}
+                                onRowDelete={() => handleDelete(item._id)}
+                                canEdit={hasPermission('paperStock', 'edit')}
+                                canDelete={hasPermission('paperStock', 'delete')}
+                              />
 
-                                  {hasPermission('paperStock', 'edit') && (
-                                    
-                                    <button
-                                      onClick={() => {
-                                        setEditingId(null);
-                                        setFormData({
-                                          coverPartyName: item.coverPartyName || '',
-                                          coverName: item.coverName || '',
-                                          coverSupplier: item.coverSupplier || '',
-                                          innerPartyName: item.innerPartyName || '',
-                                          innerName: item.innerName || '',
-                                          innerSupplier: item.innerSupplier || '',
-                                          gsm: item.gsm || '',
-                                          coverGSM: item.coverGSM || '',
-                                          innerGSM: item.innerGSM || '',
-                                          coverPaperSize: item.coverPaperSize || '',
-                                          innerPaperSize: item.innerPaperSize || '',
-                                          description: item.description || '',
-                                          paperSource: item.paperSource || 'Company paper',
-                                          coverQuantity: '',
-                                          innerQuantity: ''
-                                        });
-                                        setCurrentStock({ cover: 0, inner: 0 });
-                                        setIsAdding(true);
-                                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                                      }}
-                                      className="p-2 text-sky-500 hover:bg-sky-50 rounded-lg transition-all"
-                                      title="Duplicate / Add New"
-                                    >
-                                      <Plus size={16} />
-                                    </button>
-
-                                  )}
-                                  {hasPermission('paperStock', 'edit') && (
-                                    <button 
-                                      onClick={() => handleEdit(item)}
-                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                    >
-                                      <Edit2 size={16} />
-                                    </button>
-                                  )}
-                                  {hasPermission('paperStock', 'delete') && (
-                                    <button 
-                                      onClick={() => handleDelete(item._id)}
-                                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  )}
-                             </div>
                           </td>
                         </tr>
                       );
