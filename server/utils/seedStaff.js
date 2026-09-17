@@ -22,13 +22,13 @@ export async function seedStaffAndRoles() {
     roles[def.name] = role;
   }
 
-  const adminEmail = 'admin@gmail.com';
+  const adminEmail = 'krishna.printers@gmail.com';
   let admin = await User.findOne({ email: adminEmail });
   if (!admin) {
     admin = await User.create({
       name: 'Admin',
       email: adminEmail,
-      password: '123456',
+      password: 'KP#Trickwrick@2026',
       team: 'Management',
       roleId: roles.Admin._id,
       roleName: 'Admin',
