@@ -171,16 +171,10 @@ const Login = () => {
 
         <div className="w-full max-w-md relative z-10">
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-11 h-11 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-md">
-              <Printer size={22} />
-            </div>
-            <div>
-              <p className="text-gray-900 font-black text-lg leading-none">
-                Krishna
-              </p>
-              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">
-                Printers
-              </p>
+            <img src="/logo.png" alt="Krishna Printers Logo" className="h-12 w-auto drop-shadow-md" />
+            <div className="flex flex-col">
+              <span className="text-2xl font-black text-gray-900 tracking-tight leading-none drop-shadow-sm">Krishna</span>
+              <span className="text-[12px] font-bold text-gray-500 uppercase tracking-[0.2em] mt-0.5">Printers</span>
             </div>
           </div>
 

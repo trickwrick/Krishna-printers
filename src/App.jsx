@@ -550,33 +550,19 @@ export default function App() {
 
   const displayNavigationItems = isAdminUser()
     ? navigationItems
-    : navigationItems.flatMap((item) => {
-        if (!item.isDropdown) return [item];
+    : navigationItems.map((item) => {
+        if (!item.isDropdown) return item;
         const moduleKey = moduleByNavName[item.name];
-        return item.dropdownItems
-          .filter((sub) => {
-            const isAddAction = /add new|add /i.test(sub.label);
-            if (isAddAction && moduleKey) return hasPermission(moduleKey, 'create');
-            return true;
-          })
-          .map((sub) => ({
-            name: sub.label,
-            icon: sub.icon || item.icon,
-            onClick: sub.onClick,
-            matchPath: item.name === 'Estimate & Quotation' && sub.label === 'Add New'
-              ? '/estimates/add'
-              : item.name === 'Estimate & Quotation'
-              ? '/estimates'
-              : sub.label.includes('Job Card Report') ? '/report?type=job-card'
-              : sub.label.includes('Daily Work Report') ? '/report?type=daily-work'
-              : sub.label.includes('Job Card') ? '/job-card'
-              : sub.label.includes('Invoice') ? '/invoice'
-              : sub.label.includes('Challan') ? '/challan'
-              : sub.label.includes('Paper Stock') ? '/statements/paper-stock'
-              : sub.label.includes('Statements') ? '/statements'
-              : '',
-          }));
-      });
+        const filteredDropdown = item.dropdownItems.filter((sub) => {
+          const isAddAction = /add new|add /i.test(sub.label);
+          if (isAddAction && moduleKey) return hasPermission(moduleKey, 'create');
+          return true;
+        });
+        return {
+          ...item,
+          dropdownItems: filteredDropdown
+        };
+      }).filter((item) => !item.isDropdown || item.dropdownItems.length > 0);
 
   const profileSettingsItems = [
     { label: 'Change Password', path: '/settings/password', onClick: () => navigate('/settings/password') },
