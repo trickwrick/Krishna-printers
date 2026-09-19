@@ -197,6 +197,12 @@ export default function JobCardForm() {
       jobDate,
       jobAttachments,
       jobAttachmentNames: jobAttachments.map((item) => item.name).filter(Boolean).join(', '),
+      pageSize: fd.get('pageSize'),
+      printingType: fd.get('printingType'),
+      compose,
+      design,
+      paperSource,
+      plateQty: fd.get('plateQty'),
       dieCuttingType: fd.get('dieCuttingType'),
       digitalPrintout,
       digitalPrintoutRemark,
@@ -392,6 +398,19 @@ export default function JobCardForm() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (editData?._id && location.state?.needsAttachments) {
+      fetch(`${API_BASE_URL}/api/jobcard/${editData._id}/attachments`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.jobAttachments?.length || data.jobAttachment) {
+            setJobAttachments(getJobAttachments(data));
+          }
+        })
+        .catch(console.error);
+    }
+  }, [editData?._id, location.state?.needsAttachments]);
 
   useEffect(() => {
     const fetchJobCards = async () => {

@@ -433,40 +433,28 @@ export default function JobCardListing() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  const openPreview = async (card) => {
-    setIsActionLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}`);
-      if (res.ok) {
-        setSelectedCard(await res.json());
-        setIsModalOpen(true);
-      } else {
-        alert('Failed to load full job card details');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error fetching full job card');
-    } finally {
-      setIsActionLoading(false);
-    }
+  const openPreview = (card) => {
+    setSelectedCard(card);
+    setIsModalOpen(true);
+    
+    // Fetch attachments asynchronously so the preview is fast
+    fetch(`${API_BASE_URL}/api/jobcard/${card._id}/attachments`)
+      .then(r => r.json())
+      .then(data => {
+        setSelectedCard(prev => {
+          if (!prev || prev._id !== card._id) return prev;
+          return { 
+            ...prev, 
+            jobAttachments: data.jobAttachments, 
+            jobAttachment: data.jobAttachment 
+          };
+        });
+      })
+      .catch(console.error);
   };
 
-  const handleEditClick = async (card) => {
-    setIsActionLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}`);
-      if (res.ok) {
-        const fullCard = await res.json();
-        navigate('/job-card', { state: { editData: fullCard } });
-      } else {
-        alert('Failed to load full job card details for editing');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error fetching full job card');
-    } finally {
-      setIsActionLoading(false);
-    }
+  const handleEditClick = (card) => {
+    navigate('/job-card', { state: { editData: card, needsAttachments: true } });
   };
 
   const closePreview = () => {

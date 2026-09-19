@@ -399,9 +399,23 @@ router.get('/deleted/all', async (req, res) => {
 // GET /api/jobcard/:id - Fetch single Job Card
 router.get('/:id', async (req, res) => {
   try {
-    const jobCard = await JobCard.findById(req.params.id);
+    const jobCard = await JobCard.findById(req.params.id).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
     if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
     res.json(jobCard);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/jobcard/:id/attachments - Fetch attachments for a Job Card
+router.get('/:id/attachments', async (req, res) => {
+  try {
+    const jobCard = await JobCard.findById(req.params.id).select('jobAttachments jobAttachment');
+    if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
+    res.json({
+      jobAttachments: jobCard.jobAttachments,
+      jobAttachment: jobCard.jobAttachment
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
