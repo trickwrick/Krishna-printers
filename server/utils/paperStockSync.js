@@ -9,15 +9,31 @@ export const findPaperStock = async (stockId, paperName, gsm) => {
   }
   if (!paperName) return null;
 
-  // Fallback regex match
-  const match = await PaperStock.findOne({
-    name: new RegExp('^' + String(paperName).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i'),
-    gsm: gsm ? Number(gsm) : undefined
-  });
-  return match;
+  const escapedName = String(paperName).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`^${escapedName}$`, 'i');
+  
+  const query = {
+    $or: [
+      { name: regex },
+      { coverName: regex },
+      { innerName: regex }
+    ]
+  };
+
+  if (gsm) {
+    query.$or = query.$or.map(cond => ({
+      ...cond,
+      $or: [
+        { gsm: Number(gsm) },
+        { coverGSM: Number(gsm) },
+        { innerGSM: Number(gsm) }
+      ]
+    }));
+  }
+
+  return await PaperStock.findOne(query);
 };
 
-// Sync logic for updating stock and logging transactions
 export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
   const getLines = (job, type) => {
     if (!job) return [];
@@ -30,14 +46,12 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
     const newLines = getLines(jobCard, type);
     const oldLines = getLines(oldJobCard, type);
 
-    // Build a map of old lines by a unique key (stockId or paperName+gsm)
     const oldMap = {};
     oldLines.forEach(line => {
       const key = line.stockId ? line.stockId.toString() : `${line.paperName}_${line.gsm}`;
       oldMap[key] = (oldMap[key] || 0) + (Number(line.quantity) || 0);
     });
 
-    // Build a map of new lines
     const newMap = {};
     newLines.forEach(line => {
       const key = line.stockId ? line.stockId.toString() : `${line.paperName}_${line.gsm}`;
@@ -49,7 +63,6 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
       };
     });
 
-    // Calculate deltas
     const allKeys = new Set([...Object.keys(oldMap), ...Object.keys(newMap)]);
 
     for (const key of allKeys) {
@@ -60,7 +73,6 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
 
       if (delta === 0) continue;
 
-      // We need to find the stock
       const stockId = newLine?.stockId || (key.includes('_') ? null : key);
       const paperName = newLine?.paperName || (key.includes('_') ? key.split('_')[0] : '');
       const gsm = newLine?.gsm || (key.includes('_') ? key.split('_')[1] : null);
@@ -72,13 +84,12 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
         continue;
       }
 
-      // Determine fields
-      const qtyField = type === 'cover' ? 'coverQuantity' : 'innerQuantity';
-      
-      // Update stock
+      // We now strictly use the main 'quantity' field since inner/cover concepts are merged.
+      // We also decrement coverQuantity/innerQuantity if they exist, to ensure UI is in sync.
       const updateOp = {};
-      updateOp[qtyField] = -delta;
-      updateOp['quantity'] = -delta; // Total quantity decreases by delta
+      updateOp['quantity'] = -delta;
+      if (stock.coverQuantity !== undefined) updateOp['coverQuantity'] = -delta;
+      if (stock.innerQuantity !== undefined) updateOp['innerQuantity'] = -delta;
 
       const updatedStock = await PaperStock.findByIdAndUpdate(
         stock._id,
@@ -86,20 +97,19 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
         { new: true }
       );
 
-      // Log transaction
       await logPaperStockTransaction({
         paperStockId: updatedStock._id,
         stockName: updatedStock.name,
         paperName: updatedStock.name,
-        paperType: type,
-        transactionType: delta > 0 ? 'deduct' : 'add', // If we need more, we deduct from stock
+        paperType: 'paper', // Simplified type
+        transactionType: delta > 0 ? 'deduct' : 'add',
         quantity: Math.abs(delta),
         partyName: jobCard.partyName,
         jobNumber: jobCard.jobNumber,
         jobCardId: jobCard._id,
         paperSource: updatedStock.paperSource,
-        balanceAfter: updatedStock[qtyField],
-        note: `Job Card ${delta > 0 ? 'Usage' : 'Restoration'} (${type})`
+        balanceAfter: updatedStock.quantity, // Rely on total quantity
+        note: `Job Card ${delta > 0 ? 'Usage' : 'Restoration'}`
       });
     }
   };

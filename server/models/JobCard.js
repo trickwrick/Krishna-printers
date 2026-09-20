@@ -135,5 +135,10 @@ const jobCardSchema = new mongoose.Schema({
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 
+jobCardSchema.index({ createdAt: -1 });
+jobCardSchema.index({ jobNumber: 1 });
+jobCardSchema.index({ plateSize: 1 });
+jobCardSchema.index({ isDeleted: 1 });
+
 const JobCard = mongoose.model('JobCard', jobCardSchema);
 export default JobCard;

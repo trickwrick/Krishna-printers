@@ -520,8 +520,7 @@ export default function JobCardForm() {
       shipContactNo: useShipAddress ? (fd.get('shipContactNo') || '') : '',
       shipEmailId: useShipAddress ? (fd.get('shipEmailId') || '') : '',
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
-      jobAttachments,
-      jobAttachment: jobAttachments[0] || null,
+      // Attachments are uploaded in the background to ensure instant saving
       plateSize: plateSize.length ? plateSize.join(', ') : undefined,
       plateDetails: (() => {
         if (!plateSize.length) return undefined;
@@ -557,9 +556,12 @@ export default function JobCardForm() {
       bindingGlue: fd.get('bindingGlue') === 'on',
       bindingKachhi: fd.get('bindingKachhi') === 'on',
       bindingPukki: fd.get('bindingPukki') === 'on',
+      coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
+      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: Number(fd.get('innerPaperCount')) || 0 }] : [],
     };
 
     const saveAndOpenList = async () => {
+      let savedJobId = null;
       try {
         const response = await fetch(`${API_BASE_URL}/api/jobcard`, {
           method: 'POST',
@@ -568,7 +570,20 @@ export default function JobCardForm() {
         });
         if (response.ok) {
           const savedData = await response.json();
+          savedJobId = savedData._id;
           rememberPlateUsage(savedData.plateSize || plateSize.join(', '), savedData.plateUseCount);
+
+          // Background upload for attachments
+          if (savedJobId && jobAttachments !== undefined) {
+            fetch(`${API_BASE_URL}/api/jobcard/${savedJobId}/attachments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jobAttachments })
+            }).then(r => {
+              if(!r.ok) console.error("Background upload returned error", r.status);
+              else console.log("Background upload success");
+            }).catch(e => console.error("Background attachment upload failed:", e));
+          }
         } else {
           console.warn("Backend save failed, saving locally...");
           saveLocalJobCard(jobCard);

@@ -32,9 +32,18 @@ const getJobAttachments = (job = {}) => {
 };
 
 const attachmentsChanged = (previousJob, nextPayload) => {
-  const previous = JSON.stringify(getJobAttachments(previousJob));
-  const next = JSON.stringify(getJobAttachments(nextPayload));
-  return previous !== next && getJobAttachments(nextPayload).length > 0;
+  const prevAttachments = getJobAttachments(previousJob);
+  const nextAttachments = getJobAttachments(nextPayload);
+  
+  if (prevAttachments.length !== nextAttachments.length) return true;
+  
+  for (let i = 0; i < prevAttachments.length; i++) {
+    if (prevAttachments[i].name !== nextAttachments[i].name || prevAttachments[i].size !== nextAttachments[i].size) {
+      return true;
+    }
+  }
+  
+  return false;
 };
 
 const buildAttachmentTimelineEvent = (payload, userName) => {
@@ -322,29 +331,23 @@ router.post('/', async (req, res) => {
     }
 
 
-    // --- AUTO STOCK DEDUCTION LOGIC ---
-    try {
-      await syncPaperStockWithJob({ ...req.body, _id: jobCard?._id || req.body._id }, previousJob);
-    } catch (stockErr) {
-      console.error("⚠️ Stock deduction failed:", stockErr.message);
-      // We don't fail the whole job creation just because stock update failed
-    }
+    // --- AUTO STOCK DEDUCTION LOGIC (Run in background) ---
+    syncPaperStockWithJob({ ...req.body, _id: jobCard?._id || req.body._id }, previousJob).catch(stockErr => {
+      console.error("⚠️ Stock deduction failed in background:", stockErr.message);
+    });
     // ----------------------------------
 
-    // Create Notification
-    try {
-      const notifMessage = isUpdate
-        ? `Job Card updated: #${jobCard.jobNumber} for ${jobCard.partyName}`
-        : `New Job Card created: #${jobCard.jobNumber} for ${jobCard.partyName}`;
+    // Create Notification (Run in background)
+    const notifMessage = isUpdate
+      ? `Job Card updated: #${jobCard.jobNumber} for ${jobCard.partyName}`
+      : `New Job Card created: #${jobCard.jobNumber} for ${jobCard.partyName}`;
 
-      const newNotif = new Notification({
-        type: isUpdate ? 'JOB_UPDATED' : 'JOB_CREATED',
-        message: notifMessage
-      });
-      await newNotif.save();
-    } catch (notifErr) {
+    new Notification({
+      type: isUpdate ? 'JOB_UPDATED' : 'JOB_CREATED',
+      message: notifMessage
+    }).save().catch(notifErr => {
       console.error("Failed to create notification:", notifErr.message);
-    }
+    });
 
     console.log(`☁️ Job Card Saved to MongoDB: ${jobCard.jobNumber}`);
     res.status(201).json(jobCard);
@@ -375,7 +378,7 @@ router.get('/', async (req, res) => {
   try {
     const jobCards = await JobCard.find({ isDeleted: { $ne: true } })
       .select('-jobAttachments.dataUrl -jobAttachment.dataUrl')
-      .sort({ createdAt: -1 });
+      .sort({ updatedAt: -1 });
     res.json(jobCards);
   } catch (err) {
     console.error(`❌ Fetch Error: ${err.message}`);
@@ -417,6 +420,39 @@ router.get('/:id/attachments', async (req, res) => {
       jobAttachment: jobCard.jobAttachment
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/jobcard/:id/attachments - Background upload for attachments
+router.post('/:id/attachments', async (req, res) => {
+  try {
+    const { jobAttachments, userName } = req.body;
+    const _id = req.params.id;
+    
+    if (!_id || !mongoose.Types.ObjectId.isValid(_id)) {
+      return res.status(400).json({ error: "Invalid Job Card ID" });
+    }
+
+    const previousJob = await JobCard.findById(_id).select('jobAttachments jobAttachment');
+    if (!previousJob) {
+      return res.status(404).json({ error: "Job Card not found" });
+    }
+
+    const nextPayload = { jobAttachments, jobAttachment: jobAttachments && jobAttachments[0] ? jobAttachments[0] : null };
+    let updatePayload = { ...nextPayload };
+    
+    if (attachmentsChanged(previousJob, nextPayload)) {
+       const attachmentEvent = buildAttachmentTimelineEvent(nextPayload, userName);
+       if (attachmentEvent) {
+         updatePayload.$push = { timeline: attachmentEvent };
+       }
+    }
+
+    const updated = await JobCard.findByIdAndUpdate(_id, updatePayload, { new: true });
+    res.json({ success: true, message: "Attachments updated successfully" });
+  } catch (err) {
+    console.error(`❌ Attachment Upload Error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });
