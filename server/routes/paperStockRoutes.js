@@ -99,9 +99,6 @@ router.post('/', async (req, res) => {
     res.status(201).json(newItem);
   } catch (err) {
     res.status(500).json({ error: err.message });
-  }
-});
-
 // PUT /api/paper-stock/:id - Update stock item
 router.put('/:id', async (req, res) => {
   try {

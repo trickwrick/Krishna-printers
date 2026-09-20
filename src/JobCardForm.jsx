@@ -241,7 +241,7 @@ export default function JobCardForm() {
       finishingLamination: finishingLamination || '',
       finishingLaminationQty: finishingLaminationQty || '',
       coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
-      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: Number(fd.get('innerPaperCount')) || 0 }] : [],
+      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: innerPaperCount || 0 }] : [],
       // Boolean conversion for binding checkboxes
     };
   };
@@ -557,7 +557,7 @@ export default function JobCardForm() {
       bindingKachhi: fd.get('bindingKachhi') === 'on',
       bindingPukki: fd.get('bindingPukki') === 'on',
       coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
-      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: Number(fd.get('innerPaperCount')) || 0 }] : [],
+      innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: innerPaperCount || 0 }] : [],
     };
 
     const saveAndOpenList = async () => {

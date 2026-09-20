@@ -84,12 +84,13 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
         continue;
       }
 
-      // We now strictly use the main 'quantity' field since inner/cover concepts are merged.
-      // We also decrement coverQuantity/innerQuantity if they exist, to ensure UI is in sync.
+      // We always decrement the total 'quantity'.
+      // To ensure legacy fields stay in sync, we only decrement coverQuantity if we're processing a cover line
+      // and innerQuantity if we're processing an inner line.
       const updateOp = {};
       updateOp['quantity'] = -delta;
-      if (stock.coverQuantity !== undefined) updateOp['coverQuantity'] = -delta;
-      if (stock.innerQuantity !== undefined) updateOp['innerQuantity'] = -delta;
+      if (type === 'cover' && stock.coverQuantity !== undefined) updateOp['coverQuantity'] = -delta;
+      if (type === 'inner' && stock.innerQuantity !== undefined) updateOp['innerQuantity'] = -delta;
 
       const updatedStock = await PaperStock.findByIdAndUpdate(
         stock._id,
@@ -108,7 +109,7 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
         jobNumber: jobCard.jobNumber,
         jobCardId: jobCard._id,
         paperSource: updatedStock.paperSource,
-        balanceAfter: updatedStock.quantity, // Rely on total quantity
+        balanceAfter: updatedStock.coverQuantity !== undefined ? updatedStock.coverQuantity : updatedStock.quantity,
         note: `Job Card ${delta > 0 ? 'Usage' : 'Restoration'}`
       });
     }
