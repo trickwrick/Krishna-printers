@@ -312,12 +312,17 @@ router.post('/', async (req, res) => {
       }
     } else if (!isUpdate) {
       // AUTO-GENERATE jobNumber
-      const lastJob = await JobCard.findOne().sort({ createdAt: -1 }).select('jobNumber');
-      let nextNum = 1;
-      if (lastJob && lastJob.jobNumber) {
-        const lastNum = parseInt(lastJob.jobNumber.replace(/[^0-9]/g, ''), 10);
-        if (!isNaN(lastNum)) nextNum = lastNum + 1;
+      const lastJobs = await JobCard.find({ jobNumber: { $regex: /^JOBKP-/i } }).select('jobNumber');
+      let maxNum = 0;
+      for (const j of lastJobs) {
+        if (j.jobNumber) {
+          const num = parseInt(j.jobNumber.replace(/[^0-9]/g, ''), 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
       }
+      const nextNum = maxNum + 1;
       const generatedJobNumber = `JOBKP-${String(nextNum).padStart(4, '0')}`;
       req.body.jobNumber = generatedJobNumber;
       

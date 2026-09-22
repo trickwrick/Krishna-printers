@@ -116,6 +116,7 @@ const jobCardSchema = new mongoose.Schema({
   totalAmount: { type: Number, default: 0 },
   completionDays: { type: Number },
   notes: { type: String },
+  createdBy: { type: String, default: 'Admin' },
   status: { 
     type: String, 
     enum: ['pending', 'in-progress', 'completed', 'cancelled'], 

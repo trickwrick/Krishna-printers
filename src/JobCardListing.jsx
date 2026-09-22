@@ -97,7 +97,8 @@ export default function JobCardListing() {
       innerPaperGSM: false,
       lamination: true,
       binding: true,
-      createdAt: true
+      createdAt: true,
+      createdBy: true
     };
   });
 
@@ -142,6 +143,14 @@ export default function JobCardListing() {
       const data = response.ok ? await response.json() : [];
       const mergedData = mergeWithLocalJobCards(data);
       syncPlateUsageFromCards(mergedData);
+      
+      // Sort job cards by numerical job number descending
+      mergedData.sort((a, b) => {
+        const numA = parseInt((a.jobNumber || '').replace(/[^0-9]/g, '') || '0', 10);
+        const numB = parseInt((b.jobNumber || '').replace(/[^0-9]/g, '') || '0', 10);
+        return numB - numA;
+      });
+      
       setJobCards(mergedData);
     } catch (error) {
       console.error("Error loading job cards:", error);
@@ -552,7 +561,8 @@ export default function JobCardListing() {
                     { id: 'innerPaperGSM', label: 'Inner GSM' },
                     { id: 'lamination', label: 'Lamination' },
                     { id: 'binding', label: 'Binding' },
-                    { id: 'createdAt', label: 'Created At' }
+                    { id: 'createdAt', label: 'Created At' },
+                    { id: 'createdBy', label: 'Created By' }
                   ].map((col) => (
                     <label key={col.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors group">
                       <span className="text-sm font-medium text-gray-700">{col.label}</span>
@@ -589,6 +599,7 @@ export default function JobCardListing() {
               {columnVisibility.lamination && <col style={{ width: '7%' }} />}
               {columnVisibility.binding && <col style={{ width: '8%' }} />}
               {columnVisibility.createdAt && <col style={{ width: '9%' }} />}
+              {columnVisibility.createdBy && <col style={{ width: '8%' }} />}
               <col style={{ width: '56px' }} />
             </colgroup>
             <thead>
@@ -607,6 +618,7 @@ export default function JobCardListing() {
                 {columnVisibility.lamination && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Lam.</th>}
                 {columnVisibility.binding && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Binding</th>}
                 {columnVisibility.createdAt && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">Created</th>}
+                {columnVisibility.createdBy && <th className="py-2 px-1.5 wrap-break-word whitespace-normal leading-tight">By</th>}
                 <th className="py-2 px-1 text-center leading-tight">Action</th>
               </tr>
             </thead>
@@ -690,6 +702,13 @@ export default function JobCardListing() {
                           <td className="py-2 px-1.5 text-gray-500 align-top wrap-break-word whitespace-normal leading-tight">
                             <span className="block">{formatShortDateTime(card.createdAt).date}</span>
                             <span className="block text-[10px] text-gray-400">{formatShortDateTime(card.createdAt).time}</span>
+                          </td>
+                        )}
+                        {columnVisibility.createdBy && (
+                          <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">
+                            <span className="bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded text-[10px] font-medium inline-block">
+                              {card.createdBy || 'Admin'}
+                            </span>
                           </td>
                         )}
                         <td className="py-2 px-0.5 align-top">

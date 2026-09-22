@@ -510,7 +510,10 @@ export default function JobCardForm() {
     }
     setFormErrors([]);
 
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
+    
     const jobCard = {
+      createdBy: editData?.createdBy || currentUser.name,
       ...Object.fromEntries(fd.entries()),
       jobDate: jobDate.toISOString(),
       companyName: fd.get('partyName'), // alias for backward compatibility
