@@ -117,9 +117,7 @@ export default function JobCardForm() {
   const [paperSource, setPaperSource] = useState(editData?.paperSource || 'Company paper');
   const [digitalPrintout, setDigitalPrintout] = useState(editData?.digitalPrintout || '');
   const [digitalPrintoutRemark, setDigitalPrintoutRemark] = useState(editData?.digitalPrintoutRemark || '');
-  const [plateType, setPlateType] = useState(
-    editData?.plateType === 'Both' ? 'Both' : (editData?.plateType === 'Old' || editData?.plateType === 'Old Plate' ? 'Old Plate' : 'New Plate')
-  );
+  const [activePlateTab, setActivePlateTab] = useState('New Plate');
   const [printSide, setPrintSide] = useState(editData?.printSheet === 'Both Side' ? 'Both Side' : 'Single Side');
   const [finishingRows, setFinishingRows] = useState(() => parseFinishingRows(editData));
   const [dripOffPlateType, setDripOffPlateType] = useState(editData?.dripOffPlateType || '');
@@ -143,17 +141,58 @@ export default function JobCardForm() {
   const [useShipAddress, setUseShipAddress] = useState(
     editData?.useShipAddress || !!(editData?.shipAddress || editData?.shipPartyName)
   );
-  const [plateSize, setPlateSize] = useState(() => {
+  const [newPlateSizes, setNewPlateSizes] = useState(() => {
     if (!editData?.plateSize) return [];
-    // support both old string value and new array value
-    return Array.isArray(editData.plateSize)
+    const sizes = Array.isArray(editData.plateSize)
       ? editData.plateSize
       : editData.plateSize.split(',').map((s) => s.trim()).filter(Boolean);
+    if (editData.plateType === 'Old' || editData.plateType === 'Old Plate') return [];
+    if (editData.plateType === 'Both') {
+      try {
+        const details = JSON.parse(editData.plateDetails || '{}');
+        if (Array.isArray(details)) {
+          return details.filter(d => d.type !== 'Old Plate').map(d => d.size);
+        }
+        return sizes.filter(s => details[s]?.type !== 'Old Plate');
+      } catch(e) { return sizes; }
+    }
+    return sizes;
+  });
+  const [oldPlateSizes, setOldPlateSizes] = useState(() => {
+    if (!editData?.plateSize) return [];
+    const sizes = Array.isArray(editData.plateSize)
+      ? editData.plateSize
+      : editData.plateSize.split(',').map((s) => s.trim()).filter(Boolean);
+    if (editData.plateType === 'New' || editData.plateType === 'New Plate') return [];
+    if (editData.plateType === 'Both') {
+      try {
+        const details = JSON.parse(editData.plateDetails || '{}');
+        if (Array.isArray(details)) {
+          return details.filter(d => d.type === 'Old Plate').map(d => d.size);
+        }
+        return sizes.filter(s => details[s]?.type === 'Old Plate');
+      } catch(e) { return []; }
+    }
+    return sizes;
   });
   const [plateSizeDetails, setPlateSizeDetails] = useState(() => {
     if (editData?.plateDetails) {
       try {
-        return JSON.parse(editData.plateDetails);
+        const parsed = JSON.parse(editData.plateDetails);
+        if (Array.isArray(parsed)) {
+          const obj = {};
+          parsed.forEach(d => {
+            obj[`${d.size}_${d.type}`] = { qty: d.qty, color: d.color };
+          });
+          return obj;
+        } else {
+          const obj = {};
+          Object.keys(parsed).forEach(size => {
+             const d = parsed[size];
+             obj[`${size}_${d.type || 'New Plate'}`] = { qty: d.qty, color: d.color };
+          });
+          return obj;
+        }
       } catch (e) {
         return {};
       }
@@ -206,14 +245,15 @@ export default function JobCardForm() {
       dieCuttingType: fd.get('dieCuttingType'),
       digitalPrintout,
       digitalPrintoutRemark,
-      plateType: plateType === 'Both' ? 'Both' : (plateType === 'Old Plate' ? 'Old' : 'New'),
-      plateSize: plateSize.join(', '),
+      plateType: newPlateSizes.length > 0 && oldPlateSizes.length > 0 ? 'Both' : (oldPlateSizes.length > 0 ? 'Old' : 'New'),
+      plateSize: [...newPlateSizes, ...oldPlateSizes].join(', '),
       plateDetails: (() => {
-        if (!plateSize.length) return undefined;
+        const combined = [...newPlateSizes, ...oldPlateSizes];
+        if (!combined.length) return undefined;
         const fullDetails = {};
-        plateSize.forEach(size => {
+        combined.forEach(size => {
           const detail = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
-          const pType = plateType === 'Both' ? (detail.type || 'New Plate') : (plateType === 'Old Plate' ? 'Old Plate' : 'New Plate');
+          const pType = newPlateSizes.includes(size) ? 'New Plate' : 'Old Plate';
           fullDetails[size] = { ...detail, type: pType };
         });
         return JSON.stringify(fullDetails);
@@ -291,7 +331,7 @@ export default function JobCardForm() {
     const errors = [];
     if (!String(fd.get('partyName') || '').trim()) errors.push('Party Name');
     if (!String(fd.get('jobName') || '').trim()) errors.push('Job Name');
-    if (!plateSize.length) errors.push('Plate Size');
+    if (!newPlateSizes.length && !oldPlateSizes.length) errors.push('Plate Size');
     return errors;
   };
 
@@ -484,22 +524,25 @@ export default function JobCardForm() {
   }, [paperStocks, editData?.paper, editData?.innerPaper]);
 
   useEffect(() => {
-    refreshPlateUseCount(plateSize, jobCards);
-  }, [plateSize, jobCards, editData?._id]);
+    refreshPlateUseCount([...newPlateSizes, ...oldPlateSizes], jobCards);
+  }, [newPlateSizes, oldPlateSizes, jobCards, editData?._id]);
 
-  const handlePlateSizeChange = (e) => {
+  const handleNewPlateSizeChange = (e) => {
     const { value, checked } = e.target;
-    setPlateSize((prev) => {
-      const next = checked ? [...prev, value] : prev.filter((s) => s !== value);
-      return next;
-    });
+    setNewPlateSizes((prev) => checked ? [...prev, value] : prev.filter((s) => s !== value));
   };
 
-  const handlePlateDetailsChange = (size, field, value) => {
+  const handleOldPlateSizeChange = (e) => {
+    const { value, checked } = e.target;
+    setOldPlateSizes((prev) => checked ? [...prev, value] : prev.filter((s) => s !== value));
+  };
+
+  const handlePlateDetailsChange = (size, type, field, value) => {
+    const key = `${size}_${type}`;
     setPlateSizeDetails(prev => ({
       ...prev,
-      [size]: {
-        ...(prev[size] || { qty: 1, color: 'Single color' }),
+      [key]: {
+        ...(prev[key] || { qty: 1, color: 'Single color' }),
         [field]: value
       }
     }));
@@ -530,23 +573,26 @@ export default function JobCardForm() {
       shipEmailId: useShipAddress ? (fd.get('shipEmailId') || '') : '',
       shipGstNo: useShipAddress ? (fd.get('shipGstNo') || '') : '',
       // Attachments are uploaded in the background to ensure instant saving
-      plateSize: plateSize.length ? plateSize.join(', ') : undefined,
+      plateSize: [...newPlateSizes, ...oldPlateSizes].length ? [...newPlateSizes, ...oldPlateSizes].join(', ') : undefined,
       plateDetails: (() => {
-        if (!plateSize.length) return undefined;
-        const fullDetails = {};
-        plateSize.forEach(size => {
-          const detail = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
-          const pType = plateType === 'Both' ? (detail.type || 'New Plate') : (plateType === 'Old Plate' ? 'Old Plate' : 'New Plate');
-          fullDetails[size] = { ...detail, type: pType };
+        const arr = [];
+        newPlateSizes.forEach(size => {
+          const d = plateSizeDetails[`${size}_New Plate`] || { qty: 1, color: 'Single color' };
+          arr.push({ size, type: 'New Plate', qty: d.qty, color: d.color });
         });
-        return JSON.stringify(fullDetails);
+        oldPlateSizes.forEach(size => {
+          const d = plateSizeDetails[`${size}_Old Plate`] || { qty: 1, color: 'Single color' };
+          arr.push({ size, type: 'Old Plate', qty: d.qty, color: d.color });
+        });
+        if (!arr.length) return undefined;
+        return JSON.stringify(arr);
       })(),
       plateUseCount: Object.keys(plateUseCount).length
         ? Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', ')
         : undefined,
       digitalPrintout,
       digitalPrintoutRemark,
-      plateType: plateType === 'Both' ? 'Both' : (plateType === 'Old Plate' ? 'Old' : 'New'),
+      plateType: newPlateSizes.length > 0 && oldPlateSizes.length > 0 ? 'Both' : (oldPlateSizes.length > 0 ? 'Old' : 'New'),
       printSheet: printSide,
       bindingNote: JSON.stringify(finishingRows),
       notes: remarks,
@@ -582,7 +628,7 @@ export default function JobCardForm() {
         if (response.ok) {
           const savedData = await response.json();
           savedJobId = savedData._id;
-          rememberPlateUsage(savedData.plateSize || plateSize.join(', '), savedData.plateUseCount);
+          rememberPlateUsage(savedData.plateSize || [...newPlateSizes, ...oldPlateSizes].join(', '), savedData.plateUseCount);
 
           // Background upload for attachments
           if (savedJobId && jobAttachments !== undefined) {
@@ -918,10 +964,10 @@ export default function JobCardForm() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
-                      name="plateType"
-                      value="New"
-                      checked={plateType === 'New Plate'}
-                      onChange={() => setPlateType('New Plate')}
+                      name="activePlateTab"
+                      value="New Plate"
+                      checked={activePlateTab === 'New Plate'}
+                      onChange={() => setActivePlateTab('New Plate')}
                       className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">New Plate</span>
@@ -929,33 +975,25 @@ export default function JobCardForm() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
-                      name="plateType"
-                      value="Old"
-                      checked={plateType === 'Old Plate'}
-                      onChange={() => setPlateType('Old Plate')}
+                      name="activePlateTab"
+                      value="Old Plate"
+                      checked={activePlateTab === 'Old Plate'}
+                      onChange={() => setActivePlateTab('Old Plate')}
                       className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">Old Plate</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="plateType"
-                      value="Both"
-                      checked={plateType === 'Both'}
-                      onChange={() => setPlateType('Both')}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-700">Both</span>
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">Plate Size * <span className="text-xs font-normal text-indigo-500">(Multiple select allowed)</span></label>
+                <label className="text-sm font-medium text-gray-700 mb-3 block">
+                  {activePlateTab} Size <span className="text-xs font-normal text-indigo-500">(Multiple select allowed)</span>
+                </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {PLATE_SIZES.map((size) => {
-                    const isChecked = plateSize.includes(size);
+                    const isChecked = activePlateTab === 'New Plate' ? newPlateSizes.includes(size) : oldPlateSizes.includes(size);
+                    const handleChange = activePlateTab === 'New Plate' ? handleNewPlateSizeChange : handleOldPlateSizeChange;
                     return (
                       <label
                         key={size}
@@ -966,10 +1004,9 @@ export default function JobCardForm() {
                       >
                         <input
                           type="checkbox"
-                          name="plateSize"
                           value={size}
                           checked={isChecked}
-                          onChange={handlePlateSizeChange}
+                          onChange={handleChange}
                           className="w-4 h-4 text-indigo-600 rounded"
                         />
                         {size}
@@ -977,43 +1014,39 @@ export default function JobCardForm() {
                     );
                   })}
                 </div>
-                {plateSize.length > 0 && (
+                
+                {(activePlateTab === 'New Plate' ? newPlateSizes : oldPlateSizes).length > 0 && (
                   <div className="mt-4 space-y-3">
-                    {plateSize.map((size) => (
+                    {(activePlateTab === 'New Plate' ? newPlateSizes : oldPlateSizes).map((size) => {
+                      const dKey = `${size}_${activePlateTab}`;
+                      const dVal = plateSizeDetails[dKey] || { qty: 1, color: 'Single color' };
+                      return (
                       <div key={size} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <span className="font-semibold text-gray-800 w-24 shrink-0">{size}</span>
-                        {plateType === 'Both' && (
-                          <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <label className="text-xs text-gray-500 shrink-0">Type:</label>
-                            <select
-                              className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:outline-none w-24"
-                              value={plateSizeDetails[size]?.type || 'New Plate'}
-                              onChange={(e) => handlePlateDetailsChange(size, 'type', e.target.value)}
-                            >
-                              <option value="New Plate">New Plate</option>
-                              <option value="Old Plate">Old Plate</option>
-                            </select>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                           <span className={`text-xs font-semibold px-2 py-1 rounded ${activePlateTab === 'New Plate' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
+                             {activePlateTab}
+                           </span>
+                        </div>
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <label className="text-xs text-gray-500 shrink-0">Set:</label>
                           <div className="flex items-center border border-gray-300 rounded-md bg-white">
                             <button
                               type="button"
                               className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                              onClick={() => handlePlateDetailsChange(size, 'qty', Math.max(1, (plateSizeDetails[size]?.qty || 1) - 1))}
+                              onClick={() => handlePlateDetailsChange(size, activePlateTab, 'qty', Math.max(1, (dVal.qty || 1) - 1))}
                             >-</button>
                             <input
                               type="number"
                               className="w-12 text-center text-sm border-x border-gray-300 py-1 focus:outline-none"
-                              value={plateSizeDetails[size]?.qty || 1}
-                              onChange={(e) => handlePlateDetailsChange(size, 'qty', parseInt(e.target.value) || 1)}
+                              value={dVal.qty || 1}
+                              onChange={(e) => handlePlateDetailsChange(size, activePlateTab, 'qty', parseInt(e.target.value) || 1)}
                               min="1"
                             />
                             <button
                               type="button"
                               className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                              onClick={() => handlePlateDetailsChange(size, 'qty', (plateSizeDetails[size]?.qty || 1) + 1)}
+                              onClick={() => handlePlateDetailsChange(size, activePlateTab, 'qty', (dVal.qty || 1) + 1)}
                             >+</button>
                           </div>
                         </div>
@@ -1021,8 +1054,8 @@ export default function JobCardForm() {
                           <label className="text-xs text-gray-500 shrink-0">Color:</label>
                           <select
                             className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:outline-none w-full max-w-50"
-                            value={plateSizeDetails[size]?.color || 'Single color'}
-                            onChange={(e) => handlePlateDetailsChange(size, 'color', e.target.value)}
+                            value={dVal.color || 'Single color'}
+                            onChange={(e) => handlePlateDetailsChange(size, activePlateTab, 'color', e.target.value)}
                           >
                             <option value="Single color">Single color</option>
                             <option value="Two color">Two color</option>
@@ -1034,33 +1067,23 @@ export default function JobCardForm() {
                           </select>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {(plateType === 'Old Plate' || plateType === 'Both') && (
+                {activePlateTab === 'Old Plate' && oldPlateSizes.length > 0 && (
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">Plate Used</label>
-                    {plateSize.length > 0 ? (
-                      <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
-                        {plateSize.map((size) => (
-                          <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                            <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
-                            <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <input
-                        type="text"
-                        readOnly
-                        value=""
-                        placeholder="Auto"
-                        className="h-10 border border-gray-200 rounded-lg px-4 bg-gray-50 text-gray-800 font-semibold focus:outline-none cursor-default"
-                      />
-                    )}
+                    <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
+                      {oldPlateSizes.map((size) => (
+                        <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                          <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
+                          <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div className="flex flex-col">
@@ -1596,15 +1619,27 @@ export default function JobCardForm() {
                               if (previewData.plateDetails) {
                                 try {
                                   const details = JSON.parse(previewData.plateDetails);
+                                  if (Array.isArray(details)) {
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        {details.map((d, idx) => (
+                                          <span key={idx}>
+                                            <span className="font-semibold">{d.size}</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">(Type: {d.type}, Set: {d.qty}, {d.color})</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
                                   const sizes = previewData.plateSize.split(',').map(s => s.trim()).filter(Boolean);
                                   return (
                                     <div className="flex flex-col gap-1">
-                                      {sizes.map(size => {
+                                      {sizes.map((size, idx) => {
                                         const d = details[size];
-                                        if (!d) return <span key={size}>{size}</span>;
+                                        if (!d) return <span key={`${size}-${idx}`}>{size}</span>;
                                         const typeStr = d.type ? `Type: ${d.type}, ` : '';
                                         return (
-                                          <span key={size}>
+                                          <span key={`${size}-${idx}`}>
                                             <span className="font-semibold">{size}</span>
                                             <span className="text-[10px] text-gray-500 ml-1">({typeStr}Set: {d.qty}, {d.color})</span>
                                           </span>

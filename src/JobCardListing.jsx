@@ -1050,15 +1050,27 @@ export default function JobCardListing() {
                               if (selectedCard.plateDetails) {
                                 try {
                                   const details = JSON.parse(selectedCard.plateDetails);
+                                  if (Array.isArray(details)) {
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        {details.map((d, idx) => (
+                                          <span key={idx}>
+                                            <span className="font-semibold">{d.size}</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">(Type: {d.type}, Set: {d.qty}, {d.color})</span>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    );
+                                  }
                                   const sizes = selectedCard.plateSize.split(',').map(s => s.trim()).filter(Boolean);
                                   return (
                                     <div className="flex flex-col gap-1">
-                                      {sizes.map(size => {
+                                      {sizes.map((size, idx) => {
                                         const d = details[size];
-                                        if (!d) return <span key={size}>{size}</span>;
+                                        if (!d) return <span key={`${size}-${idx}`}>{size}</span>;
                                         const typeStr = d.type ? `Type: ${d.type}, ` : '';
                                         return (
-                                          <span key={size}>
+                                          <span key={`${size}-${idx}`}>
                                             <span className="font-semibold">{size}</span>
                                             <span className="text-[10px] text-gray-500 ml-1">({typeStr}Set: {d.qty}, {d.color})</span>
                                           </span>
