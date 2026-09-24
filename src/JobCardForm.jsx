@@ -118,7 +118,7 @@ export default function JobCardForm() {
   const [digitalPrintout, setDigitalPrintout] = useState(editData?.digitalPrintout || '');
   const [digitalPrintoutRemark, setDigitalPrintoutRemark] = useState(editData?.digitalPrintoutRemark || '');
   const [plateType, setPlateType] = useState(
-    editData?.plateType === 'Old' || editData?.plateType === 'Old Plate' ? 'Old Plate' : 'New Plate'
+    editData?.plateType === 'Both' ? 'Both' : (editData?.plateType === 'Old' || editData?.plateType === 'Old Plate' ? 'Old Plate' : 'New Plate')
   );
   const [printSide, setPrintSide] = useState(editData?.printSheet === 'Both Side' ? 'Both Side' : 'Single Side');
   const [finishingRows, setFinishingRows] = useState(() => parseFinishingRows(editData));
@@ -206,13 +206,15 @@ export default function JobCardForm() {
       dieCuttingType: fd.get('dieCuttingType'),
       digitalPrintout,
       digitalPrintoutRemark,
-      plateType: plateType === 'Old Plate' ? 'Old' : 'New',
+      plateType: plateType === 'Both' ? 'Both' : (plateType === 'Old Plate' ? 'Old' : 'New'),
       plateSize: plateSize.join(', '),
       plateDetails: (() => {
         if (!plateSize.length) return undefined;
         const fullDetails = {};
         plateSize.forEach(size => {
-          fullDetails[size] = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+          const detail = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+          const pType = plateType === 'Both' ? (detail.type || 'New Plate') : (plateType === 'Old Plate' ? 'Old Plate' : 'New Plate');
+          fullDetails[size] = { ...detail, type: pType };
         });
         return JSON.stringify(fullDetails);
       })(),
@@ -351,18 +353,22 @@ export default function JobCardForm() {
     const name = getCoverPaperLabel(stock);
     const gsm = stock.coverGSM || stock.gsm;
     if (!name) return '';
+    const partyName = stock.coverPartyName || stock.partyName;
+    const partyPrefix = partyName ? `${partyName} - ` : '';
     const gsmText = gsm ? ` (${gsm} GSM)` : '';
     const sizeText = stock.coverPaperSize ? ` · ${stock.coverPaperSize}` : '';
-    return `${name}${gsmText}${sizeText}`;
+    return `${partyPrefix}${name}${gsmText}${sizeText}`;
   };
 
   const formatInnerPaperOption = (stock) => {
     const name = getInnerPaperLabel(stock);
     const gsm = stock.innerGSM || stock.gsm;
     if (!name) return '';
+    const partyName = stock.innerPartyName || stock.partyName;
+    const partyPrefix = partyName ? `${partyName} - ` : '';
     const gsmText = gsm ? ` (${gsm} GSM)` : '';
     const sizeText = stock.innerPaperSize ? ` · ${stock.innerPaperSize}` : '';
-    return `${name}${gsmText}${sizeText}`;
+    return `${partyPrefix}${name}${gsmText}${sizeText}`;
   };
 
   const matchesCoverSearch = (stock, term) => {
@@ -529,7 +535,9 @@ export default function JobCardForm() {
         if (!plateSize.length) return undefined;
         const fullDetails = {};
         plateSize.forEach(size => {
-          fullDetails[size] = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+          const detail = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
+          const pType = plateType === 'Both' ? (detail.type || 'New Plate') : (plateType === 'Old Plate' ? 'Old Plate' : 'New Plate');
+          fullDetails[size] = { ...detail, type: pType };
         });
         return JSON.stringify(fullDetails);
       })(),
@@ -538,7 +546,7 @@ export default function JobCardForm() {
         : undefined,
       digitalPrintout,
       digitalPrintoutRemark,
-      plateType: plateType === 'Old Plate' ? 'Old' : 'New',
+      plateType: plateType === 'Both' ? 'Both' : (plateType === 'Old Plate' ? 'Old' : 'New'),
       printSheet: printSide,
       bindingNote: JSON.stringify(finishingRows),
       notes: remarks,
@@ -929,6 +937,17 @@ export default function JobCardForm() {
                     />
                     <span className="text-sm text-gray-700">Old Plate</span>
                   </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="plateType"
+                      value="Both"
+                      checked={plateType === 'Both'}
+                      onChange={() => setPlateType('Both')}
+                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-gray-700">Both</span>
+                  </label>
                 </div>
               </div>
 
@@ -963,6 +982,19 @@ export default function JobCardForm() {
                     {plateSize.map((size) => (
                       <div key={size} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <span className="font-semibold text-gray-800 w-24 shrink-0">{size}</span>
+                        {plateType === 'Both' && (
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <label className="text-xs text-gray-500 shrink-0">Type:</label>
+                            <select
+                              className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:outline-none w-24"
+                              value={plateSizeDetails[size]?.type || 'New Plate'}
+                              onChange={(e) => handlePlateDetailsChange(size, 'type', e.target.value)}
+                            >
+                              <option value="New Plate">New Plate</option>
+                              <option value="Old Plate">Old Plate</option>
+                            </select>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                           <label className="text-xs text-gray-500 shrink-0">Set:</label>
                           <div className="flex items-center border border-gray-300 rounded-md bg-white">
@@ -1008,7 +1040,7 @@ export default function JobCardForm() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {plateType === 'Old Plate' && (
+                {(plateType === 'Old Plate' || plateType === 'Both') && (
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">Plate Used</label>
                     {plateSize.length > 0 ? (
@@ -1137,9 +1169,9 @@ export default function JobCardForm() {
                       onClick={() => setIsPaperDropdownOpen(!isPaperDropdownOpen)}
                       className={`w-full h-10 border rounded-lg px-4 bg-white flex items-center justify-between transition-all duration-200 ${isPaperDropdownOpen ? 'ring-2 ring-sky-500 border-transparent' : 'border-gray-200 hover:border-gray-300'}`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Layers size={16} className={selectedPaper ? 'text-sky-500' : 'text-gray-400'} />
-                        <span className={`text-sm truncate ${selectedPaper ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Layers size={16} className={selectedPaper ? 'text-sky-500 shrink-0' : 'text-gray-400 shrink-0'} />
+                        <span className={`text-xs truncate block w-full ${selectedPaper ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
                           {selectedPaperLabel || selectedPaper || 'Choose Paper'}
                         </span>
                       </div>
@@ -1147,7 +1179,7 @@ export default function JobCardForm() {
                     </button>
 
                     {isPaperDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="absolute top-full left-0 min-w-full sm:min-w-95 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="px-3 pb-2 mb-2 border-b border-gray-50">
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
@@ -1178,11 +1210,12 @@ export default function JobCardForm() {
                                   }
                                   setIsPaperDropdownOpen(false);
                                 }}
-                                className={`w-full px-4 py-2.5 text-left text-sm flex items-center justify-between hover:bg-sky-50 transition-colors ${selectedPaper === getCoverPaperLabel(stock) ? 'bg-sky-50/50 text-sky-700 font-bold' : 'text-gray-700'}`}
+                                className={`w-full px-4 py-2 text-left text-xs flex items-center justify-between hover:bg-sky-50 transition-colors ${selectedPaper === getCoverPaperLabel(stock) ? 'bg-sky-50/50 text-sky-700 font-bold' : 'text-gray-700'}`}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
                                   <FileText size={14} className={selectedPaper === getCoverPaperLabel(stock) ? 'text-sky-500' : 'text-gray-300'} />
                                   <span className="truncate">
+                                    {(stock.coverPartyName || stock.partyName) && <span className="font-bold mr-1">{(stock.coverPartyName || stock.partyName)} -</span>}
                                     {getCoverPaperLabel(stock)}{' '}
                                     <span className="text-[10px] text-gray-500">
                                       ({stock.coverGSM || stock.gsm} GSM)
@@ -1569,10 +1602,11 @@ export default function JobCardForm() {
                                       {sizes.map(size => {
                                         const d = details[size];
                                         if (!d) return <span key={size}>{size}</span>;
+                                        const typeStr = d.type ? `Type: ${d.type}, ` : '';
                                         return (
                                           <span key={size}>
                                             <span className="font-semibold">{size}</span>
-                                            <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">({typeStr}Set: {d.qty}, {d.color})</span>
                                           </span>
                                         );
                                       })}
@@ -1582,7 +1616,7 @@ export default function JobCardForm() {
                               }
                               return previewData.plateSize || '-';
                             })()],
-                            ...(previewData.plateType === 'Old' || previewData.plateType === 'Old Plate' 
+                            ...(previewData.plateType === 'Old' || previewData.plateType === 'Both' || previewData.plateType === 'Old Plate' 
                                 ? [['Plate Used', previewData.plateUseCount || '-']] 
                                 : []),
                             ['Plate Qty', previewData.plateQty ?? 0],

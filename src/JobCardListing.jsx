@@ -106,7 +106,7 @@ export default function JobCardListing() {
     localStorage.setItem('jobCardColumnVisibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
-  const handleAddPaperUsage = () => {
+  const handleAddPaperUsage = async () => {
     if (!paperUsageModalCard || !paperUsageInput) return;
     const cardKey = getCardKey(paperUsageModalCard);
     const qty = parseInt(paperUsageInput, 10);
@@ -115,13 +115,38 @@ export default function JobCardListing() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
 
     // Validate: qty cannot exceed remaining units
-    const totalUnits = parseInt(paperUsageModalCard?.jobQty) || 0;
+    const totalUnits = parseInt(paperUsageModalCard?.coverPaperCount || paperUsageModalCard?.paperCount || paperUsageModalCard?.jobQty) || 0;
     const existingData = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
     const usedSoFar = existingData.reduce((acc, r) => acc + r.qty, 0);
     const remaining = Math.max(0, totalUnits - usedSoFar);
 
     if (totalUnits > 0 && qty > remaining) {
       alert(`Only ${remaining.toLocaleString()} units remaining. Cannot add ${qty.toLocaleString()} units.`);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/paper-stock/usage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobCardId: paperUsageModalCard._id || undefined,
+          jobNumber: paperUsageModalCard.jobNumber,
+          paperName: paperUsageModalCard.paper,
+          paperSource: paperUsageModalCard.paperSource || 'Company paper',
+          quantity: qty,
+          userName: currentUser.name
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || 'Failed to update paper stock.');
+        return;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error connecting to paper stock.');
       return;
     }
 
@@ -1031,10 +1056,11 @@ export default function JobCardListing() {
                                       {sizes.map(size => {
                                         const d = details[size];
                                         if (!d) return <span key={size}>{size}</span>;
+                                        const typeStr = d.type ? `Type: ${d.type}, ` : '';
                                         return (
                                           <span key={size}>
                                             <span className="font-semibold">{size}</span>
-                                            <span className="text-[10px] text-gray-500 ml-1">(Set: {d.qty}, {d.color})</span>
+                                            <span className="text-[10px] text-gray-500 ml-1">({typeStr}Set: {d.qty}, {d.color})</span>
                                           </span>
                                         );
                                       })}
@@ -1044,7 +1070,7 @@ export default function JobCardListing() {
                               }
                               return selectedCard.plateSize || '-';
                             })()],
-                            ...(selectedCard.plateType === 'Old' || selectedCard.plateType === 'Old Plate' 
+                            ...(selectedCard.plateType === 'Old' || selectedCard.plateType === 'Both' || selectedCard.plateType === 'Old Plate' 
                                 ? [['Plate Used', selectedCard.plateUseCount || '-']] 
                                 : []),
                             ['Plate Qty', selectedCard.plateQty ?? 0],
@@ -1288,7 +1314,7 @@ export default function JobCardListing() {
             <div className="p-4 overflow-y-auto grow">
               {(() => {
                 const cardKey = getCardKey(paperUsageModalCard);
-                const totalUnits = parseInt(paperUsageModalCard.jobQty) || 0;
+                const totalUnits = parseInt(paperUsageModalCard.coverPaperCount || paperUsageModalCard.paperCount || paperUsageModalCard.jobQty) || 0;
                 const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
                 const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
                 const remainingUnits = Math.max(0, totalUnits - usedUnits);

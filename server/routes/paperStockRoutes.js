@@ -17,6 +17,55 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// POST /api/paper-stock/usage - Record paper usage from Job Card
+router.post('/usage', async (req, res) => {
+  try {
+    const { jobCardId, jobNumber, paperName, paperSource, quantity, userName } = req.body;
+    
+    if (!paperName) {
+      return res.status(400).json({ error: "Paper name is required" });
+    }
+
+    const qty = Number(quantity);
+    if (isNaN(qty) || qty <= 0) {
+      return res.status(400).json({ error: "Invalid quantity" });
+    }
+
+    const searchRegex = new RegExp(`^${paperName.trim()}$`, 'i');
+    const stock = await PaperStock.findOne({ 
+      $or: [{ coverName: searchRegex }, { name: searchRegex }],
+      paperSource: paperSource || 'Company paper' 
+    });
+
+    if (!stock) {
+      return res.status(404).json({ error: `Paper stock '${paperName}' not found.` });
+    }
+
+    stock.coverQuantity = Math.max(0, (stock.coverQuantity || 0) - qty);
+    await stock.save();
+
+    await logPaperStockTransaction({
+      paperStockId: stock._id,
+      stockName: stock.name,
+      paperName: stock.coverName || stock.name,
+      paperType: 'cover',
+      transactionType: 'deduct',
+      quantity: qty,
+      partyName: stock.coverPartyName || stock.partyName,
+      jobNumber,
+      jobCardId,
+      paperSource: stock.paperSource,
+      balanceAfter: stock.coverQuantity,
+      note: `Used in Job #${jobNumber} by ${userName}`
+    });
+
+    res.json({ success: true, balanceAfter: stock.coverQuantity });
+  } catch (err) {
+    console.error("Paper usage error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/paper-stock - Get all stock items
 router.get('/', async (req, res) => {
   try {
