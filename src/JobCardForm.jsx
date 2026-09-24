@@ -1647,7 +1647,7 @@ export default function JobCardForm() {
                                       })}
                                     </div>
                                   );
-                                } catch(e) {}
+                                } catch(error) { console.error(error); }
                               }
                               return previewData.plateSize || '-';
                             })()],

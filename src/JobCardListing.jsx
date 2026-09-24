@@ -829,7 +829,7 @@ export default function JobCardListing() {
                                             const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
                                             if (!data) return null;
                                             let count = 1;
-                                            try { count = data.startsWith('[') ? JSON.parse(data).length : 1; } catch (e) {}
+                                            try { count = data.startsWith('[') ? JSON.parse(data).length : 1; } catch(error) { console.error(error); }
                                             return (
                                               <button 
                                                 onClick={() => handleViewImage(cardKey)}
@@ -854,7 +854,7 @@ export default function JobCardListing() {
                                       let cardHistory = [];
                                       try {
                                         if (historyStr) cardHistory = JSON.parse(historyStr)[cardKey] || [];
-                                      } catch (e) {}
+                                      } catch(error) { console.error(error); }
 
                                       return WORKFLOW_STEPS.map((step, stepIndex) => {
                                         const stepNo = stepIndex + 1;
@@ -1078,7 +1078,7 @@ export default function JobCardListing() {
                                       })}
                                     </div>
                                   );
-                                } catch(e) {}
+                                } catch(error) { console.error(error); }
                               }
                               return selectedCard.plateSize || '-';
                             })()],
