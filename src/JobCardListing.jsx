@@ -883,14 +883,14 @@ export default function JobCardListing() {
                                             </div>
                                             <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
                                             <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
-                                            <span 
-                                              className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase ${
-                                                done || active ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
-                                              }`}
-                                              title={done && completedBy ? `Completed by ${completedBy}` : step.owner}
-                                            >
-                                              {done && completedBy ? completedBy : step.owner}
-                                            </span>
+                                            {done && completedBy && (
+                                              <span 
+                                                className="mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase bg-blue-50 text-blue-700"
+                                                title={`Completed by ${completedBy}`}
+                                              >
+                                                {completedBy}
+                                              </span>
+                                            )}
                                               <button
                                                 onClick={() => promptStepClick(cardKey, stepNo)}
                                                 className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${

@@ -342,17 +342,7 @@ router.post('/', async (req, res) => {
     });
     // ----------------------------------
 
-    // Create Notification (Run in background)
-    const notifMessage = isUpdate
-      ? `Job Card updated: #${jobCard.jobNumber} for ${jobCard.partyName}`
-      : `New Job Card created: #${jobCard.jobNumber} for ${jobCard.partyName}`;
-
-    new Notification({
-      type: isUpdate ? 'JOB_UPDATED' : 'JOB_CREATED',
-      message: notifMessage
-    }).save().catch(notifErr => {
-      console.error("Failed to create notification:", notifErr.message);
-    });
+    // Notifications for Job Cards have been disabled as per user request.
 
     console.log(`☁️ Job Card Saved to MongoDB: ${jobCard.jobNumber}`);
     res.status(201).json(jobCard);
@@ -526,16 +516,7 @@ router.patch('/:id/price', async (req, res) => {
 
     if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
 
-    // Create Notification
-    try {
-      const newNotif = new Notification({
-        type: 'PRICE_UPDATED',
-        message: `Price updated for Job #${jobCard.jobNumber}: ₹${totalAmount}`
-      });
-      await newNotif.save();
-    } catch (nErr) {
-      console.error("Notif Error:", nErr.message);
-    }
+    // Notifications for Job Card price updates have been disabled.
 
     res.json(jobCard);
   } catch (err) {
