@@ -640,7 +640,7 @@ tr.tax-terms-bank-section {
 /* Job card print table — section headers & fields */
 .job-card-print-table .job-card-section-title {
   font-weight: 900;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: #000;
@@ -656,14 +656,14 @@ tr.tax-terms-bank-section {
 .job-card-print-table .job-card-meta-cell .tax-field-label,
 .job-card-print-table .job-card-section-body .tax-field-label {
   font-weight: 800;
-  font-size: 10px;
+  font-size: 12px;
   color: #000;
 }
 
 .job-card-print-table .job-card-meta-cell .tax-field-value,
 .job-card-print-table .job-card-section-body .tax-field-value {
   font-weight: 800;
-  font-size: 11px;
+  font-size: 13px;
   color: #000;
 }
 
@@ -678,7 +678,7 @@ tr.tax-terms-bank-section {
 }
 
 .job-card-print-table .job-card-work-instructions-text {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.55;
   color: #000;
@@ -974,13 +974,13 @@ tr.tax-terms-bank-section {
   body.printing-job-card .job-card-work-instructions-text {
     color: #000 !important;
     font-weight: 900 !important;
-    font-size: 14px !important;
+    font-size: 16px !important;
     line-height: 1.55 !important;
   }
 
   body.printing-job-card .job-card-print-table .job-card-section-title {
     font-weight: 900 !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
     letter-spacing: 0.06em !important;
     color: #000 !important;
     background-color: #d9e9f7 !important;
@@ -992,13 +992,13 @@ tr.tax-terms-bank-section {
   body.printing-job-card .job-card-print-table .tax-field-colon {
     font-weight: 900 !important;
     color: #000 !important;
-    font-size: 11px !important;
+    font-size: 13px !important;
   }
 
   body.printing-job-card .job-card-print-table .tax-field-value {
     font-weight: 900 !important;
     color: #000 !important;
-    font-size: 12px !important;
+    font-size: 14px !important;
   }
 
   body.printing-job-card .job-card-print-table .tax-cell {

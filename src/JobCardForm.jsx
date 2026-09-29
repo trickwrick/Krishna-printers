@@ -657,6 +657,105 @@ export default function JobCardForm() {
     await saveAndOpenList();
   };
 
+  const isNewPlateActive = activePlateTab === 'New Plate' || activePlateTab === 'Both' || activePlateTab === 'New';
+  const isOldPlateActive = activePlateTab === 'Old Plate' || activePlateTab === 'Both' || activePlateTab === 'Old';
+
+  const renderPlateSizes = (type) => {
+    const isNew = type === 'New Plate';
+    const sizes = isNew ? newPlateSizes : oldPlateSizes;
+    const handleSizeChange = isNew ? handleNewPlateSizeChange : handleOldPlateSizeChange;
+
+    return (
+      <div className="mb-6 border border-gray-100 rounded-xl p-4 sm:p-5 bg-white shadow-sm">
+        <label className="text-sm font-semibold text-gray-800 mb-4 block">
+          {type} Size <span className="text-xs font-normal text-indigo-500 ml-2">(Multiple select allowed)</span>
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {PLATE_SIZES.map((size) => {
+            const isChecked = sizes.includes(size);
+            return (
+              <label
+                key={size}
+                className={`flex items-center justify-center gap-2 h-10 border rounded-lg px-3 cursor-pointer text-sm transition-all ${isChecked
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-500/20'
+                    : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-gray-50 hover:bg-white'
+                  }`}
+              >
+                <input
+                  type="checkbox"
+                  value={size}
+                  checked={isChecked}
+                  onChange={handleSizeChange}
+                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+                {size}
+              </label>
+            );
+          })}
+        </div>
+        
+        {sizes.length > 0 && (
+          <div className="mt-5 space-y-3">
+            {sizes.map((size) => {
+              const dKey = `${size}_${type}`;
+              const dVal = plateSizeDetails[dKey] || { qty: 1, color: 'Single color' };
+              return (
+              <div key={size} className="flex flex-col lg:flex-row lg:items-center gap-4 p-4 bg-gray-50 border border-gray-200 rounded-xl transition-all hover:border-indigo-200">
+                <div className="flex items-center gap-3 min-w-32">
+                  <span className="font-semibold text-gray-900">{size}</span>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isNew ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-800'}`}>
+                    {type}
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap items-center gap-4 w-full">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-gray-600 shrink-0">Sets:</label>
+                    <div className="flex items-center border border-gray-300 rounded-lg bg-white overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500">
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors font-medium"
+                        onClick={() => handlePlateDetailsChange(size, type, 'qty', Math.max(1, (dVal.qty || 1) - 1))}
+                      >-</button>
+                      <input
+                        type="number"
+                        className="w-14 text-center text-sm border-x border-gray-300 py-1.5 focus:outline-none font-semibold text-gray-800"
+                        value={dVal.qty || 1}
+                        onChange={(e) => handlePlateDetailsChange(size, type, 'qty', parseInt(e.target.value) || 1)}
+                        min="1"
+                      />
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors font-medium"
+                        onClick={() => handlePlateDetailsChange(size, type, 'qty', (dVal.qty || 1) + 1)}
+                      >+</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-1 min-w-40">
+                    <label className="text-xs font-medium text-gray-600 shrink-0">Color:</label>
+                    <select
+                      className="text-sm border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 w-full font-medium text-gray-800 bg-white cursor-pointer"
+                      value={dVal.color || 'Single color'}
+                      onChange={(e) => handlePlateDetailsChange(size, type, 'color', e.target.value)}
+                    >
+                      <option value="Single color">Single color</option>
+                      <option value="Two color">Two color</option>
+                      <option value="Three color">Three color</option>
+                      <option value="Multi color">Multi color</option>
+                      <option value="CMYK">CMYK</option>
+                      <option value="Panton">Panton</option>
+                      <option value="Black&White">Black&White</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )})}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <form ref={formRef} onSubmit={handleSubmit} className="mx-auto mt-8 pb-12">
@@ -964,10 +1063,16 @@ export default function JobCardForm() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      name="activePlateTab"
-                      value="New Plate"
-                      checked={activePlateTab === 'New Plate'}
-                      onChange={() => setActivePlateTab(activePlateTab === 'New Plate' ? '' : 'New Plate')}
+                      checked={isNewPlateActive}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        if (checked) {
+                          setActivePlateTab(isOldPlateActive ? 'Both' : 'New Plate');
+                        } else {
+                          setActivePlateTab(isOldPlateActive ? 'Old Plate' : '');
+                          setNewPlateSizes([]);
+                        }
+                      }}
                       className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">New Plate</span>
@@ -975,10 +1080,16 @@ export default function JobCardForm() {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      name="activePlateTab"
-                      value="Old Plate"
-                      checked={activePlateTab === 'Old Plate'}
-                      onChange={() => setActivePlateTab(activePlateTab === 'Old Plate' ? '' : 'Old Plate')}
+                      checked={isOldPlateActive}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        if (checked) {
+                          setActivePlateTab(isNewPlateActive ? 'Both' : 'Old Plate');
+                        } else {
+                          setActivePlateTab(isNewPlateActive ? 'New Plate' : '');
+                          setOldPlateSizes([]);
+                        }
+                      }}
                       className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">Old Plate</span>
@@ -986,96 +1097,15 @@ export default function JobCardForm() {
                 </div>
               </div>
 
-              {activePlateTab && (
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">
-                  {activePlateTab} Size <span className="text-xs font-normal text-indigo-500">(Multiple select allowed)</span>
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {PLATE_SIZES.map((size) => {
-                    const isChecked = activePlateTab === 'New Plate' ? newPlateSizes.includes(size) : oldPlateSizes.includes(size);
-                    const handleChange = activePlateTab === 'New Plate' ? handleNewPlateSizeChange : handleOldPlateSizeChange;
-                    return (
-                      <label
-                        key={size}
-                        className={`flex items-center gap-2 h-10 border rounded-lg px-3 cursor-pointer text-sm transition-all ${isChecked
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-semibold ring-2 ring-indigo-500/20'
-                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
-                          }`}
-                      >
-                        <input
-                          type="checkbox"
-                          value={size}
-                          checked={isChecked}
-                          onChange={handleChange}
-                          className="w-4 h-4 text-indigo-600 rounded"
-                        />
-                        {size}
-                      </label>
-                    );
-                  })}
+              {(isNewPlateActive || isOldPlateActive) && (
+                <div className="space-y-4">
+                  {isNewPlateActive && renderPlateSizes('New Plate')}
+                  {isOldPlateActive && renderPlateSizes('Old Plate')}
                 </div>
-                
-                {(activePlateTab === 'New Plate' ? newPlateSizes : oldPlateSizes).length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    {(activePlateTab === 'New Plate' ? newPlateSizes : oldPlateSizes).map((size) => {
-                      const dKey = `${size}_${activePlateTab}`;
-                      const dVal = plateSizeDetails[dKey] || { qty: 1, color: 'Single color' };
-                      return (
-                      <div key={size} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                        <span className="font-semibold text-gray-800 w-24 shrink-0">{size}</span>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                           <span className={`text-xs font-semibold px-2 py-1 rounded ${activePlateTab === 'New Plate' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'}`}>
-                             {activePlateTab}
-                           </span>
-                        </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <label className="text-xs text-gray-500 shrink-0">Set:</label>
-                          <div className="flex items-center border border-gray-300 rounded-md bg-white">
-                            <button
-                              type="button"
-                              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                              onClick={() => handlePlateDetailsChange(size, activePlateTab, 'qty', Math.max(1, (dVal.qty || 1) - 1))}
-                            >-</button>
-                            <input
-                              type="number"
-                              className="w-12 text-center text-sm border-x border-gray-300 py-1 focus:outline-none"
-                              value={dVal.qty || 1}
-                              onChange={(e) => handlePlateDetailsChange(size, activePlateTab, 'qty', parseInt(e.target.value) || 1)}
-                              min="1"
-                            />
-                            <button
-                              type="button"
-                              className="px-2 py-1 text-gray-600 hover:bg-gray-100"
-                              onClick={() => handlePlateDetailsChange(size, activePlateTab, 'qty', (dVal.qty || 1) + 1)}
-                            >+</button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
-                          <label className="text-xs text-gray-500 shrink-0">Color:</label>
-                          <select
-                            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:outline-none w-full max-w-50"
-                            value={dVal.color || 'Single color'}
-                            onChange={(e) => handlePlateDetailsChange(size, activePlateTab, 'color', e.target.value)}
-                          >
-                            <option value="Single color">Single color</option>
-                            <option value="Two color">Two color</option>
-                            <option value="Three color">Three color</option>
-                            <option value="Multi color">Multi color</option>
-                            <option value="CMYK">CMYK</option>
-                            <option value="Panton">Panton</option>
-                            <option value="Black&White">Black&White</option>
-                          </select>
-                        </div>
-                      </div>
-                    )})}
-                  </div>
-                )}
-              </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {activePlateTab === 'Old Plate' && oldPlateSizes.length > 0 && (
+                {isOldPlateActive && oldPlateSizes.length > 0 && (
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-700 mb-1">Plate Used</label>
                     <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
@@ -1235,10 +1265,10 @@ export default function JobCardForm() {
                                   }
                                   setIsPaperDropdownOpen(false);
                                 }}
-                                className={`w-full px-4 py-2 text-left text-xs flex items-center justify-between hover:bg-sky-50 transition-colors ${selectedPaper === getCoverPaperLabel(stock) ? 'bg-sky-50/50 text-sky-700 font-bold' : 'text-gray-700'}`}
+                                className={`w-full px-4 py-2 text-left text-xs flex items-center justify-between hover:bg-sky-50 transition-colors ${selectedPaperLabel === formatCoverPaperOption(stock) ? 'bg-sky-50/50 text-sky-700 font-bold' : 'text-gray-700'}`}
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <FileText size={14} className={selectedPaper === getCoverPaperLabel(stock) ? 'text-sky-500' : 'text-gray-300'} />
+                                  <FileText size={14} className={selectedPaperLabel === formatCoverPaperOption(stock) ? 'text-sky-500' : 'text-gray-300'} />
                                   <span className="truncate">
                                     {(stock.coverPartyName || stock.partyName) && <span className="font-bold mr-1">{(stock.coverPartyName || stock.partyName)} -</span>}
                                     {getCoverPaperLabel(stock)}{' '}
@@ -1252,7 +1282,7 @@ export default function JobCardForm() {
                                     )}
                                   </span>
                                 </div>
-                                {selectedPaper === getCoverPaperLabel(stock) && <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />}
+                                {selectedPaperLabel === formatCoverPaperOption(stock) && <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />}
                               </button>
                             ))
                         ) : (
@@ -1524,7 +1554,7 @@ export default function JobCardForm() {
             </div>
             <div className="p-6 overflow-y-auto grow a4-page-container bg-gray-50">
               <div id="printable-inner" className="bg-white w-full shadow-none tax-invoice-print-page">
-<table className="tax-invoice job-card-print-table w-full border-collapse text-black" style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+<table className="tax-invoice job-card-print-table w-full border-collapse text-black" style={{ fontSize: '13px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
                   <colgroup>
                     <col style={{ width: '8.33%' }} />
                     <col style={{ width: '8.33%' }} />
@@ -1563,7 +1593,7 @@ export default function JobCardForm() {
                               <span className="ml-4 tax-field-label">PAN :</span> {SELLER.pan}
                             </p>
                           </div>
-                          <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[11px] font-black uppercase tracking-widest shrink-0">
+                          <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[13px] font-black uppercase tracking-widest shrink-0">
                             JOB CARD
                           </div>
                         </div>
@@ -1694,7 +1724,7 @@ export default function JobCardForm() {
                       <td colSpan={12} className="tax-cell align-top p-0">
                         <div className="tax-blue job-card-section-title text-center py-1 px-2">Work Instructions</div>
                         <div className="job-card-section-body job-card-work-instructions p-1.5" style={{ minHeight: '30px' }}>
-                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[11px]">
+                          <p className="job-card-work-instructions-text leading-relaxed m-0 text-[13px]">
                             {previewData.notes?.trim()
                               ? previewData.notes
                               : 'Handle with care. Ensure high quality print and accurate alignment.'}
