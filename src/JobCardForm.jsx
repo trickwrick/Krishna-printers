@@ -117,7 +117,7 @@ export default function JobCardForm() {
   const [paperSource, setPaperSource] = useState(editData?.paperSource || 'Company paper');
   const [digitalPrintout, setDigitalPrintout] = useState(editData?.digitalPrintout || '');
   const [digitalPrintoutRemark, setDigitalPrintoutRemark] = useState(editData?.digitalPrintoutRemark || '');
-  const [activePlateTab, setActivePlateTab] = useState('New Plate');
+  const [activePlateTab, setActivePlateTab] = useState(editData?.plateType || '');
   const [printSide, setPrintSide] = useState(editData?.printSheet === 'Both Side' ? 'Both Side' : 'Single Side');
   const [finishingRows, setFinishingRows] = useState(() => parseFinishingRows(editData));
   const [dripOffPlateType, setDripOffPlateType] = useState(editData?.dripOffPlateType || '');
@@ -963,29 +963,30 @@ export default function JobCardForm() {
                 <div className="flex items-center gap-6 h-10">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="radio"
+                      type="checkbox"
                       name="activePlateTab"
                       value="New Plate"
                       checked={activePlateTab === 'New Plate'}
-                      onChange={() => setActivePlateTab('New Plate')}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                      onChange={() => setActivePlateTab(activePlateTab === 'New Plate' ? '' : 'New Plate')}
+                      className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">New Plate</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
-                      type="radio"
+                      type="checkbox"
                       name="activePlateTab"
                       value="Old Plate"
                       checked={activePlateTab === 'Old Plate'}
-                      onChange={() => setActivePlateTab('Old Plate')}
-                      className="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                      onChange={() => setActivePlateTab(activePlateTab === 'Old Plate' ? '' : 'Old Plate')}
+                      className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-gray-700">Old Plate</span>
                   </label>
                 </div>
               </div>
 
+              {activePlateTab && (
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-3 block">
                   {activePlateTab} Size <span className="text-xs font-normal text-indigo-500">(Multiple select allowed)</span>
@@ -1071,6 +1072,7 @@ export default function JobCardForm() {
                   </div>
                 )}
               </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {activePlateTab === 'Old Plate' && oldPlateSizes.length > 0 && (
