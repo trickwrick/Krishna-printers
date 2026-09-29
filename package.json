@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --use-system-ca server/server.js",
-    "build": "next build",
+    "build": "next build --webpack",
     "lint": "echo \"No linting\"",
     "start": "node --use-system-ca server/server.js"
   },
