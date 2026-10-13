@@ -44,6 +44,11 @@ const readWorkflowProgress = () => {
 
 const getCardKey = (card) => card?._id || card?.jobNumber || '';
 
+const getPaperTotalUnits = (card) => {
+  if (!card) return 0;
+  return parseInt(card.coverPaperCount || card.paperCount || card.jobQty, 10) || 0;
+};
+
 const getTimeLeft = (card) => {
   const completionDays = Number(card.completionDays) || 0;
   if (!completionDays) return null;
@@ -115,7 +120,7 @@ export default function JobCardListing() {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
 
     // Validate: qty cannot exceed remaining units
-    const totalUnits = parseInt(paperUsageModalCard?.coverPaperCount || paperUsageModalCard?.paperCount || paperUsageModalCard?.jobQty) || 0;
+    const totalUnits = getPaperTotalUnits(paperUsageModalCard);
     const existingData = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
     const usedSoFar = existingData.reduce((acc, r) => acc + r.qty, 0);
     const remaining = Math.max(0, totalUnits - usedSoFar);
@@ -257,7 +262,7 @@ export default function JobCardListing() {
     // Step 3 (Binding & Finish) requires Paper Status to be complete
     if (stepNo === 3 && isTryingToMarkDone) {
       const card = jobCards.find(c => getCardKey(c) === cardKey);
-      const totalUnits = parseInt(card?.jobQty) || 0;
+      const totalUnits = getPaperTotalUnits(card);
       const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
       const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
       const isPaperComplete = totalUnits > 0 && usedUnits >= totalUnits;
@@ -802,7 +807,7 @@ export default function JobCardListing() {
                                           </button>
                                         </div>
                                         {(() => {
-                                          const totalUnits = parseInt(card.jobQty) || 0;
+                                          const totalUnits = getPaperTotalUnits(card);
                                           const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
                                           const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
                                           return totalUnits > 0 && usedUnits >= totalUnits;
@@ -1326,7 +1331,7 @@ export default function JobCardListing() {
             <div className="p-4 overflow-y-auto grow">
               {(() => {
                 const cardKey = getCardKey(paperUsageModalCard);
-                const totalUnits = parseInt(paperUsageModalCard.coverPaperCount || paperUsageModalCard.paperCount || paperUsageModalCard.jobQty) || 0;
+                const totalUnits = getPaperTotalUnits(paperUsageModalCard);
                 const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
                 const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
                 const remainingUnits = Math.max(0, totalUnits - usedUnits);
