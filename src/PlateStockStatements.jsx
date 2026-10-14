@@ -28,9 +28,9 @@ const PlateStockStatements = () => {
         // Server likely hasn't restarted yet — show empty state gracefully
         setTransactions([]);
         if (txRes.status === 404) {
-          setError('Plate Stock data abhi available nahi hai. Kuch der baad try karein.');
+          setError('Plate stock data is not available yet. Please try again later.');
         } else {
-          setError(`Server error ${txRes.status}. Please try again.`);
+          setError(`Server error (${txRes.status}). Please try again later.`);
         }
         return;
       }
@@ -39,7 +39,7 @@ const PlateStockStatements = () => {
     } catch (err) {
       console.error('Fetch error:', err);
       setTransactions([]);
-      setError('Server se connect nahi ho pa raha. Kuch der baad try karein.');
+      setError('Unable to connect to the server. Please try again later.');
     } finally {
       setLoading(false);
     }

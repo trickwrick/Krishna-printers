@@ -113,9 +113,9 @@ const PaperStockStatements = () => {
       console.error('Fetch error:', err);
       setTransactions([]);
       if (err.name === 'AbortError') {
-        setError('Server response nahi aa raha. Thodi der baad dubara try karein.');
+        setError('Server response timed out. Please try again later.');
       } else {
-        setError(err.message || 'Transaction history load nahi ho payi.');
+        setError(err.message || 'Unable to load transaction history.');
       }
     } finally {
       setLoading(false);
@@ -276,14 +276,14 @@ const PaperStockStatements = () => {
                       onClick={loadTransactions}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
                     >
-                      Dubara try karein
+                      Try again
                     </button>
                   </td>
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-6 py-20 text-center text-gray-400 italic">
-                    Abhi koi transaction nahi hai. Naya stock add karo ya Job Card se paper use karo — history yahan dikhegi.
+                    No transactions yet. Add new stock or consume paper via Job Cards — history will appear here.
                   </td>
                 </tr>
               ) : (
