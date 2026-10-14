@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2 } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
@@ -341,6 +341,37 @@ export default function JobCardForm() {
     return party.partyName.toLowerCase().includes(query);
   }).slice(0, 8);
 
+  // Extract unique past values for suggestions in each input field
+  const fieldSuggestions = React.useMemo(() => {
+    const getUnique = (key, customExtractor) => {
+      const set = new Set();
+      jobCards.forEach(card => {
+        const val = customExtractor ? customExtractor(card) : card[key];
+        if (val !== undefined && val !== null) {
+          const s = String(val).trim();
+          if (s && s !== '-' && s !== 'Auto') set.add(s);
+        }
+      });
+      return Array.from(set).slice(0, 50);
+    };
+
+    return {
+      address: getUnique('address'),
+      contactNo: getUnique('contactNo'),
+      emailId: getUnique('emailId'),
+      gstNo: getUnique('gstNo'),
+      printingQty: getUnique('printingQty'),
+      jobName: getUnique('jobName'),
+      pageSize: getUnique('pageSize'),
+      paperGSM: getUnique('paperGSM'),
+      coverPaperCount: getUnique('coverPaperCount', c => c.coverPaperCount || c.paperCount),
+      coverPaperDetails: getUnique('coverPaperDetails'),
+      digitalPrintoutRemark: getUnique('digitalPrintoutRemark'),
+      completionDays: getUnique('completionDays'),
+      remarks: getUnique('notes')
+    };
+  }, [jobCards]);
+
   const applyPartySuggestion = (party) => {
     setPartyName(party.partyName);
     setAddress(party.address);
@@ -368,7 +399,7 @@ export default function JobCardForm() {
     setIsPartyDropdownOpen(false);
   };
 
-  const refreshPlateUseCount = (sizes, cards = []) => {
+  const refreshPlateUseCount = (sizes, cards = [], currentParty = partyName) => {
     const arr = Array.isArray(sizes) ? sizes : (sizes ? [sizes] : []);
     if (!arr.length) {
       setPlateUseCount({});
@@ -376,7 +407,7 @@ export default function JobCardForm() {
     }
     const countMap = {};
     arr.forEach((size) => {
-      countMap[size] = resolvePlateUseCount(size, cards, editData);
+      countMap[size] = resolvePlateUseCount(size, cards, editData, currentParty);
     });
     setPlateUseCount(countMap);
   };
@@ -412,21 +443,36 @@ export default function JobCardForm() {
   };
 
   const matchesCoverSearch = (stock, term) => {
-    const query = term.toLowerCase();
-    return (
-      getCoverPaperLabel(stock).toLowerCase().includes(query) ||
-      String(stock.coverGSM || stock.gsm || '').includes(query) ||
-      (stock.coverPaperSize || '').toLowerCase().includes(query)
-    );
+    const query = (term || '').trim().toLowerCase();
+    if (!query) return true;
+    const searchString = [
+      getCoverPaperLabel(stock),
+      stock.coverPartyName || stock.partyName || '',
+      stock.coverSupplier || '',
+      stock.coverGSM || stock.gsm || '',
+      stock.coverPaperSize || '',
+      formatCoverPaperOption(stock)
+    ].join(' ').toLowerCase();
+
+    // Check if all space-separated terms are present
+    const words = query.split(/\s+/).filter(Boolean);
+    return words.every(word => searchString.includes(word));
   };
 
   const matchesInnerSearch = (stock, term) => {
-    const query = term.toLowerCase();
-    return (
-      getInnerPaperLabel(stock).toLowerCase().includes(query) ||
-      String(stock.innerGSM || stock.gsm || '').includes(query) ||
-      (stock.innerPaperSize || '').toLowerCase().includes(query)
-    );
+    const query = (term || '').trim().toLowerCase();
+    if (!query) return true;
+    const searchString = [
+      getInnerPaperLabel(stock),
+      stock.innerPartyName || stock.partyName || '',
+      stock.innerSupplier || '',
+      stock.innerGSM || stock.gsm || '',
+      stock.innerPaperSize || '',
+      formatInnerPaperOption(stock)
+    ].join(' ').toLowerCase();
+
+    const words = query.split(/\s+/).filter(Boolean);
+    return words.every(word => searchString.includes(word));
   };
 
   useEffect(() => {
@@ -488,17 +534,101 @@ export default function JobCardForm() {
     }
   }, [isInnerPaperDropdownOpen]);
 
-  useEffect(() => {
-    const fetchStocks = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/paper-stock`);
-        const data = await res.json();
-        setPaperStocks(mergePaperSizes(data));
-      } catch (err) {
-        console.error("Stock fetch error:", err);
-      }
+  const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
+  const [addingStockLoading, setAddingStockLoading] = useState(false);
+  const [newStockForm, setNewStockForm] = useState({
+    partyName: '',
+    paperName: '',
+    paperSupplier: '',
+    gsm: '',
+    quantity: '',
+    paperSize: '',
+    lowStockThreshold: 100
+  });
+
+  const fetchPaperStocksList = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/paper-stock`);
+      const data = await res.json();
+      const merged = mergePaperSizes(data);
+      setPaperStocks(merged);
+      return merged;
+    } catch (err) {
+      console.error("Stock fetch error:", err);
+      return [];
+    }
+  };
+
+  const handleQuickAddPaperStock = async (e) => {
+    e.preventDefault();
+    if (!newStockForm.paperName.trim()) {
+      alert("Please enter Paper Name.");
+      return;
+    }
+
+    setAddingStockLoading(true);
+    const resolvedParty = (newStockForm.partyName || partyName || '').trim();
+    const resolvedPaperName = newStockForm.paperName.trim();
+    const qty = Number(newStockForm.quantity) || 0;
+    const gsmVal = newStockForm.gsm ? Number(newStockForm.gsm) : '';
+
+    const payload = {
+      name: resolvedPaperName,
+      coverPartyName: resolvedParty,
+      coverName: resolvedPaperName,
+      coverSupplier: newStockForm.paperSupplier.trim(),
+      gsm: gsmVal || 0,
+      coverGSM: gsmVal || '',
+      quantity: qty,
+      coverQuantity: qty,
+      coverPaperSize: newStockForm.paperSize.trim(),
+      paperSource: paperSource || 'Company paper',
+      lowStockThreshold: Number(newStockForm.lowStockThreshold) || 100,
+      note: `Initial stock added from Job Card${resolvedParty ? ` (${resolvedParty})` : ''}`
     };
-    fetchStocks();
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/paper-stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        const updatedStocks = await fetchPaperStocksList();
+        
+        // Auto-select this newly created paper in Job Card
+        const found = updatedStocks.find(s => s._id === data._id) || data;
+        setSelectedPaper(getCoverPaperLabel(found));
+        setSelectedPaperLabel(formatCoverPaperOption(found));
+        if (gsmVal) setPaperGSM(gsmVal);
+        if (newStockForm.paperSize) setCoverPaperDetails(newStockForm.paperSize);
+
+        setIsAddStockModalOpen(false);
+        setNewStockForm({
+          partyName: '',
+          paperName: '',
+          paperSupplier: '',
+          gsm: '',
+          quantity: '',
+          paperSize: '',
+          lowStockThreshold: 100
+        });
+        alert("Stock successfully added and selected!");
+      } else {
+        alert(data.error || "Failed to add stock.");
+      }
+    } catch (err) {
+      console.error("Quick add stock error:", err);
+      alert("Server error occurred while adding stock.");
+    } finally {
+      setAddingStockLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPaperStocksList();
   }, []);
 
   useEffect(() => {
@@ -524,8 +654,8 @@ export default function JobCardForm() {
   }, [paperStocks, editData?.paper, editData?.innerPaper]);
 
   useEffect(() => {
-    refreshPlateUseCount([...newPlateSizes, ...oldPlateSizes], jobCards);
-  }, [newPlateSizes, oldPlateSizes, jobCards, editData?._id]);
+    refreshPlateUseCount([...newPlateSizes, ...oldPlateSizes], jobCards, partyName);
+  }, [newPlateSizes, oldPlateSizes, jobCards, editData?._id, partyName]);
 
   const handleNewPlateSizeChange = (e) => {
     const { value, checked } = e.target;
@@ -844,19 +974,71 @@ export default function JobCardForm() {
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Address</label>
-                <input type="text" name="address" value={address} onChange={(e) => setAddress(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter address" />
+                <input
+                  type="text"
+                  name="address"
+                  list="job-address-suggestions"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter address"
+                />
+                <datalist id="job-address-suggestions">
+                  {fieldSuggestions.address.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Contact No.</label>
-                <input type="text" name="contactNo" value={contactNo} onChange={(e) => setContactNo(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Phone" />
+                <input
+                  type="text"
+                  name="contactNo"
+                  list="job-contact-suggestions"
+                  value={contactNo}
+                  onChange={(e) => setContactNo(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter Phone"
+                />
+                <datalist id="job-contact-suggestions">
+                  {fieldSuggestions.contactNo.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Gmail ID</label>
-                <input type="email" name="emailId" value={emailId} onChange={(e) => setEmailId(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Gmail ID" />
+                <input
+                  type="email"
+                  name="emailId"
+                  list="job-email-suggestions"
+                  value={emailId}
+                  onChange={(e) => setEmailId(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter Gmail ID"
+                />
+                <datalist id="job-email-suggestions">
+                  {fieldSuggestions.emailId.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">GST No.</label>
-                <input type="text" name="gstNo" value={gstNo} onChange={(e) => setGstNo(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter GST number" />
+                <input
+                  type="text"
+                  name="gstNo"
+                  list="job-gst-suggestions"
+                  value={gstNo}
+                  onChange={(e) => setGstNo(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter GST number"
+                />
+                <datalist id="job-gst-suggestions">
+                  {fieldSuggestions.gstNo.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Date</label>
@@ -869,7 +1051,20 @@ export default function JobCardForm() {
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Printing Quantity</label>
-                <input type="text" name="printingQty" value={printingQty} onChange={(e) => setPrintingQty(e.target.value)} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter Quantity" />
+                <input
+                  type="text"
+                  name="printingQty"
+                  list="job-printingqty-suggestions"
+                  value={printingQty}
+                  onChange={(e) => setPrintingQty(e.target.value)}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter Quantity"
+                />
+                <datalist id="job-printingqty-suggestions">
+                  {fieldSuggestions.printingQty.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col sm:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload (Max {MAX_JOB_ATTACHMENTS})</label>
@@ -930,11 +1125,36 @@ export default function JobCardForm() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Item Name *</label>
-                <input type="text" name="jobName" defaultValue={editData?.jobName} required className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="Enter job/item name" />
+                <input
+                  type="text"
+                  name="jobName"
+                  list="job-name-suggestions"
+                  defaultValue={editData?.jobName}
+                  required
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="Enter job/item name"
+                />
+                <datalist id="job-name-suggestions">
+                  {fieldSuggestions.jobName.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Item Size</label>
-                <input type="text" name="pageSize" defaultValue={editData?.pageSize} className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" placeholder="e.g. A4, 1/4" />
+                <input
+                  type="text"
+                  name="pageSize"
+                  list="job-pagesize-suggestions"
+                  defaultValue={editData?.pageSize}
+                  className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="e.g. A4, 1/4"
+                />
+                <datalist id="job-pagesize-suggestions">
+                  {fieldSuggestions.pageSize.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Color</label>
@@ -1107,14 +1327,19 @@ export default function JobCardForm() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {isOldPlateActive && oldPlateSizes.length > 0 && (
                   <div className="flex flex-col">
-                    <label className="text-sm font-medium text-gray-700 mb-1">Plate Used</label>
+                    <label className="text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                      Plate Used {partyName ? <span className="text-xs text-indigo-600 font-bold truncate">({partyName})</span> : ''}
+                    </label>
                     <div className="min-h-10 border border-gray-200 rounded-lg px-4 py-2 bg-gray-50 flex flex-wrap gap-x-4 gap-y-1 items-center">
-                      {oldPlateSizes.map((size) => (
-                        <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                          <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
-                          <span className="text-indigo-700">{plateUseCount[size] ?? '—'}</span>
-                        </span>
-                      ))}
+                      {oldPlateSizes.map((size) => {
+                        const count = plateUseCount[size] || 1;
+                        return (
+                          <span key={size} className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                            <span className="text-xs text-gray-500 font-normal">{size}:</span>{' '}
+                            <span className="text-indigo-700 font-black">{count} {count === 1 ? 'time' : 'times'}</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1289,7 +1514,22 @@ export default function JobCardForm() {
                           <div className="px-4 py-2 text-xs text-gray-400 italic">No paper stocks found</div>
                         )}
 
-                        <div className="border-t border-gray-50 mt-2 pt-2">
+                        <div className="border-t border-gray-100 mt-2 pt-2 px-1 flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPaperDropdownOpen(false);
+                              setNewStockForm(prev => ({
+                                ...prev,
+                                partyName: partyName || prev.partyName
+                              }));
+                              setIsAddStockModalOpen(true);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 rounded-lg transition-colors flex items-center gap-2"
+                          >
+                            <PlusCircle size={14} className="text-emerald-600" />
+                            + Add New Stock
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
@@ -1297,7 +1537,7 @@ export default function JobCardForm() {
                               setSelectedPaperLabel('Custom');
                               setIsPaperDropdownOpen(false);
                             }}
-                            className={`w-full px-4 py-2 text-left text-xs font-black uppercase tracking-widest transition-colors ${selectedPaper === 'Custom' ? 'text-purple-600 bg-purple-50' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'}`}
+                            className={`w-full px-3 py-2 text-left text-xs font-black uppercase tracking-widest rounded-lg transition-colors ${selectedPaper === 'Custom' ? 'text-purple-600 bg-purple-50' : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'}`}
                           >
                             + Use Custom Paper
                           </button>
@@ -1313,11 +1553,17 @@ export default function JobCardForm() {
                   <input
                     type="text"
                     name="paperGSM"
+                    list="job-papergsm-suggestions"
                     value={paperGSM}
                     onChange={(e) => setPaperGSM(e.target.value)}
                     className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                     placeholder="e.g. 350, 250"
                   />
+                  <datalist id="job-papergsm-suggestions">
+                    {fieldSuggestions.paperGSM.map((val, idx) => (
+                      <option key={idx} value={val} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="flex flex-col">
@@ -1325,12 +1571,18 @@ export default function JobCardForm() {
                   <input
                     type="number"
                     name="coverPaperCount"
+                    list="job-papercount-suggestions"
                     value={coverPaperCount}
                     onChange={(e) => setCoverPaperCount(e.target.value)}
                     min="0"
                     className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                     placeholder="0"
                   />
+                  <datalist id="job-papercount-suggestions">
+                    {fieldSuggestions.coverPaperCount.map((val, idx) => (
+                      <option key={idx} value={val} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="flex flex-col">
@@ -1338,11 +1590,17 @@ export default function JobCardForm() {
                   <input
                     type="text"
                     name="coverPaperDetails"
+                    list="job-paperdetails-suggestions"
                     value={coverPaperDetails}
                     onChange={(e) => setCoverPaperDetails(e.target.value)}
                     className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                     placeholder="e.g. Size, Type"
                   />
+                  <datalist id="job-paperdetails-suggestions">
+                    {fieldSuggestions.coverPaperDetails.map((val, idx) => (
+                      <option key={idx} value={val} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
             </div>
@@ -1510,11 +1768,17 @@ export default function JobCardForm() {
                 <input
                   type="number"
                   name="completionDays"
+                  list="job-completiondays-suggestions"
                   min="1"
                   defaultValue={editData?.completionDays ?? ''}
                   className={fieldClass}
                   placeholder="e.g. 7"
                 />
+                <datalist id="job-completiondays-suggestions">
+                  {fieldSuggestions.completionDays.map((val, idx) => (
+                    <option key={idx} value={val} />
+                  ))}
+                </datalist>
                 <span className="text-sm font-semibold text-gray-600 shrink-0">Days</span>
               </div>
             </div>
@@ -1803,6 +2067,141 @@ export default function JobCardForm() {
                 Print
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Stock Modal */}
+      {isAddStockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center px-6 py-4 bg-sky-50 border-b border-sky-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-sky-600 text-white rounded-lg">
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">Add New Paper Stock</h3>
+                  <p className="text-xs font-semibold text-sky-600">
+                    Source: <span className="uppercase font-black">{paperSource || 'Company paper'}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddStockModalOpen(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-white rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddPaperStock} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                  Party Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Dhanraj Advertising"
+                  value={newStockForm.partyName}
+                  onChange={(e) => setNewStockForm({ ...newStockForm, partyName: e.target.value })}
+                  className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                    Paper Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Art Paper, Maflito"
+                    value={newStockForm.paperName}
+                    onChange={(e) => setNewStockForm({ ...newStockForm, paperName: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                    Paper Supplier
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Jain Brothers"
+                    value={newStockForm.paperSupplier}
+                    onChange={(e) => setNewStockForm({ ...newStockForm, paperSupplier: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                    GSM
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 157, 300"
+                    value={newStockForm.gsm}
+                    onChange={(e) => setNewStockForm({ ...newStockForm, gsm: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                    Initial Sheets
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 500, 2000"
+                    value={newStockForm.quantity}
+                    onChange={(e) => setNewStockForm({ ...newStockForm, quantity: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-black uppercase text-gray-500 mb-1 tracking-wider">
+                    Size
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 23x36, 12x18"
+                    value={newStockForm.paperSize}
+                    onChange={(e) => setNewStockForm({ ...newStockForm, paperSize: e.target.value })}
+                    className="w-full h-10 px-3 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddStockModalOpen(false)}
+                  disabled={addingStockLoading}
+                  className="px-4 py-2 text-xs font-bold uppercase text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingStockLoading}
+                  className="px-5 py-2 text-xs font-black uppercase tracking-wider text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  {addingStockLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Saving...
+                    </>
+                  ) : (
+                    'Add Stock & Select'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

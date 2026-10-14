@@ -66,10 +66,10 @@ router.post('/usage', async (req, res) => {
   }
 });
 
-// GET /api/paper-stock - Get all stock items
+// GET /api/paper-stock - Get all stock items (newest / most recently updated first)
 router.get('/', async (req, res) => {
   try {
-    const stock = await PaperStock.find().sort({ name: 1, gsm: 1 });
+    const stock = await PaperStock.find().sort({ updatedAt: -1, createdAt: -1, _id: -1 });
     res.json(stock);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -117,6 +117,9 @@ router.post('/', async (req, res) => {
 
     await newItem.save();
 
+    const resolvedCoverParty = (coverPartyName || '').trim();
+    const resolvedInnerParty = (innerPartyName || '').trim();
+
     if (Number(coverQuantity) > 0) {
       await logPaperStockTransaction({
         paperStockId: newItem._id,
@@ -125,9 +128,12 @@ router.post('/', async (req, res) => {
         paperType: 'cover',
         transactionType: 'add',
         quantity: Number(coverQuantity),
+        partyName: resolvedCoverParty,
+        challanNo: req.body.challanNo || '',
+        invoiceNo: req.body.invoiceNo || '',
         paperSource: paperSource || 'Company paper',
         balanceAfter: Number(coverQuantity),
-        note: 'Initial cover stock added',
+        note: req.body.note || 'Initial stock added',
       });
     }
 
@@ -139,9 +145,12 @@ router.post('/', async (req, res) => {
         paperType: 'inner',
         transactionType: 'add',
         quantity: Number(innerQuantity),
+        partyName: resolvedInnerParty,
+        challanNo: req.body.challanNo || '',
+        invoiceNo: req.body.invoiceNo || '',
         paperSource: paperSource || 'Company paper',
         balanceAfter: Number(innerQuantity),
-        note: 'Initial inner stock added',
+        note: req.body.note || 'Initial inner stock added',
       });
     }
 

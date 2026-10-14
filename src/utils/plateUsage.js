@@ -38,20 +38,48 @@ export const mergePlateUsageMaps = (...maps) => {
   return merged;
 };
 
-export const resolvePlateUseCount = (size, cards, editingCard) => {
-  if (!size) return '';
+export const normalizeParty = (name) => String(name || '').trim().toLowerCase();
 
-  const normalizedSize = String(size).trim();
-  const mergedMap = mergePlateUsageMaps(readPlateUsageMap(), buildPlateUsageMapFromCards(cards));
-  writePlateUsageMap(mergedMap);
+export const resolvePlateUseCount = (size, cards = [], editingCard = null, partyName = '') => {
+  if (!size) return 1;
 
-  const usedCount = mergedMap[normalizedSize] || 0;
+  const normalizedSize = String(size).trim().toLowerCase();
+  const targetParty = normalizeParty(partyName || editingCard?.partyName || editingCard?.companyName);
 
-  if (!editingCard) return usedCount + 1;
-  if (String(editingCard.plateSize || '').trim() === normalizedSize) {
-    return Math.max(usedCount, Number(editingCard.plateUseCount) || usedCount || 1);
+  // If no party name is provided yet, default to 1st time
+  if (!targetParty) return 1;
+
+  // Find all cards for THIS party that used this plate size
+  const matchingPartyCards = cards.filter((c) => {
+    // Ignore current editing card if updating
+    if (editingCard?._id && String(c._id) === String(editingCard._id)) return false;
+    if (editingCard?.jobNumber && c.jobNumber && String(c.jobNumber) === String(editingCard.jobNumber)) return false;
+
+    const cParty = normalizeParty(c.partyName || c.companyName);
+    if (cParty !== targetParty) return false;
+
+    // Check if card used this size
+    const cardPlateSize = String(c.plateSize || '').toLowerCase();
+    const cardPlateDetails = String(c.plateDetails || '').toLowerCase();
+
+    return cardPlateSize.includes(normalizedSize) || cardPlateDetails.includes(normalizedSize);
+  });
+
+  const previousCount = matchingPartyCards.length;
+
+  // If editing an existing card, preserve its count or calculate based on position
+  if (editingCard && editingCard._id) {
+    if (editingCard.plateUseCount) {
+      // If editing card already has plateUseCount string like "530x650: 2"
+      const match = String(editingCard.plateUseCount).match(new RegExp(`${size}[:\\s]+(\\d+)`, 'i'));
+      if (match && match[1]) {
+        return Number(match[1]);
+      }
+    }
   }
-  return usedCount + 1;
+
+  // Next usage count for this party is previousCount + 1
+  return previousCount + 1;
 };
 
 export const rememberPlateUsage = (size, count) => {

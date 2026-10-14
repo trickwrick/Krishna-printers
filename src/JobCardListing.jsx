@@ -412,11 +412,22 @@ export default function JobCardListing() {
     setColumnVisibility(prev => ({ ...prev, [col]: !prev[col] }));
   };
 
-  const filteredCards = jobCards.filter(card =>
-    card.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    card.jobName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    card.jobNumber?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCards = jobCards.filter(card => {
+    const term = (searchTerm || '').trim().toLowerCase();
+    if (!term) return true;
+    const words = term.split(/\s+/).filter(Boolean);
+    const hayStack = [
+      card.partyName || '',
+      card.jobName || '',
+      card.jobNumber || '',
+      card.paper || '',
+      card.paperGSM || '',
+      card.pageSize || '',
+      card.coverPaperDetails || ''
+    ].join(' ').toLowerCase();
+
+    return words.every(word => hayStack.includes(word));
+  });
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);

@@ -65,14 +65,26 @@ const PaperStockManagement = () => {
         fetch(`${API_BASE_URL}/api/paper-stock/transactions`)
           .then(res => res.json())
           .then(data => {
-            const filtered = data.filter(t => t.paperStockId === viewingStock._id || t.stockId === viewingStock._id);
+            const vId = String(viewingStock._id || '');
+            const vName = (viewingStock.coverName || viewingStock.name || '').trim().toLowerCase();
+            const vSource = viewingStock.paperSource || 'Company paper';
+
+            const filtered = (Array.isArray(data) ? data : []).filter(t => {
+              const tId = String(t.paperStockId || t.stockId || '');
+              if (vId && tId && vId === tId) return true;
+
+              // Fallback match by name and source
+              const tPaperName = (t.paperName || t.stockName || '').trim().toLowerCase();
+              const tSource = t.paperSource || 'Company paper';
+              return vName && tPaperName === vName && tSource === vSource;
+            });
             setStockHistory(filtered);
-          setLoadingHistory(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setLoadingHistory(false);
-        });
+            setLoadingHistory(false);
+          })
+          .catch(err => {
+            console.error(err);
+            setLoadingHistory(false);
+          });
     } else {
       setStockHistory([]);
     }
@@ -83,7 +95,14 @@ const PaperStockManagement = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/paper-stock`);
       const data = await res.json();
-      setStock(mergePaperSizes(data));
+      const merged = mergePaperSizes(data);
+      // Sort newest / most recently updated first
+      merged.sort((a, b) => {
+        const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+      setStock(merged);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
@@ -551,38 +570,39 @@ const PaperStockManagement = () => {
                 <tbody className="divide-y divide-gray-50">
                   {loading ? (
                     <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase tracking-[0.2em]">Loading Inventory...</td></tr>
-                  ) : stock.filter(item => {
-                    const matchesTab = (item.paperSource || 'Company paper') === activeTab;
-                    const matchesSearch = (item.coverName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.coverPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.coverSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.gsm && item.gsm.toString().includes(searchQuery)) ||
-                                            (item.coverGSM && item.coverGSM.toString().includes(searchQuery)) ||
-                                            (item.innerGSM && item.innerGSM.toString().includes(searchQuery)) ||
-                                            (item.coverPaperSize && item.coverPaperSize.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                                            (item.innerPaperSize && item.innerPaperSize.toLowerCase().includes(searchQuery.toLowerCase()));
-                    return matchesTab && matchesSearch;
-                  }).length === 0 ? (
-                    <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">No inventory records found for {activeTab === 'Company paper' ? 'Company Paper' : 'Party Paper'}.</td></tr>
-                  ) : (
-                    stock.filter(item => {
+                  ) : (() => {
+                    const q = searchQuery.trim().toLowerCase();
+                    const words = q ? q.split(/\s+/).filter(Boolean) : [];
+                    const filteredList = stock.filter(item => {
                       const matchesTab = (item.paperSource || 'Company paper') === activeTab;
-                      const matchesSearch = (item.coverName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerName || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.coverPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerPartyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.coverSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.innerSupplier || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            (item.gsm && item.gsm.toString().includes(searchQuery)) ||
-                                            (item.coverGSM && item.coverGSM.toString().includes(searchQuery)) ||
-                                            (item.innerGSM && item.innerGSM.toString().includes(searchQuery)) ||
-                                            (item.coverPaperSize && item.coverPaperSize.toLowerCase().includes(searchQuery.toLowerCase())) ||
-                                            (item.innerPaperSize && item.innerPaperSize.toLowerCase().includes(searchQuery.toLowerCase()));
-                      return matchesTab && matchesSearch;
-                    }).map((item) => {
+                      if (!matchesTab) return false;
+                      if (!words.length) return true;
+
+                      const hayStack = [
+                        item.coverName || item.name || '',
+                        item.innerName || item.name || '',
+                        item.coverPartyName || '',
+                        item.innerPartyName || '',
+                        item.coverSupplier || '',
+                        item.innerSupplier || '',
+                        item.gsm !== undefined ? item.gsm : '',
+                        item.coverGSM !== undefined ? item.coverGSM : '',
+                        item.innerGSM !== undefined ? item.innerGSM : '',
+                        item.coverPaperSize || '',
+                        item.innerPaperSize || '',
+                        item.description || ''
+                      ].join(' ').toLowerCase();
+
+                      return words.every(word => hayStack.includes(word));
+                    });
+
+                    if (filteredList.length === 0) {
+                      return (
+                        <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">No inventory records found for {activeTab === 'Company paper' ? 'Company Paper' : 'Party Paper'}.</td></tr>
+                      );
+                    }
+
+                    return filteredList.map((item) => {
                       const isLow = ((item.coverQuantity !== undefined ? item.coverQuantity : item.quantity) <= item.lowStockThreshold || 
                                      (item.innerGSM && (item.innerQuantity || 0) <= item.lowStockThreshold));
                       return (
@@ -593,13 +613,20 @@ const PaperStockManagement = () => {
                                    <Layers size={18} />
                                 </div>
                                 <div>
-                                   <p className="font-black text-gray-950 group-hover:text-blue-600 transition-colors uppercase text-sm">
-                                     {item.coverName || item.name || '--'}
-                                   </p>
+                                   <div className="flex items-center gap-2 flex-wrap">
+                                     <p className="font-black text-gray-950 group-hover:text-blue-600 transition-colors uppercase text-sm">
+                                       {item.coverName || item.name || '--'}
+                                     </p>
+                                     {item.coverPartyName && (
+                                       <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm tracking-wide">
+                                         Paper: {item.coverPartyName}
+                                       </span>
+                                     )}
+                                   </div>
                                    <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold">
                                      {(item.coverGSM !== undefined || item.gsm) ? (
                                        <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-100">
-                                         Paper: {item.coverPartyName ? `${item.coverPartyName} · ` : ''}{item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
+                                         {item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
                                        </span>
                                      ) : (
                                        <span className="bg-gray-50 text-gray-400 px-2 py-0.5 rounded border border-gray-200">Paper: --</span>
@@ -653,8 +680,8 @@ const PaperStockManagement = () => {
                           </td>
                         </tr>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>

@@ -129,14 +129,25 @@ const PaperStockStatements = () => {
   const filteredTransactions = transactions.filter((item) => {
     const matchesTab = (item.paperSource || 'Company paper') === activeTab;
     const matchesType = typeFilter === 'all' || item.transactionType === typeFilter;
-    const query = searchQuery.toLowerCase();
-    const matchesSearch =
-      (item.stockName || '').toLowerCase().includes(query) ||
-      (item.paperName || '').toLowerCase().includes(query) ||
-      (item.partyName || '').toLowerCase().includes(query) ||
-      (item.jobNumber || '').toLowerCase().includes(query) ||
-      (item.note || '').toLowerCase().includes(query);
-    return matchesTab && matchesType && matchesSearch;
+    if (!matchesTab || !matchesType) return false;
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    const words = query.split(/\s+/).filter(Boolean);
+    const hayStack = [
+      item.stockName || '',
+      item.paperName || '',
+      item.partyName || '',
+      item.jobNumber || '',
+      item.note || '',
+      item.challanNo || '',
+      item.invoiceNo || '',
+      item.gsm ? `${item.gsm}` : '',
+      item.paperSize || ''
+    ].join(' ').toLowerCase();
+
+    return words.every(word => hayStack.includes(word));
   });
 
   const totalAdded = filteredTransactions
