@@ -840,7 +840,6 @@ const AddChallan = () => {
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider w-56">Description *</th>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">Qty *</th>
                   <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-20">per</th>
-                  <th className="px-6 py-3 text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider text-center w-24">GST %</th>
                   <th className="px-6 py-3 w-14"></th>
                 </tr>
               </thead>
@@ -879,18 +878,6 @@ const AddChallan = () => {
                           onChange={(e) => handleItemChange(index, 'per', e.target.value)}
                           placeholder="PCS"
                           className="w-16 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center uppercase"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-2 py-4 text-center">
-                      <div className="flex justify-center">
-                        <input
-                          type="number"
-                          value={item.gstPercent}
-                          onChange={(e) => handleItemChange(index, 'gstPercent', e.target.value)}
-                          min="0"
-                          step="any"
-                          className="w-20 bg-white border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm text-center"
                         />
                       </div>
                     </td>
