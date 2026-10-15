@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
-import { X, Printer, UserPlus, Plus, Trash2 } from 'lucide-react';
+import { X, Printer, UserPlus, Plus, Trash2, Search, ChevronDown } from 'lucide-react';
 import { buildPartySuggestions, partyNameExists } from './utils/partySuggestions';
 import { masterItemToLineFields } from './utils/itemSuggestions';
 import ItemDescriptionInput from './components/ItemDescriptionInput';
@@ -179,15 +179,47 @@ const AddChallan = () => {
       .catch(err => console.error('Error fetching items:', err));
   }, []);
 
+  const [jobCardSearch, setJobCardSearch] = useState('');
+  const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
+  const jobDropdownRef = useRef(null);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (partyDropdownRef.current && !partyDropdownRef.current.contains(event.target)) {
         setIsPartyDropdownOpen(false);
       }
+      if (jobDropdownRef.current && !jobDropdownRef.current.contains(event.target)) {
+        setIsJobDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleSelectJobCard = (card) => {
+    setPickedJobIds([]);
+    setIsJobDropdownOpen(false);
+    setJobCardSearch('');
+    if (!card) {
+      setFormData((prev) => ({
+        ...prev,
+        jobCardId: '',
+        items: [defaultItem()],
+      }));
+      return;
+    }
+    const cardId = String(card._id || card.id || '');
+    setFormData((prev) => ({
+      ...prev,
+      jobCardId: cardId,
+      partyName: card.partyName || prev.partyName,
+      partyAddress: card.address || prev.partyAddress,
+      partyContact: card.contactNo || prev.partyContact,
+      partyEmail: card.emailId || prev.partyEmail,
+      partyGst: card.gstNo || prev.partyGst,
+      items: [itemFromJobCard(card)],
+    }));
+  };
 
   const partySuggestions = useMemo(() => buildPartySuggestions(jobCards), [jobCards]);
 
@@ -541,6 +573,7 @@ const AddChallan = () => {
 
   return (
     <div className="mx-auto mt-8 pb-12">
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 group flex items-center gap-3">
@@ -716,48 +749,175 @@ const AddChallan = () => {
           </div>
 
           <div className="px-4 sm:px-6 pb-2">
-            <div className="space-y-1 max-w-xl">
-              <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Job Card</label>
-              <select
-                name="jobCardId"
-                value={formData.jobCardId}
-                onChange={handleInputChange}
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-              >
-                <option value="">
-                  {formData.partyName
-                    ? `Select Job Card (${filteredJobCards.length} matching party)`
-                    : `Select Job Card (${jobCards.length} available)`}
-                </option>
-                {formData.partyName ? (
-                  <>
-                    <optgroup label={`Jobs for ${formData.partyName} (${filteredJobCards.length})`}>
-                      {filteredJobCards.map((card) => (
-                        <option key={card._id || card.id} value={card._id || card.id}>
-                          ({card.jobNumber}) {card.jobName} - {card.partyName}
-                        </option>
-                      ))}
-                    </optgroup>
-                    {jobCards.filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id))).length > 0 && (
-                      <optgroup label="Other Parties' Job Cards (Click to switch)">
-                        {jobCards
-                          .filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id)))
-                          .map((card) => (
-                            <option key={card._id || card.id} value={card._id || card.id}>
-                              ({card.jobNumber}) {card.jobName} - {card.partyName}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                  </>
-                ) : (
-                  jobCards.map((card) => (
-                    <option key={card._id || card.id} value={card._id || card.id}>
-                      ({card.jobNumber}) {card.jobName} - {card.partyName}
-                    </option>
-                  ))
+            <div className="space-y-1 max-w-xl relative" ref={jobDropdownRef}>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] sm:text-xs font-bold text-gray-700 uppercase tracking-wider">Job Card</label>
+                {formData.jobCardId && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectJobCard(null)}
+                    className="text-[11px] text-red-500 hover:text-red-700 font-semibold"
+                  >
+                    Clear selection
+                  </button>
                 )}
-              </select>
+              </div>
+
+              {/* Trigger Button */}
+              <div
+                onClick={() => setIsJobDropdownOpen((prev) => !prev)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 cursor-pointer flex items-center justify-between hover:bg-gray-100/70 transition-all text-sm"
+              >
+                <div className="truncate pr-2">
+                  {(() => {
+                    const selected = jobCards.find((c) => String(c._id || c.id) === String(formData.jobCardId));
+                    if (selected) {
+                      return (
+                        <span className="text-gray-900 font-medium">
+                          <span className="font-bold text-blue-700">({selected.jobNumber})</span> {selected.jobName}
+                          {selected.partyName && (
+                            <span className="text-xs text-gray-500 ml-2">[{selected.partyName}]</span>
+                          )}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-gray-400">
+                        {formData.partyName
+                          ? `Search or select Job Card (${filteredJobCards.length} for ${formData.partyName})...`
+                          : `Search or select Job Card (${jobCards.length} available)...`}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <ChevronDown size={18} className={`text-gray-400 transition-transform ${isJobDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+              </div>
+
+              {/* Searchable Dropdown Menu */}
+              {isJobDropdownOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                  {/* Search Input Bar */}
+                  <div className="p-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
+                    <Search size={16} className="text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      value={jobCardSearch}
+                      onChange={(e) => setJobCardSearch(e.target.value)}
+                      placeholder="Type Job No, Job Name or Party to search..."
+                      autoFocus
+                      className="w-full bg-transparent border-0 text-sm focus:outline-none text-gray-800 placeholder-gray-400"
+                    />
+                    {jobCardSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setJobCardSearch('')}
+                        className="text-gray-400 hover:text-gray-600 p-0.5"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* List Options */}
+                  <div className="max-h-60 overflow-y-auto divide-y divide-gray-50">
+                    {(() => {
+                      const query = jobCardSearch.trim().toLowerCase();
+                      const listToSearch = query
+                        ? jobCards.filter((card) =>
+                            (card.jobNumber || '').toLowerCase().includes(query) ||
+                            (card.jobName || '').toLowerCase().includes(query) ||
+                            (card.partyName || '').toLowerCase().includes(query)
+                          )
+                        : (formData.partyName ? filteredJobCards : jobCards);
+
+                      if (listToSearch.length === 0) {
+                        return (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            No job cards found matching "{jobCardSearch}"
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {!query && formData.partyName && (
+                            <div className="px-3 py-1.5 bg-blue-50 text-[10px] font-bold text-blue-800 uppercase tracking-wide">
+                              Jobs for {formData.partyName} ({filteredJobCards.length})
+                            </div>
+                          )}
+
+                          {listToSearch.map((card) => {
+                            const isSelected = String(card._id || card.id) === String(formData.jobCardId);
+                            return (
+                              <button
+                                key={card._id || card.id}
+                                type="button"
+                                onClick={() => handleSelectJobCard(card)}
+                                className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                                  isSelected ? 'bg-blue-100/70 font-semibold' : 'hover:bg-blue-50/60'
+                                }`}
+                              >
+                                <div>
+                                  <span className="font-bold text-blue-700 mr-2">({card.jobNumber})</span>
+                                  <span className="text-gray-900 font-medium">{card.jobName}</span>
+                                  {card.partyName && (
+                                    <span className="text-xs text-gray-500 block sm:inline sm:ml-2">
+                                      — {card.partyName}
+                                    </span>
+                                  )}
+                                </div>
+                                {(card.printingQty || card.jobQty) && (
+                                  <span className="text-xs font-semibold text-emerald-600 shrink-0 ml-2">
+                                    Qty: {card.printingQty || card.jobQty}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+
+                          {!query && formData.partyName && jobCards.filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id))).length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 bg-gray-100 text-[10px] font-bold text-gray-600 uppercase tracking-wide">
+                                Other Parties' Jobs (Click to switch party)
+                              </div>
+                              {jobCards
+                                .filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id)))
+                                .map((card) => {
+                                  const isSelected = String(card._id || card.id) === String(formData.jobCardId);
+                                  return (
+                                    <button
+                                      key={card._id || card.id}
+                                      type="button"
+                                      onClick={() => handleSelectJobCard(card)}
+                                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                                        isSelected ? 'bg-blue-100/70 font-semibold' : 'hover:bg-blue-50/60'
+                                      }`}
+                                    >
+                                      <div>
+                                        <span className="font-bold text-gray-600 mr-2">({card.jobNumber})</span>
+                                        <span className="text-gray-900 font-medium">{card.jobName}</span>
+                                        {card.partyName && (
+                                          <span className="text-xs text-gray-500 block sm:inline sm:ml-2">
+                                            — {card.partyName}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {(card.printingQty || card.jobQty) && (
+                                        <span className="text-xs font-semibold text-emerald-600 shrink-0 ml-2">
+                                          Qty: {card.printingQty || card.jobQty}
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
