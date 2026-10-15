@@ -29,13 +29,13 @@ const parseJobQty = (value) => {
 
 const itemFromJobCard = (card) => ({
   description: `${card.jobName || 'Job'} (${card.jobNumber || ''})`.trim(),
-  qty: parseJobQty(card.jobQty),
+  qty: parseJobQty(card.printingQty || card.jobQty || 1),
   rate: 0,
   per: 'PCS',
   gstPercent: 18,
   total: 0,
   gstAmount: 0,
-  jobCardId: card._id || card.id,
+  jobCardId: String(card._id || card.id || ''),
   jobNumber: card.jobNumber || '',
 });
 
@@ -210,13 +210,17 @@ const AddChallan = () => {
     const { name, value: rawValue } = e.target;
     const value = name === 'stateCode' ? rawValue.replace(/\D/g, '').slice(0, 2) : rawValue;
     if (name === 'jobCardId') {
-      const selectedCard = jobCards.find((card) => card._id === value || card.id === parseInt(value, 10));
+      const selectedCard = jobCards.find((card) => String(card._id || card.id) === String(value));
       setPickedJobIds([]);
       setFormData((prev) => ({
         ...prev,
         jobCardId: value,
-        partyName: selectedCard?.partyName || prev.partyName,
-        items: selectedCard ? [itemFromJobCard(selectedCard)] : prev.items,
+        partyName: selectedCard ? (selectedCard.partyName || prev.partyName) : prev.partyName,
+        partyAddress: selectedCard ? (selectedCard.address || prev.partyAddress) : prev.partyAddress,
+        partyContact: selectedCard ? (selectedCard.contactNo || prev.partyContact) : prev.partyContact,
+        partyEmail: selectedCard ? (selectedCard.emailId || prev.partyEmail) : prev.partyEmail,
+        partyGst: selectedCard ? (selectedCard.gstNo || prev.partyGst) : prev.partyGst,
+        items: selectedCard ? [itemFromJobCard(selectedCard)] : (value === '' ? [defaultItem()] : prev.items),
       }));
       return;
     }
@@ -302,26 +306,48 @@ const AddChallan = () => {
   };
 
   const toggleJobPick = (id) => {
+    const idStr = String(id);
     setPickedJobIds((prev) => (
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(idStr) ? prev.filter((x) => x !== idStr) : [...prev, idStr]
     ));
   };
 
   const addSelectedJobsToItems = () => {
-    const picked = filteredJobCards.filter((card) => pickedJobIds.includes(card._id || card.id));
+    const picked = jobCards.filter((card) => pickedJobIds.includes(String(card._id || card.id)));
     if (!picked.length) return;
 
     const newItems = picked.map(itemFromJobCard);
-    const existingDescs = new Set(formData.items.map((i) => i.description).filter(Boolean));
+    const existingDescs = new Set(
+      formData.items
+        .map((i) => i.description?.trim())
+        .filter(Boolean)
+    );
+
+    // If an item description already exists, allow it or filter duplicates
     const toAdd = newItems.filter((i) => !existingDescs.has(i.description));
 
+    // If all selected were already in items, inform user or add all
+    const itemsToInsert = toAdd.length > 0 ? toAdd : newItems;
+
     setFormData((prev) => {
-      const hasContent = prev.items.some((i) => i.description || i.qty || i.rate);
-      const merged = hasContent ? [...prev.items, ...toAdd] : (toAdd.length ? toAdd : [defaultItem()]);
+      // First card can help populate party details if not set
+      const firstCard = picked[0];
+      const shouldFillParty = !prev.partyName?.trim() && firstCard;
+
+      const hasContent = prev.items.some((i) => i.description?.trim() || Number(i.qty) > 0 || Number(i.rate) > 0);
+      const merged = hasContent ? [...prev.items, ...itemsToInsert] : itemsToInsert;
+
       return {
         ...prev,
-        items: merged,
-        jobCardId: prev.jobCardId || (picked[0]._id || picked[0].id),
+        ...(shouldFillParty ? {
+          partyName: firstCard.partyName || prev.partyName,
+          partyAddress: firstCard.address || prev.partyAddress,
+          partyContact: firstCard.contactNo || prev.partyContact,
+          partyEmail: firstCard.emailId || prev.partyEmail,
+          partyGst: firstCard.gstNo || prev.partyGst,
+        } : {}),
+        items: merged.length ? merged : [defaultItem()],
+        jobCardId: prev.jobCardId || String(picked[0]._id || picked[0].id || ''),
       };
     });
     setPickedJobIds([]);
@@ -700,45 +726,90 @@ const AddChallan = () => {
               >
                 <option value="">
                   {formData.partyName
-                    ? `Select Job (${filteredJobCards.length} found)`
-                    : 'Select party first'}
+                    ? `Select Job Card (${filteredJobCards.length} matching party)`
+                    : `Select Job Card (${jobCards.length} available)`}
                 </option>
-                {filteredJobCards.map((card) => (
-                  <option key={card._id || card.id} value={card._id || card.id}>
-                    ({card.jobNumber}) {card.jobName} - {card.partyName}
-                  </option>
-                ))}
+                {formData.partyName ? (
+                  <>
+                    <optgroup label={`Jobs for ${formData.partyName} (${filteredJobCards.length})`}>
+                      {filteredJobCards.map((card) => (
+                        <option key={card._id || card.id} value={card._id || card.id}>
+                          ({card.jobNumber}) {card.jobName} - {card.partyName}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {jobCards.filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id))).length > 0 && (
+                      <optgroup label="Other Parties' Job Cards (Click to switch)">
+                        {jobCards
+                          .filter((card) => !filteredJobCards.some((fc) => (fc._id || fc.id) === (card._id || card.id)))
+                          .map((card) => (
+                            <option key={card._id || card.id} value={card._id || card.id}>
+                              ({card.jobNumber}) {card.jobName} - {card.partyName}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                  </>
+                ) : (
+                  jobCards.map((card) => (
+                    <option key={card._id || card.id} value={card._id || card.id}>
+                      ({card.jobNumber}) {card.jobName} - {card.partyName}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
 
-          {formData.partyName && filteredJobCards.length > 0 && (
-            <div className="px-4 sm:px-6 pb-4 border-t border-gray-50">
+          {jobCards.length > 0 && (
+            <div className="px-4 sm:px-6 pb-4 border-t border-gray-100">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3 mt-4">
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">
-                  Multiple Jobs — select and add to items ({filteredJobCards.length} found)
+                <p className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                  <span>Multiple Jobs — select and add to items</span>
+                  <span className="text-[11px] font-normal text-gray-500">
+                    ({filteredJobCards.length} {formData.partyName ? 'for this party' : 'available'})
+                  </span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setPickedJobIds(filteredJobCards.map((c) => c._id || c.id))}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-semibold self-start"
-                >
-                  Select All
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allIds = filteredJobCards.map((c) => String(c._id || c.id));
+                      const allSelected = allIds.every((id) => pickedJobIds.includes(id));
+                      if (allSelected) {
+                        setPickedJobIds([]);
+                      } else {
+                        setPickedJobIds(allIds);
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold self-start"
+                  >
+                    {filteredJobCards.length > 0 && filteredJobCards.every((c) => pickedJobIds.includes(String(c._id || c.id)))
+                      ? 'Deselect All'
+                      : 'Select All'}
+                  </button>
+                </div>
               </div>
               <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100 mb-3 bg-gray-50">
                 {filteredJobCards.map((card) => {
-                  const id = card._id || card.id;
+                  const id = String(card._id || card.id);
+                  const isChecked = pickedJobIds.includes(id);
                   return (
-                    <label key={id} className="flex items-start gap-3 p-3 hover:bg-white cursor-pointer transition-colors">
+                    <label key={id} className={`flex items-start gap-3 p-3 cursor-pointer transition-colors ${isChecked ? 'bg-blue-50/70' : 'hover:bg-white'}`}>
                       <input
                         type="checkbox"
-                        checked={pickedJobIds.includes(id)}
+                        checked={isChecked}
                         onChange={() => toggleJobPick(id)}
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-800 leading-snug">
                         <span className="font-semibold text-blue-700">({card.jobNumber})</span> {card.jobName}
+                        {card.partyName && (
+                          <span className="ml-2 text-xs text-gray-500">[{card.partyName}]</span>
+                        )}
+                        {(card.printingQty || card.jobQty) && (
+                          <span className="ml-2 text-xs font-semibold text-emerald-600">Qty: {card.printingQty || card.jobQty}</span>
+                        )}
                       </span>
                     </label>
                   );
@@ -748,7 +819,7 @@ const AddChallan = () => {
                 type="button"
                 onClick={addSelectedJobsToItems}
                 disabled={pickedJobIds.length === 0}
-                className="w-full sm:w-auto text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-bold shadow-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full sm:w-auto text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-lg font-bold shadow-sm transition-colors flex items-center justify-center gap-2 active:scale-95"
               >
                 <Plus size={16} />
                 Add Selected to Items ({pickedJobIds.length})
