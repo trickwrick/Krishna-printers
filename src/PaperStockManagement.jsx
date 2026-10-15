@@ -391,7 +391,7 @@ const PaperStockManagement = () => {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Party Name</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">Party Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. ABC Traders"
@@ -401,7 +401,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Name</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">Paper Name</label>
                     <input 
                       type="text"
                       placeholder="e.g. Art Card, Glossy"
@@ -411,7 +411,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Supplier</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">Paper Supplier</label>
                     <input
                       type="text"
                       placeholder="e.g. Supplier name"
@@ -421,7 +421,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper GSM</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">Paper GSM</label>
                     <input 
                       type="number"
                       placeholder="e.g. 350, 300"
@@ -431,7 +431,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">
                       {editingId ? 'Add More Sheets' : 'Initial Sheet Count'}
                     </label>
                     {editingId && (
@@ -452,7 +452,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">Paper Size</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">Paper Size</label>
                     <input 
                       type="text"
                       placeholder="e.g. 12x18, 13x19"
@@ -462,7 +462,7 @@ const PaperStockManagement = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-1.5 pl-1 tracking-wider">
                       Challan No. <span className="text-red-500">*</span>
                     </label>
                     <input 
@@ -476,7 +476,7 @@ const PaperStockManagement = () => {
                   </div>
                   </div>
                   <div className="mt-5 pt-5 border-t border-sky-100/50">
-                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 pl-1 tracking-widest">Low Stock Alert (Value)</label>
+                    <label className="block text-xs font-black uppercase text-gray-900 mb-2 pl-1 tracking-wider">Low Stock Alert (Value)</label>
                     <input 
                       type="number" required
                       placeholder="Alert when below..."
@@ -488,7 +488,7 @@ const PaperStockManagement = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 pl-1 tracking-widest">Description / Best Use</label>
+                <label className="block text-xs font-black uppercase text-gray-900 mb-2 pl-1 tracking-wider">Description / Best Use</label>
                 <textarea 
                   rows="3"
                   placeholder="Notes for the team..."
