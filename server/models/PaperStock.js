@@ -18,6 +18,10 @@ const paperStockSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  coverChallanNo: {
+    type: String,
+    trim: true
+  },
   innerPartyName: {
     type: String,
     trim: true
@@ -56,6 +60,10 @@ const paperStockSchema = new mongoose.Schema({
     default: 0 
   },
   innerPaperSize: {
+    type: String,
+    trim: true
+  },
+  challanNo: {
     type: String,
     trim: true
   },

@@ -355,22 +355,25 @@ export default function JobCardForm() {
       return Array.from(set).slice(0, 50);
     };
 
+    // Filter items specific to the currently selected party
+    const targetParty = String(partyName || '').trim().toLowerCase();
+    const partyJobCards = targetParty
+      ? jobCards.filter(c => String(c.partyName || c.companyName || '').trim().toLowerCase() === targetParty)
+      : [];
+
+    const partyJobNames = new Set();
+    partyJobCards.forEach(card => {
+      const name = String(card.jobName || '').trim();
+      if (name && name !== '-' && name !== 'Auto') {
+        partyJobNames.add(name);
+      }
+    });
+
     return {
-      address: getUnique('address'),
-      contactNo: getUnique('contactNo'),
-      emailId: getUnique('emailId'),
-      gstNo: getUnique('gstNo'),
-      printingQty: getUnique('printingQty'),
-      jobName: getUnique('jobName'),
+      jobName: Array.from(partyJobNames).slice(0, 50),
       pageSize: getUnique('pageSize'),
-      paperGSM: getUnique('paperGSM'),
-      coverPaperCount: getUnique('coverPaperCount', c => c.coverPaperCount || c.paperCount),
-      coverPaperDetails: getUnique('coverPaperDetails'),
-      digitalPrintoutRemark: getUnique('digitalPrintoutRemark'),
-      completionDays: getUnique('completionDays'),
-      remarks: getUnique('notes')
     };
-  }, [jobCards]);
+  }, [jobCards, partyName]);
 
   const applyPartySuggestion = (party) => {
     setPartyName(party.partyName);
@@ -474,6 +477,21 @@ export default function JobCardForm() {
     const words = query.split(/\s+/).filter(Boolean);
     return words.every(word => searchString.includes(word));
   };
+
+  // Find currently selected cover paper stock object & available count
+  const activeCoverStock = React.useMemo(() => {
+    if (!selectedPaper || selectedPaper === 'Custom' || !paperStocks.length) return null;
+    return paperStocks.find((stock) => {
+      const label = formatCoverPaperOption(stock);
+      const name = getCoverPaperLabel(stock);
+      return (selectedPaperLabel && label === selectedPaperLabel) ||
+             (name && name.toLowerCase() === selectedPaper.toLowerCase());
+    }) || null;
+  }, [selectedPaper, selectedPaperLabel, paperStocks]);
+
+  const availableCoverStockQty = activeCoverStock
+    ? (activeCoverStock.coverQuantity !== undefined ? Number(activeCoverStock.coverQuantity) : Number(activeCoverStock.quantity) || 0)
+    : null;
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -977,68 +995,44 @@ export default function JobCardForm() {
                 <input
                   type="text"
                   name="address"
-                  list="job-address-suggestions"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter address"
                 />
-                <datalist id="job-address-suggestions">
-                  {fieldSuggestions.address.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Contact No.</label>
                 <input
                   type="text"
                   name="contactNo"
-                  list="job-contact-suggestions"
                   value={contactNo}
                   onChange={(e) => setContactNo(e.target.value)}
                   className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter Phone"
                 />
-                <datalist id="job-contact-suggestions">
-                  {fieldSuggestions.contactNo.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Gmail ID</label>
                 <input
                   type="email"
                   name="emailId"
-                  list="job-email-suggestions"
                   value={emailId}
                   onChange={(e) => setEmailId(e.target.value)}
                   className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter Gmail ID"
                 />
-                <datalist id="job-email-suggestions">
-                  {fieldSuggestions.emailId.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">GST No.</label>
                 <input
                   type="text"
                   name="gstNo"
-                  list="job-gst-suggestions"
                   value={gstNo}
                   onChange={(e) => setGstNo(e.target.value)}
                   className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter GST number"
                 />
-                <datalist id="job-gst-suggestions">
-                  {fieldSuggestions.gstNo.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
               </div>
               <div className="flex flex-col">
                 <label className="text-sm font-medium text-gray-700 mb-1">Date</label>
@@ -1054,17 +1048,11 @@ export default function JobCardForm() {
                 <input
                   type="text"
                   name="printingQty"
-                  list="job-printingqty-suggestions"
                   value={printingQty}
                   onChange={(e) => setPrintingQty(e.target.value)}
                   className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   placeholder="Enter Quantity"
                 />
-                <datalist id="job-printingqty-suggestions">
-                  {fieldSuggestions.printingQty.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
               </div>
               <div className="flex flex-col sm:col-span-2">
                 <label className="text-sm font-medium text-gray-700 mb-1">PDF / Image Upload (Max {MAX_JOB_ATTACHMENTS})</label>
@@ -1553,36 +1541,59 @@ export default function JobCardForm() {
                   <input
                     type="text"
                     name="paperGSM"
-                    list="job-papergsm-suggestions"
                     value={paperGSM}
                     onChange={(e) => setPaperGSM(e.target.value)}
                     className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                     placeholder="e.g. 350, 250"
                   />
-                  <datalist id="job-papergsm-suggestions">
-                    {fieldSuggestions.paperGSM.map((val, idx) => (
-                      <option key={idx} value={val} />
-                    ))}
-                  </datalist>
                 </div>
 
                 <div className="flex flex-col">
-                  <label className="text-xs font-bold text-gray-500 mb-1">Paper count</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-gray-500">Paper count</label>
+                    {availableCoverStockQty !== null && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        availableCoverStockQty <= 0 
+                          ? 'bg-red-50 text-red-600 border border-red-200' 
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        Stock: {availableCoverStockQty.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     name="coverPaperCount"
-                    list="job-papercount-suggestions"
                     value={coverPaperCount}
-                    onChange={(e) => setCoverPaperCount(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0);
+                      if (availableCoverStockQty !== null && val !== '' && val > availableCoverStockQty) {
+                        setCoverPaperCount(availableCoverStockQty);
+                      } else {
+                        setCoverPaperCount(val);
+                      }
+                    }}
                     min="0"
-                    className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+                    max={availableCoverStockQty !== null ? availableCoverStockQty : undefined}
+                    className={`h-10 border rounded-lg px-4 focus:outline-none focus:ring-2 transition-all ${
+                      availableCoverStockQty !== null && Number(coverPaperCount) > availableCoverStockQty
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-gray-200 focus:ring-sky-500'
+                    }`}
                     placeholder="0"
                   />
-                  <datalist id="job-papercount-suggestions">
-                    {fieldSuggestions.coverPaperCount.map((val, idx) => (
-                      <option key={idx} value={val} />
-                    ))}
-                  </datalist>
+                  {availableCoverStockQty !== null && (
+                    <div className="flex items-center justify-between mt-1 text-[11px] font-semibold">
+                      <span className="text-gray-400">Remaining:</span>
+                      <span className={
+                        (availableCoverStockQty - (Number(coverPaperCount) || 0)) <= 0
+                          ? 'text-red-500 font-bold'
+                          : 'text-sky-600 font-bold'
+                      }>
+                        {Math.max(0, availableCoverStockQty - (Number(coverPaperCount) || 0)).toLocaleString()} Sheets
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col">
@@ -1590,17 +1601,11 @@ export default function JobCardForm() {
                   <input
                     type="text"
                     name="coverPaperDetails"
-                    list="job-paperdetails-suggestions"
                     value={coverPaperDetails}
                     onChange={(e) => setCoverPaperDetails(e.target.value)}
                     className="h-10 border border-gray-200 rounded-lg px-4 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
                     placeholder="e.g. Size, Type"
                   />
-                  <datalist id="job-paperdetails-suggestions">
-                    {fieldSuggestions.coverPaperDetails.map((val, idx) => (
-                      <option key={idx} value={val} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
             </div>
@@ -1768,17 +1773,11 @@ export default function JobCardForm() {
                 <input
                   type="number"
                   name="completionDays"
-                  list="job-completiondays-suggestions"
                   min="1"
                   defaultValue={editData?.completionDays ?? ''}
                   className={fieldClass}
                   placeholder="e.g. 7"
                 />
-                <datalist id="job-completiondays-suggestions">
-                  {fieldSuggestions.completionDays.map((val, idx) => (
-                    <option key={idx} value={val} />
-                  ))}
-                </datalist>
                 <span className="text-sm font-semibold text-gray-600 shrink-0">Days</span>
               </div>
             </div>

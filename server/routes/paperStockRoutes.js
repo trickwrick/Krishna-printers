@@ -69,8 +69,29 @@ router.post('/usage', async (req, res) => {
 // GET /api/paper-stock - Get all stock items (newest / most recently updated first)
 router.get('/', async (req, res) => {
   try {
-    const stock = await PaperStock.find().sort({ updatedAt: -1, createdAt: -1, _id: -1 });
-    res.json(stock);
+    const stock = await PaperStock.find().sort({ updatedAt: -1, createdAt: -1, _id: -1 }).lean();
+    
+    // Fallback: If stock doc doesn't have challanNo, find the latest add transaction for it
+    const stockWithChallan = await Promise.all(
+      stock.map(async (item) => {
+        if (item.challanNo) return item;
+        const tx = await PaperStockTransaction.findOne({
+          $or: [
+            { paperStockId: item._id },
+            { stockName: item.name },
+            { paperName: item.coverName || item.name }
+          ],
+          challanNo: { $exists: true, $ne: '' }
+        }).sort({ createdAt: -1 });
+
+        return {
+          ...item,
+          challanNo: tx?.challanNo || ''
+        };
+      })
+    );
+
+    res.json(stockWithChallan);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -79,7 +100,7 @@ router.get('/', async (req, res) => {
 // POST /api/paper-stock - Add new stock item
 router.post('/', async (req, res) => {
   try {
-    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource } = req.body;
+    const { name, coverPartyName, coverName, coverSupplier, innerPartyName, innerName, innerSupplier, gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource, challanNo } = req.body;
     
     const resolvedCoverName = (coverName || '').trim();
     const resolvedInnerName = (innerName || '').trim();
@@ -87,10 +108,50 @@ router.post('/', async (req, res) => {
       || [resolvedCoverName, resolvedInnerName].filter((value, index, arr) => value && arr.indexOf(value) === index).join(' / ')
       || 'Unnamed Paper';
 
-    // Check if item with same name and paperSource already exists
-    const existing = await PaperStock.findOne({ name: resolvedName, paperSource: paperSource || 'Company paper' });
+    // Check if item with same name, party, and paperSource already exists
+    const resolvedCoverParty = (coverPartyName || '').trim();
+    const resolvedInnerParty = (innerPartyName || '').trim();
+
+    const existing = await PaperStock.findOne({ 
+      name: resolvedName, 
+      paperSource: paperSource || 'Company paper',
+      $or: [
+        { coverPartyName: resolvedCoverParty },
+        { innerPartyName: resolvedInnerParty }
+      ]
+    });
+
     if (existing) {
-      return res.status(400).json({ error: "Paper with this name and Source already exists. Please update the existing entry." });
+      // Auto-update quantity and log transaction instead of failing with 400
+      const addCover = Number(coverQuantity) || 0;
+      const addInner = Number(innerQuantity) || 0;
+      existing.coverQuantity = (existing.coverQuantity || 0) + addCover;
+      existing.innerQuantity = (existing.innerQuantity || 0) + addInner;
+      existing.quantity = (existing.quantity || 0) + addCover + addInner;
+      if (req.body.challanNo) existing.challanNo = req.body.challanNo.trim();
+      if (coverGSM) existing.coverGSM = coverGSM;
+      if (coverPaperSize) existing.coverPaperSize = coverPaperSize;
+      existing.updatedAt = Date.now();
+      await existing.save();
+
+      if (addCover > 0) {
+        await logPaperStockTransaction({
+          paperStockId: existing._id,
+          stockName: resolvedName,
+          paperName: resolvedCoverName || resolvedName,
+          paperType: 'cover',
+          transactionType: 'add',
+          quantity: addCover,
+          partyName: resolvedCoverParty,
+          challanNo: req.body.challanNo || '',
+          invoiceNo: req.body.invoiceNo || '',
+          paperSource: paperSource || 'Company paper',
+          balanceAfter: existing.coverQuantity,
+          note: req.body.note || 'Stock added (Existing paper)',
+        });
+      }
+
+      return res.json(existing);
     }
 
     const newItem = new PaperStock({
@@ -109,6 +170,8 @@ router.post('/', async (req, res) => {
       innerGSM,
       innerQuantity,
       innerPaperSize,
+      challanNo: (req.body.challanNo || '').trim(),
+      coverChallanNo: (req.body.challanNo || '').trim(),
       unit,
       description,
       lowStockThreshold,
@@ -116,9 +179,6 @@ router.post('/', async (req, res) => {
     });
 
     await newItem.save();
-
-    const resolvedCoverParty = (coverPartyName || '').trim();
-    const resolvedInnerParty = (innerPartyName || '').trim();
 
     if (Number(coverQuantity) > 0) {
       await logPaperStockTransaction({
@@ -182,8 +242,9 @@ router.put('/:id', async (req, res) => {
         coverSupplier: (coverSupplier || '').trim(),
         innerPartyName: (innerPartyName || '').trim(),
         innerName: resolvedInnerName || resolvedName,
-        innerSupplier: (innerSupplier || '').trim(),
-        gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource, updatedAt: Date.now()
+        gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource,
+        ...(challanNo ? { challanNo: String(challanNo).trim() } : {}),
+        updatedAt: Date.now()
       },
       { new: true }
     );

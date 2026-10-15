@@ -39,6 +39,7 @@ const PaperStockManagement = () => {
     innerQuantity: '',
     innerPaperSize: '',
     description: '',
+    challanNo: '',
     lowStockThreshold: 100,
     paperSource: 'Company paper'
   });
@@ -119,6 +120,12 @@ const PaperStockManagement = () => {
       return;
     }
 
+    if (!formData.challanNo?.trim()) {
+      setMessage({ type: 'error', text: 'Challan No. is mandatory! Please enter Challan Number.' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3500);
+      return;
+    }
+
     const url = editingId 
       ? `${API_BASE_URL}/api/paper-stock/${editingId}`
       : `${API_BASE_URL}/api/paper-stock`;
@@ -168,6 +175,7 @@ const PaperStockManagement = () => {
           innerQuantity: '',
           innerPaperSize: '',
           description: '', 
+          challanNo: '',
           lowStockThreshold: 100, 
           paperSource: 'Company paper' 
         });
@@ -453,6 +461,19 @@ const PaperStockManagement = () => {
                       onChange={(e) => setFormData({...formData, coverPaperSize: e.target.value})}
                     />
                   </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-gray-400 mb-1.5 pl-1 tracking-widest">
+                      Challan No. <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text"
+                      required
+                      placeholder="e.g. CH-2026-001"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all font-semibold"
+                      value={formData.challanNo}
+                      onChange={(e) => setFormData({...formData, challanNo: e.target.value})}
+                    />
+                  </div>
                   </div>
                   <div className="mt-5 pt-5 border-t border-sky-100/50">
                     <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 pl-1 tracking-widest">Low Stock Alert (Value)</label>
@@ -590,6 +611,7 @@ const PaperStockManagement = () => {
                         item.innerGSM !== undefined ? item.innerGSM : '',
                         item.coverPaperSize || '',
                         item.innerPaperSize || '',
+                        item.challanNo || '',
                         item.description || ''
                       ].join(' ').toLowerCase();
 
@@ -622,8 +644,13 @@ const PaperStockManagement = () => {
                                          Paper: {item.coverPartyName}
                                        </span>
                                      )}
+                                     {(item.challanNo || item.coverChallanNo) ? (
+                                       <span className="bg-indigo-100 text-indigo-900 border border-indigo-300 font-black px-2 py-0.5 rounded text-[11px] shadow-sm tracking-wide flex items-center gap-1">
+                                         Challan: {item.challanNo || item.coverChallanNo}
+                                       </span>
+                                     ) : null}
                                    </div>
-                                   <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold">
+                                   <div className="flex items-center gap-2 mt-1.5 text-[10px] font-bold flex-wrap">
                                      {(item.coverGSM !== undefined || item.gsm) ? (
                                        <span className="bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-100">
                                          {item.coverName || item.name || '--'}{item.coverSupplier ? ` · Supplier: ${item.coverSupplier}` : ''} · {item.coverGSM !== undefined ? item.coverGSM : item.gsm} GSM{item.coverPaperSize ? ` · ${item.coverPaperSize}` : ''}
