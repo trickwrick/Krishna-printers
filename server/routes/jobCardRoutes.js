@@ -550,8 +550,11 @@ router.patch('/:id/status', async (req, res) => {
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
-    const updated = await JobCard.findByIdAndUpdate(
-      req.params.id,
+    const target = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+
+    const updated = await JobCard.findOneAndUpdate(
+      query,
       { 
         status, 
         updatedAt: new Date(),

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings, Clock, CheckCircle2 } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { getJobAttachments } from './utils/jobAttachments';
 import { printElement } from './utils/printDocument';
@@ -76,6 +76,7 @@ export default function JobCardListing() {
   const [paperBlockAlert, setPaperBlockAlert] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'completed'
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -412,7 +413,29 @@ export default function JobCardListing() {
     setColumnVisibility(prev => ({ ...prev, [col]: !prev[col] }));
   };
 
+  const isCardCompleted = (card) => {
+    const cardKey = getCardKey(card);
+    const doneSteps = workflowProgress[cardKey] ?? 0;
+    return doneSteps >= 4 || card.status === 'completed';
+  };
+
+  const statusCounts = React.useMemo(() => {
+    let completed = 0;
+    let pending = 0;
+    jobCards.forEach(card => {
+      if (isCardCompleted(card)) {
+        completed++;
+      } else {
+        pending++;
+      }
+    });
+    return { all: jobCards.length, completed, pending };
+  }, [jobCards, workflowProgress]);
+
   const filteredCards = jobCards.filter(card => {
+    if (statusFilter === 'completed' && !isCardCompleted(card)) return false;
+    if (statusFilter === 'pending' && isCardCompleted(card)) return false;
+
     const term = (searchTerm || '').trim().toLowerCase();
     if (!term) return true;
     const words = term.split(/\s+/).filter(Boolean);
@@ -550,15 +573,65 @@ export default function JobCardListing() {
 
       {/* Toolbar */}
       <div className="bg-white p-4 rounded-t-2xl border-x border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 no-print">
-        <div className="relative w-full sm:max-w-xs md:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search keyword..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all"
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          {/* Status Tabs: All, Pending, Completed */}
+          <div className="inline-flex p-1 bg-gray-100/90 rounded-xl border border-gray-200/70 shadow-inner self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                statusFilter === 'all'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+              }`}
+            >
+              <span>All</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'all' ? 'bg-gray-200 text-gray-800' : 'bg-gray-200/70 text-gray-600'}`}>
+                {statusCounts.all}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('pending')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                statusFilter === 'pending'
+                  ? 'bg-amber-500 text-white shadow-sm'
+                  : 'text-amber-700 hover:bg-white/50'
+              }`}
+            >
+              <Clock size={12} />
+              <span>Pending</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                {statusCounts.pending}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('completed')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                statusFilter === 'completed'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-emerald-700 hover:bg-white/50'
+              }`}
+            >
+              <CheckCircle2 size={12} />
+              <span>Completed</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'completed' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                {statusCounts.completed}
+              </span>
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-60 md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search keyword..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm transition-all"
+            />
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2">
@@ -675,15 +748,39 @@ export default function JobCardListing() {
                   const cardKey = getCardKey(card);
                   const doneSteps = workflowProgress[cardKey] || 0;
                   const timeLeft = getTimeLeft(card);
-                  const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-blue-50/40';
-                  const rowHoverBg = index % 2 === 0 ? 'hover:bg-gray-50' : 'hover:bg-blue-50/70';
+                  const isCompleted = isCardCompleted(card);
+
+                  // Distinct green styling if completed
+                  const rowBg = isCompleted
+                    ? 'bg-emerald-50/90 text-emerald-950 font-medium border-l-4 border-l-emerald-500'
+                    : (index % 2 === 0 ? 'bg-white border-l-4 border-l-transparent' : 'bg-blue-50/40 border-l-4 border-l-transparent');
+
+                  const rowHoverBg = isCompleted
+                    ? 'hover:bg-emerald-100/90'
+                    : (index % 2 === 0 ? 'hover:bg-gray-50' : 'hover:bg-blue-50/70');
 
                   return (
                     <React.Fragment key={cardKey || index}>
-                      <tr className={`border-b-0 border-gray-50 transition-colors ${rowBg} ${rowHoverBg}`}>
-                        <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">{index + 1}</td>
+                      <tr className={`border-b border-gray-100 transition-colors ${rowBg} ${rowHoverBg}`}>
+                        <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">
+                          <div className="flex items-center justify-center gap-0.5">
+                            {isCompleted && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Completed" />
+                            )}
+                            <span>{index + 1}</span>
+                          </div>
+                        </td>
                         {columnVisibility.partyName && (
-                          <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">{card.partyName}</td>
+                          <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">
+                            <div className="flex items-center gap-1.5">
+                              <span>{card.partyName}</span>
+                              {isCompleted && (
+                                <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black uppercase px-1 py-0.2 rounded shrink-0">
+                                  Done
+                                </span>
+                              )}
+                            </div>
+                          </td>
                         )}
                         {columnVisibility.jobNumber && (
                           <td className="py-2 px-1.5 align-top wrap-break-word whitespace-normal leading-snug">

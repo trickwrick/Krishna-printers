@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2, ZoomIn, Eye, Download, ExternalLink } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
@@ -211,6 +211,7 @@ export default function JobCardForm() {
   const [jobQty, setJobQty] = useState(editData?.jobQty || '');
   const [printingQty, setPrintingQty] = useState(editData?.printingQty || '');
   const [jobAttachments, setJobAttachments] = useState(() => getJobAttachments(editData));
+  const [previewAttachmentModal, setPreviewAttachmentModal] = useState(null);
   const [shipPartyName, setShipPartyName] = useState(editData?.shipPartyName || '');
   const [shipAddress, setShipAddress] = useState(editData?.shipAddress || '');
   const [shipContactNo, setShipContactNo] = useState(editData?.shipContactNo || '');
@@ -1073,30 +1074,64 @@ export default function JobCardForm() {
                   <p className="mt-2 text-xs text-gray-500">Up to {MAX_JOB_ATTACHMENTS} PDF/image files, 2MB each. These will appear on print.</p>
                   {jobAttachments.length > 0 && (
                     <div className="mt-3 grid grid-cols-2 gap-3">
-                      {jobAttachments.map((attachment, index) => (
-                        <div key={`${attachment.name}-${index}`} className="rounded-lg border border-blue-100 bg-white p-2">
-                          {attachment.type?.startsWith('image/') ? (
-                            <img
-                              src={attachment.dataUrl}
-                              alt={attachment.name}
-                              className="mb-2 h-24 w-full rounded object-contain bg-gray-50"
-                            />
-                          ) : (
-                            <div className="mb-2 flex h-24 items-center justify-center rounded bg-gray-50">
-                              <FileText size={28} className="text-gray-400" />
+                      {jobAttachments.map((attachment, index) => {
+                        const isImage = attachment.type?.startsWith('image/') || (attachment.dataUrl && !attachment.dataUrl.startsWith('data:application/pdf'));
+                        return (
+                          <div key={`${attachment.name}-${index}`} className="group relative rounded-lg border border-blue-100 bg-white p-2 transition-all hover:shadow-md">
+                            {isImage ? (
+                              <div
+                                onClick={() => setPreviewAttachmentModal(attachment)}
+                                className="relative cursor-pointer overflow-hidden rounded bg-gray-50 flex items-center justify-center mb-2"
+                                title="Click to view large preview"
+                              >
+                                <img
+                                  src={attachment.dataUrl}
+                                  alt={attachment.name}
+                                  className="h-28 w-full rounded object-contain transition-transform duration-200 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white font-semibold text-xs backdrop-blur-[1px]">
+                                  <ZoomIn size={16} />
+                                  <span>View Large</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => {
+                                  if (attachment.dataUrl) {
+                                    window.open(attachment.dataUrl, '_blank');
+                                  }
+                                }}
+                                className="mb-2 flex h-28 cursor-pointer flex-col items-center justify-center rounded bg-gray-50 hover:bg-gray-100 transition-colors"
+                                title="Click to open file"
+                              >
+                                <FileText size={32} className="text-gray-400 mb-1" />
+                                <span className="text-[11px] text-blue-600 font-medium">Open PDF</span>
+                              </div>
+                            )}
+                            <p className="truncate text-xs font-bold text-gray-800" title={attachment.name}>{attachment.name}</p>
+                            <div className="mt-2 flex items-center gap-2">
+                              {isImage && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewAttachmentModal(attachment)}
+                                  className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-blue-200 bg-blue-50/50 px-2 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+                                >
+                                  <Eye size={13} />
+                                  Preview
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => removeJobAttachment(index)}
+                                className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <X size={13} />
+                                Remove
+                              </button>
                             </div>
-                          )}
-                          <p className="truncate text-xs font-bold text-gray-800">{attachment.name}</p>
-                          <button
-                            type="button"
-                            onClick={() => removeJobAttachment(index)}
-                            className="mt-2 inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
-                          >
-                            <X size={14} />
-                            Remove
-                          </button>
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2012,6 +2047,9 @@ export default function JobCardForm() {
                                       <img
                                         src={attachment.dataUrl}
                                         alt={attachment.name}
+                                        onClick={() => setPreviewAttachmentModal(attachment)}
+                                        className="cursor-pointer transition-transform hover:scale-105"
+                                        title="Click to view full preview"
                                         style={{ width: '100%', maxHeight: '90px', objectFit: 'contain' }}
                                       />
                                     ) : (
@@ -2201,6 +2239,77 @@ export default function JobCardForm() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Image Full Preview Modal */}
+      {previewAttachmentModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPreviewAttachmentModal(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gray-50/80">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="p-1.5 rounded-lg bg-blue-100 text-blue-600">
+                  <ZoomIn size={18} />
+                </span>
+                <h3 className="text-sm font-bold text-gray-900 truncate" title={previewAttachmentModal.name}>
+                  {previewAttachmentModal.name}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                {previewAttachmentModal.dataUrl && (
+                  <a
+                    href={previewAttachmentModal.dataUrl}
+                    download={previewAttachmentModal.name || 'attachment'}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-gray-100 transition-colors"
+                    title="Download / Open Full"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Download size={18} />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPreviewAttachmentModal(null)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  title="Close (Esc)"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / Image */}
+            <div className="p-4 flex items-center justify-center bg-gray-900/5 min-h-75 max-h-[calc(90vh-65px)] overflow-auto">
+              {previewAttachmentModal.type?.startsWith('image/') || (previewAttachmentModal.dataUrl && !previewAttachmentModal.dataUrl.startsWith('data:application/pdf')) ? (
+                <img
+                  src={previewAttachmentModal.dataUrl}
+                  alt={previewAttachmentModal.name}
+                  className="max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-md"
+                />
+              ) : (
+                <div className="p-10 flex flex-col items-center justify-center text-center">
+                  <FileText size={64} className="text-gray-400 mb-3" />
+                  <p className="text-base font-semibold text-gray-700">{previewAttachmentModal.name}</p>
+                  <a
+                    href={previewAttachmentModal.dataUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold shadow hover:bg-blue-700 transition-colors"
+                  >
+                    <ExternalLink size={16} /> Open PDF in new tab
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

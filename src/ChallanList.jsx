@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Trash2, MoreHorizontal, Truck, Pencil, ChevronDown, Check, AlertCircle, Printer, X, Download, Phone, Mail, Globe, Building2, MapPin, Calendar, FileDigit } from 'lucide-react';
+import { Plus, Trash2, MoreHorizontal, Truck, Pencil, ChevronDown, Check, AlertCircle, Printer, X, Download, Phone, Mail, Globe, Building2, MapPin, Calendar, FileDigit, Clock, CheckCircle2 } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { printElement } from './utils/printDocument';
 import { mergePaymentType, mergePaymentTypeList, removeStoredPaymentType } from './utils/paymentTypeStorage';
@@ -81,15 +81,45 @@ const ChallanList = () => {
   const showPage1SignatureRow = itemLines.length >= 7;
   const compactPrint = itemLines.length >= 8;
 
+  const [challanStatusFilter, setChallanStatusFilter] = useState('all'); // 'all', 'pending', 'completed'
+
   const partyCounts = challans.reduce((acc, ch) => {
     const name = (ch.partyName || '').trim();
     if (name) acc[name] = (acc[name] || 0) + 1;
     return acc;
   }, {});
 
-  const filteredChallans = partyFilter
-    ? challans.filter((ch) => (ch.partyName || '').toLowerCase() === partyFilter.toLowerCase())
-    : challans;
+  const isChallanCompleted = (ch) => {
+    // Challan is completed if paymentStatus is Completed/Paid or linked jobCard is completed
+    const payStatus = (ch.paymentStatus || '').toLowerCase();
+    if (payStatus === 'completed' || payStatus === 'paid') return true;
+    const linked = jobCards.find(c => c.jobNumber === ch.jobNumber || String(c._id) === String(ch.jobCardId));
+    if (linked && linked.status === 'completed') return true;
+    return false;
+  };
+
+  const challanStatusCounts = React.useMemo(() => {
+    const list = partyFilter
+      ? challans.filter((ch) => (ch.partyName || '').toLowerCase() === partyFilter.toLowerCase())
+      : challans;
+    let completed = 0;
+    let pending = 0;
+    list.forEach(ch => {
+      if (isChallanCompleted(ch)) completed++;
+      else pending++;
+    });
+    return { all: list.length, completed, pending };
+  }, [challans, partyFilter, jobCards]);
+
+  const filteredChallans = challans.filter((ch) => {
+    if (partyFilter && (ch.partyName || '').toLowerCase() !== partyFilter.toLowerCase()) {
+      return false;
+    }
+    const isCompleted = isChallanCompleted(ch);
+    if (challanStatusFilter === 'completed' && !isCompleted) return false;
+    if (challanStatusFilter === 'pending' && isCompleted) return false;
+    return true;
+  });
 
   const selectedPartyName = selectedChallanIds.length
     ? challans.find((ch) => ch._id === selectedChallanIds[0])?.partyName
@@ -283,14 +313,62 @@ const ChallanList = () => {
               )}
             </div>
             <div className="flex flex-col lg:flex-row gap-3 lg:items-center lg:justify-between">
-              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Status Tabs: All, Pending, Completed */}
+                <div className="inline-flex p-1 bg-gray-100/90 rounded-xl border border-gray-200/70 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => setChallanStatusFilter('all')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      challanStatusFilter === 'all'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                    }`}
+                  >
+                    <span>All</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${challanStatusFilter === 'all' ? 'bg-gray-200 text-gray-800' : 'bg-gray-200/70 text-gray-600'}`}>
+                      {challanStatusCounts.all}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChallanStatusFilter('pending')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      challanStatusFilter === 'pending'
+                        ? 'bg-amber-500 text-white shadow-sm'
+                        : 'text-amber-700 hover:bg-white/50'
+                    }`}
+                  >
+                    <Clock size={12} />
+                    <span>Pending</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${challanStatusFilter === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                      {challanStatusCounts.pending}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChallanStatusFilter('completed')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      challanStatusFilter === 'completed'
+                        ? 'bg-emerald-600 text-white shadow-sm'
+                        : 'text-emerald-700 hover:bg-white/50'
+                    }`}
+                  >
+                    <CheckCircle2 size={12} />
+                    <span>Completed</span>
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${challanStatusFilter === 'completed' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {challanStatusCounts.completed}
+                    </span>
+                  </button>
+                </div>
+
                 <select
                   value={partyFilter}
                   onChange={(e) => {
                     setPartyFilter(e.target.value);
                     setSelectedChallanIds([]);
                   }}
-                  className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-medium min-w-48"
+                  className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium min-w-44"
                 >
                   <option value="">All Parties</option>
                   {Object.entries(partyCounts)
@@ -303,7 +381,7 @@ const ChallanList = () => {
                   <button
                     type="button"
                     onClick={selectAllForParty}
-                    className="text-sm font-semibold text-blue-700 hover:text-blue-800"
+                    className="text-xs font-semibold text-blue-700 hover:text-blue-800"
                   >
                     Select all for {partyFilter}
                   </button>
@@ -359,30 +437,53 @@ const ChallanList = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredChallans.map((ch, index) => (
-                    <tr key={ch._id} className={`hover:bg-gray-50/80 transition-colors group ${selectedChallanIds.includes(ch._id) ? 'bg-blue-50/40' : ''}`}>
-                      <td className="px-3 py-4 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedChallanIds.includes(ch._id)}
-                          onChange={() => toggleChallanSelect(ch)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          title="Combined print ke liye select karo"
-                        />
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-500">{index + 1}</td>
-                      <td className="px-4 sm:px-6 py-4 text-sm font-semibold text-blue-600 underline underline-offset-4 decoration-blue-100">{ch.challanNo}</td>
-                      <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-800">
-                        <span className="bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-600 mr-2">
-                          {ch.jobNumber}
-                        </span>
-                        {ch.jobName}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-800">{ch.partyName}</td>
-                      <td className="px-4 sm:px-6 py-4 text-sm font-bold text-gray-900">₹ {(ch.grandTotal ?? ch.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-500">
-                        {new Date(ch.createdAt).toLocaleDateString()}
-                      </td>
+                  filteredChallans.map((ch, index) => {
+                    const isCompleted = isChallanCompleted(ch);
+                    const rowBg = selectedChallanIds.includes(ch._id)
+                      ? 'bg-blue-50/60'
+                      : (isCompleted ? 'bg-emerald-50/75 text-emerald-950' : '');
+                    const rowHoverBg = isCompleted ? 'hover:bg-emerald-100/70' : 'hover:bg-gray-50/80';
+
+                    return (
+                      <tr key={ch._id} className={`transition-colors group ${rowBg} ${rowHoverBg}`}>
+                        <td className="px-3 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedChallanIds.includes(ch._id)}
+                            onChange={() => toggleChallanSelect(ch)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            title="Combined print ke liye select karo"
+                          />
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-1.5">
+                            {isCompleted && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Completed" />
+                            )}
+                            <span>{index + 1}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-sm font-semibold text-blue-600 underline underline-offset-4 decoration-blue-100">
+                          <div className="flex items-center gap-1.5">
+                            <span>{ch.challanNo}</span>
+                            {isCompleted && (
+                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black uppercase px-1 py-0.2 rounded shrink-0">
+                                Done
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-800">
+                          <span className="bg-gray-100 px-2 py-0.5 rounded border border-gray-200 text-xs text-gray-600 mr-2">
+                            {ch.jobNumber}
+                          </span>
+                          {ch.jobName}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-800">{ch.partyName}</td>
+                        <td className="px-4 sm:px-6 py-4 text-sm font-bold text-gray-900">₹ {(ch.grandTotal ?? ch.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-500">
+                          {new Date(ch.createdAt).toLocaleDateString()}
+                        </td>
                       <td className="px-4 sm:px-6 py-4 text-center">
                         <div className="flex justify-center items-center gap-2 sm:gap-3">
                           {hasPermission('challan', 'print') && (
@@ -415,7 +516,8 @@ const ChallanList = () => {
                         </div>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
