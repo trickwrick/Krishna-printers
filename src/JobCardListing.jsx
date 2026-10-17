@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings, Clock, CheckCircle2 } from 'lucide-react';
+import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings, Clock, CheckCircle2, PlayCircle } from 'lucide-react';
 import { downloadAsPDF } from './utils/pdfExport';
 import { getJobAttachments } from './utils/jobAttachments';
 import { printElement } from './utils/printDocument';
@@ -413,28 +413,40 @@ export default function JobCardListing() {
     setColumnVisibility(prev => ({ ...prev, [col]: !prev[col] }));
   };
 
-  const isCardCompleted = (card) => {
+  const getCardStatus = (card) => {
     const cardKey = getCardKey(card);
     const doneSteps = workflowProgress[cardKey] ?? 0;
-    return doneSteps >= 4 || card.status === 'completed';
+    if (doneSteps >= 4 || card.status === 'completed') {
+      return 'completed';
+    }
+    if (doneSteps > 0 || card.status === 'in-progress') {
+      return 'processing';
+    }
+    return 'pending';
   };
+
+  const isCardCompleted = (card) => getCardStatus(card) === 'completed';
 
   const statusCounts = React.useMemo(() => {
     let completed = 0;
+    let processing = 0;
     let pending = 0;
     jobCards.forEach(card => {
-      if (isCardCompleted(card)) {
+      const status = getCardStatus(card);
+      if (status === 'completed') {
         completed++;
+      } else if (status === 'processing') {
+        processing++;
       } else {
         pending++;
       }
     });
-    return { all: jobCards.length, completed, pending };
+    return { all: jobCards.length, pending, processing, completed };
   }, [jobCards, workflowProgress]);
 
   const filteredCards = jobCards.filter(card => {
-    if (statusFilter === 'completed' && !isCardCompleted(card)) return false;
-    if (statusFilter === 'pending' && isCardCompleted(card)) return false;
+    const cardStatus = getCardStatus(card);
+    if (statusFilter !== 'all' && cardStatus !== statusFilter) return false;
 
     const term = (searchTerm || '').trim().toLowerCase();
     if (!term) return true;
@@ -574,7 +586,7 @@ export default function JobCardListing() {
       {/* Toolbar */}
       <div className="bg-white p-4 rounded-t-2xl border-x border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 no-print">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          {/* Status Tabs: All, Pending, Completed */}
+          {/* Status Tabs: All, Pending, Processing, Completed */}
           <div className="inline-flex p-1 bg-gray-100/90 rounded-xl border border-gray-200/70 shadow-inner self-start sm:self-auto">
             <button
               type="button"
@@ -603,6 +615,21 @@ export default function JobCardListing() {
               <span>Pending</span>
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'pending' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800'}`}>
                 {statusCounts.pending}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('processing')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                statusFilter === 'processing'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-blue-700 hover:bg-white/50'
+              }`}
+            >
+              <PlayCircle size={12} />
+              <span>Processing</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${statusFilter === 'processing' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}>
+                {statusCounts.processing}
               </span>
             </button>
             <button
@@ -748,16 +775,22 @@ export default function JobCardListing() {
                   const cardKey = getCardKey(card);
                   const doneSteps = workflowProgress[cardKey] || 0;
                   const timeLeft = getTimeLeft(card);
-                  const isCompleted = isCardCompleted(card);
+                  const cardStatus = getCardStatus(card);
+                  const isCompleted = cardStatus === 'completed';
+                  const isProcessing = cardStatus === 'processing';
 
-                  // Distinct green styling if completed
+                  // Distinct green styling if completed, blue accent if processing
                   const rowBg = isCompleted
                     ? 'bg-emerald-50/90 text-emerald-950 font-medium border-l-4 border-l-emerald-500'
-                    : (index % 2 === 0 ? 'bg-white border-l-4 border-l-transparent' : 'bg-blue-50/40 border-l-4 border-l-transparent');
+                    : isProcessing
+                    ? 'bg-blue-50/50 text-gray-900 border-l-4 border-l-blue-500'
+                    : (index % 2 === 0 ? 'bg-white border-l-4 border-l-transparent' : 'bg-gray-50/40 border-l-4 border-l-transparent');
 
                   const rowHoverBg = isCompleted
                     ? 'hover:bg-emerald-100/90'
-                    : (index % 2 === 0 ? 'hover:bg-gray-50' : 'hover:bg-blue-50/70');
+                    : isProcessing
+                    ? 'hover:bg-blue-100/60'
+                    : (index % 2 === 0 ? 'hover:bg-gray-50' : 'hover:bg-gray-100/70');
 
                   return (
                     <React.Fragment key={cardKey || index}>
@@ -766,6 +799,9 @@ export default function JobCardListing() {
                           <div className="flex items-center justify-center gap-0.5">
                             {isCompleted && (
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Completed" />
+                            )}
+                            {isProcessing && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block animate-pulse" title="Processing" />
                             )}
                             <span>{index + 1}</span>
                           </div>
@@ -777,6 +813,11 @@ export default function JobCardListing() {
                               {isCompleted && (
                                 <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 text-[9px] font-black uppercase px-1 py-0.2 rounded shrink-0">
                                   Done
+                                </span>
+                              )}
+                              {isProcessing && (
+                                <span className="bg-blue-100 text-blue-800 border border-blue-300 text-[9px] font-black uppercase px-1 py-0.2 rounded shrink-0">
+                                  In Process
                                 </span>
                               )}
                             </div>
