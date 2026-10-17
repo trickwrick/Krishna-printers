@@ -796,15 +796,7 @@ export default function JobCardListing() {
                     <React.Fragment key={cardKey || index}>
                       <tr className={`border-b border-gray-100 transition-colors ${rowBg} ${rowHoverBg}`}>
                         <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">
-                          <div className="flex items-center justify-center gap-0.5">
-                            {isCompleted && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" title="Completed" />
-                            )}
-                            {isProcessing && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block animate-pulse" title="Processing" />
-                            )}
-                            <span>{index + 1}</span>
-                          </div>
+                          <span>{index + 1}</span>
                         </td>
                         {columnVisibility.partyName && (
                           <td className="py-2 px-1.5 font-medium text-gray-900 align-top wrap-break-word whitespace-normal leading-snug">
