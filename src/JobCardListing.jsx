@@ -554,10 +554,54 @@ export default function JobCardListing() {
     printElement('printable-inner');
   };
 
+  const [downloadingCardId, setDownloadingCardId] = useState(null);
+
+  const handleDirectDownloadJobCard = async (card) => {
+    if (downloadingCardId) return;
+    setDownloadingCardId(card._id);
+    try {
+      let cardData = { ...card };
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}/attachments`);
+        if (res.ok) {
+          const data = await res.json();
+          cardData = {
+            ...cardData,
+            jobAttachments: data.jobAttachments,
+            jobAttachment: data.jobAttachment,
+          };
+        }
+      } catch (err) {
+        console.warn('Could not load attachments for PDF:', err);
+      }
+
+      const partyPrefix = (card.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
+      const docLabel = `${partyPrefix}_JobCard_${card.jobNumber || 'card'}`;
+
+      setSelectedCard(cardData);
+      // Wait for React to render the printable container
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await downloadAsPDF(
+        'printable-inner',
+        docLabel,
+        () => {}
+      );
+    } catch (error) {
+      console.error('Error downloading job card PDF:', error);
+      alert('Failed to download Job Card PDF.');
+    } finally {
+      if (!isModalOpen) {
+        setSelectedCard(null);
+      }
+      setDownloadingCardId(null);
+    }
+  };
+
   const handleSharePDF = async () => {
+    const partyPrefix = (selectedCard?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
     await downloadAsPDF(
       'printable-inner',
-      `JobCard_${selectedCard?.jobNumber || 'preview'}`,
+      `${partyPrefix}_JobCard_${selectedCard?.jobNumber || 'preview'}`,
       setIsGenerating
     );
   };
@@ -892,14 +936,28 @@ export default function JobCardListing() {
                               {expandedRows[cardKey] ? <EyeOff size={13} /> : <Eye size={13} />}
                             </button>
                             {hasPermission('jobCard', 'print') && (
-                              <button
-                                onClick={() => openPreview(card)}
-                                disabled={isActionLoading}
-                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
-                                title="Print Preview"
-                              >
-                                <Printer size={13} />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => openPreview(card)}
+                                  disabled={isActionLoading || downloadingCardId === card._id}
+                                  className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
+                                  title="Print Preview"
+                                >
+                                  <Printer size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDirectDownloadJobCard(card)}
+                                  disabled={isActionLoading || downloadingCardId === card._id}
+                                  className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
+                                  title="Direct Download PDF"
+                                >
+                                  {downloadingCardId === card._id ? (
+                                    <Loader2 size={13} className="animate-spin text-indigo-600" />
+                                  ) : (
+                                    <Download size={13} />
+                                  )}
+                                </button>
+                              </>
                             )}
                             {hasPermission('jobCard', 'edit') && (
                               <button
@@ -1073,8 +1131,8 @@ export default function JobCardListing() {
       </div>
 
       {/* Print Preview Modal */}
-      {isModalOpen && selectedCard && (
-        <div className="print-modal-overlay fixed inset-0 bg-black/60 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0">
+      {(isModalOpen || downloadingCardId) && selectedCard && (
+        <div className={`print-modal-overlay fixed inset-0 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0 ${downloadingCardId && !isModalOpen ? 'opacity-0 pointer-events-none -z-50' : 'bg-black/60'}`}>
           <div className="print-modal-shell job-card-modal-shell bg-white border border-gray-300 w-full max-w-4xl sm:max-w-4xl relative h-dvh sm:h-auto max-h-dvh sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
             <div className="modal-header print-modal-header no-print p-3 sm:p-4 border-b bg-white">
               <div className="print-modal-title-row flex items-center justify-between gap-2">

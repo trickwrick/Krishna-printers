@@ -74,15 +74,15 @@ export function printElement(elementId, options = {}) {
   const isJobCard = elementId === 'printable-inner';
   const isEstimate = elementId === 'printable-estimate' || element.classList.contains('estimate-print-page');
   const isFinancialStatement = elementId === 'printable-financial-statement' || element.classList.contains('financial-statement-print');
-  const isTaxInvoice = elementId === 'printable-invoice' || elementId === 'printable-challan' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page');
   const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
+  const isTaxInvoice = (elementId === 'printable-invoice' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
   const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isFinancialStatement;
-  const pageMargin = isFinancialStatement ? '4mm' : isFullWidth ? '5mm' : '12mm';
-  const contentPadding = isFinancialStatement ? '2mm 3mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
+  const pageMargin = isChallan ? '4mm' : isFinancialStatement ? '4mm' : isFullWidth ? '5mm' : '12mm';
+  const contentPadding = isChallan ? '1mm 2mm' : isFinancialStatement ? '2mm 3mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
   const wrapperStyle = isFullWidth
     ? 'width:100%;max-width:100%;margin:0;padding:0;background:#ffffff;box-sizing:border-box;min-height:100vh;'
     : 'width:210mm;max-width:210mm;margin:0 auto;padding:0;background:white;box-sizing:border-box;';
-  const iframeWidth = isFinancialStatement ? '297mm' : '210mm';
+  const iframeWidth = isChallan ? '148mm' : isFinancialStatement ? '297mm' : '210mm';
 
   document.getElementById('print-root-temp')?.remove();
   document.body.classList.remove('is-printing');
@@ -112,7 +112,7 @@ export function printElement(elementId, options = {}) {
         <meta charset="UTF-8" />
         <title>Print</title>
         <style>
-          @page { size: ${isFinancialStatement ? 'A4 landscape' : 'A4'}; margin: ${pageMargin}; }
+          @page { size: ${isChallan ? 'A5 portrait' : isFinancialStatement ? 'A4 landscape' : 'A4'}; margin: ${pageMargin}; }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -360,12 +360,39 @@ export function printElement(elementId, options = {}) {
           }
           ` : ''}
           ${isChallan ? `
-          @page { size: A4; margin: 5mm !important; }
-          html, body, body > div, .challan-print-page {
+          @page { size: A5 portrait; margin: 4mm !important; }
+          html, body, body > div, .challan-print-page, #printable-challan {
             background: #ffffff !important;
             width: 100% !important;
-            max-width: none !important;
+            max-width: 100% !important;
             margin: 0 !important;
+            font-size: 10px !important;
+          }
+          .challan-table .company-brand-name {
+            font-size: 22px !important;
+          }
+          .challan-table .tax-header-line {
+            font-size: 9px !important;
+          }
+          .challan-table .tax-title-text {
+            font-size: 14px !important;
+            padding: 3px 0 !important;
+          }
+          .challan-table .tax-copy-box {
+            font-size: 7px !important;
+            width: 95px !important;
+            padding: 2px 3px !important;
+          }
+          .challan-table .tax-cell {
+            padding: 1.5px 3px !important;
+            font-size: 9.5px !important;
+          }
+          .challan-table .tax-terms-list {
+            font-size: 8px !important;
+            line-height: 1.25 !important;
+          }
+          .challan-table .tax-footer-sign-block {
+            min-height: 38px !important;
           }
           ` : ''}
           ${isTaxInvoice ? `

@@ -84,22 +84,23 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
 
     const isJobCard = elementId === 'printable-inner';
     const isEstimate = elementId === 'printable-estimate' || element.classList.contains('estimate-print-page');
-    const isTaxInvoice = elementId === 'printable-invoice' || elementId === 'printable-challan' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page');
     const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
+    const isTaxInvoice = (elementId === 'printable-invoice' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
     const isReport = elementId === 'report-table-container';
     
     const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isReport;
-    const pageMargin = isFullWidth ? '5mm' : '12mm';
+    const pageMargin = isChallan ? '4mm' : isFullWidth ? '5mm' : '12mm';
     const contentWidth = isFullWidth ? '100%' : '186mm';
     const contentMaxWidth = isFullWidth ? '100%' : '186mm';
-    const contentPadding = isFullWidth ? '2mm 3mm' : '6mm 8mm';
+    const contentPadding = isChallan ? '1mm 2mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
     const bodyAlign = isFullWidth ? 'stretch' : 'center';
     const wrapperStyle = isFullWidth
       ? 'width:100%;max-width:100%;margin:0;padding:0;background:#ffffff;box-sizing:border-box;min-height:100vh;'
       : 'width:186mm;max-width:186mm;margin:0 auto;padding:0 4mm;background:white;box-sizing:border-box;';
 
-    const iframeWidth = isReport ? '297mm' : '210mm';
+    const iframeWidth = isChallan ? '148mm' : isReport ? '297mm' : '210mm';
     const pageOrientation = isReport ? 'landscape' : 'portrait';
+    const pdfPageFormat = isChallan ? 'a5' : 'a4';
 
     // 1. Prepare Styles
     const sanitizedStyles = getSanitizedSystemStyles();
@@ -342,7 +343,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
 
     // 6. Save as PDF
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({ orientation: pageOrientation, unit: 'mm', format: 'a4' });
+    const pdf = new jsPDF({ orientation: pageOrientation, unit: 'mm', format: pdfPageFormat });
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     

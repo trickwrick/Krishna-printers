@@ -242,6 +242,94 @@ export const ClassicTaxItemsHeader = () => (
   </tr>
 );
 
+export const CHALLAN_COL_COUNT = 5;
+
+export const getChallanHalfColSpans = () => ({ left: 2, right: 3 });
+
+export const ChallanColGroup = () => (
+  <colgroup>
+    <col style={{ width: '8%' }} />
+    <col style={{ width: '56%' }} />
+    <col style={{ width: '16%' }} />
+    <col style={{ width: '10%' }} />
+    <col style={{ width: '10%' }} />
+  </colgroup>
+);
+
+export const ChallanItemsHeader = () => (
+  <tr className="tax-item-header-row text-center font-bold">
+    <td className="tax-cell">Sl No.</td>
+    <td className="tax-cell text-left">Description of Goods</td>
+    <td className="tax-cell">HSN/SAC</td>
+    <td className="tax-cell">Qty</td>
+    <td className="tax-cell">per</td>
+  </tr>
+);
+
+export const ChallanItemRow = ({ row, children, stripeClass = 'tax-items-stripe-row tax-stripe-white' }) => {
+  return (
+    <tr className={`tax-item-main-row ${stripeClass}`}>
+      <td className="tax-cell text-center align-top tax-item-value">{row.idx}</td>
+      <td className="tax-cell align-top tax-item-name">
+        {children || <ItemPrintDescription item={row.item} />}
+      </td>
+      <td className="tax-cell text-center align-top tax-item-value">{row.item.hsn || ''}</td>
+      <td className="tax-cell text-center align-top tax-item-value font-bold">{row.item.qty ?? ''}</td>
+      <td className="tax-cell text-center align-top tax-item-value">{(row.item.per || 'PCS').trim() || 'PCS'}</td>
+    </tr>
+  );
+};
+
+export const ChallanItemEmptyRow = ({ rowCount = 2 }) => (
+  <tr className="tax-item-empty-row tax-items-empty-band" style={{ '--empty-rows': rowCount }}>
+    {Array.from({ length: CHALLAN_COL_COUNT }, (_, i) => (
+      <td key={i} className="tax-item-empty-cell">&nbsp;</td>
+    ))}
+  </tr>
+);
+
+export const ChallanItemsTotalRow = ({ totalQty }) => (
+  <tr className="tax-item-grand-total-row font-bold">
+    <td className="tax-cell">&nbsp;</td>
+    <td className="tax-cell text-right tax-item-grand-label">Total Qty</td>
+    <td className="tax-cell">&nbsp;</td>
+    <td className="tax-cell text-center tax-item-grand-amount font-black">{totalQty}</td>
+    <td className="tax-cell">&nbsp;</td>
+  </tr>
+);
+
+export const ChallanItemsBlock = ({
+  itemLines = [],
+  emptyProductRows = 2,
+  renderItemDescription,
+}) => {
+  let stripeIndex = 0;
+  const getStripeClass = () => {
+    const stripeClass = stripeIndex % 2 === 0 ? 'tax-items-stripe-row tax-stripe-white' : 'tax-items-stripe-row tax-stripe-grey';
+    stripeIndex += 1;
+    return stripeClass;
+  };
+
+  const totalQty = itemLines.reduce((sum, row) => sum + (Number(row.item?.qty) || 0), 0);
+
+  return (
+    <>
+      <ChallanItemsHeader />
+      {itemLines.map((row) => (
+        <ChallanItemRow
+          key={row.idx}
+          row={row}
+          stripeClass={getStripeClass()}
+        >
+          {renderItemDescription ? renderItemDescription(row) : undefined}
+        </ChallanItemRow>
+      ))}
+      {emptyProductRows > 0 && <ChallanItemEmptyRow rowCount={emptyProductRows} />}
+      <ChallanItemsTotalRow totalQty={totalQty} />
+    </>
+  );
+};
+
 export const ESTIMATE_COL_COUNT = 8;
 
 export const getEstimateHalfColSpans = () => ({ left: 4, right: 4 });

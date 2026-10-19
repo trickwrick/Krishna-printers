@@ -15,7 +15,28 @@ import DeleteConfirmationModal from './components/DeleteConfirmationModal';
 import { getBillToDetails, getShipToDetails } from './utils/shipAddress';
 import { numberToWords } from './utils/numberToWords';
 import { getChallanLineItems, computeLineItemsTotals, buildMergedChallanMeta } from './utils/challanTotals';
-import { SELLER, fmtTaxDate, fmtAmt, getStateFromGst, formatStateWithCode, TaxFieldsTable, SellerGstinMsmeLines, TaxDocumentSignaturesRow, TaxTermsAndReceiverSignature, TaxBankAndAuthorisedSignature, buildTaxItemLine, getEmptyProductRowCount, CompanyBrandName, TaxCopyBox, TaxCopyTypeControls, DEFAULT_TAX_COPY_SELECTION, getSelectedCopyIds, getPreviewHighlightCopy, TaxInvoiceColGroup, getTaxTableColCount, getTaxTableHalfColSpans, getTaxChargeSubRowCount, TaxClassicItemsBlock, buildTaxAnalysisGroups, TaxAnalysisSection } from './utils/taxDocumentPrint';
+import {
+  SELLER,
+  fmtTaxDate,
+  getStateFromGst,
+  formatStateWithCode,
+  TaxFieldsTable,
+  SellerGstinMsmeLines,
+  TaxDocumentSignaturesRow,
+  TaxTermsAndReceiverSignature,
+  TaxBankAndAuthorisedSignature,
+  buildTaxItemLine,
+  CompanyBrandName,
+  TaxCopyBox,
+  TaxCopyTypeControls,
+  DEFAULT_TAX_COPY_SELECTION,
+  getSelectedCopyIds,
+  getPreviewHighlightCopy,
+  CHALLAN_COL_COUNT,
+  getChallanHalfColSpans,
+  ChallanColGroup,
+  ChallanItemsBlock,
+} from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
 import { hasPermission } from './utils/permissions';
 
@@ -31,11 +52,9 @@ const ChallanList = () => {
   const [previewChallans, setPreviewChallans] = useState([]);
   const [selectedChallanIds, setSelectedChallanIds] = useState([]);
   const [partyFilter, setPartyFilter] = useState('');
-  const [tempGstType, setTempGstType] = useState('CGST/SGST');
   const [copySelection, setCopySelection] = useState(DEFAULT_TAX_COPY_SELECTION);
-  const isIGST = tempGstType === 'IGST';
-  const taxColCount = getTaxTableColCount();
-  const { left: taxHalfColSpan, right: taxHalfColSpanRight } = getTaxTableHalfColSpans();
+  const taxColCount = CHALLAN_COL_COUNT;
+  const { left: taxHalfColSpan, right: taxHalfColSpanRight } = getChallanHalfColSpans();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [jobCards, setJobCards] = useState([]);
@@ -59,27 +78,13 @@ const ChallanList = () => {
   const shipToState = getStateFromGst(shipTo.gstNo);
 
   const challanFallbackGst = primaryChallan?.gstPercent ?? 18;
-  const freightGstPercent = challanItems[0]?.gstPercent ?? challanFallbackGst;
-  const freightCgstAmt = isIGST ? 0 : (totalFreight * (freightGstPercent / 2)) / 100;
-  const freightSgstAmt = isIGST ? 0 : (totalFreight * (freightGstPercent / 2)) / 100;
-  const freightIgstAmt = isIGST ? (totalFreight * freightGstPercent) / 100 : 0;
-
-  const itemLines = challanItems.map((item, idx) => buildTaxItemLine(item, idx, challanFallbackGst, isIGST));
-  const totalTaxable = totalAmount + totalFreight;
-  const totalCgst = itemLines.reduce((sum, row) => sum + row.cgstAmt, 0) + freightCgstAmt;
-  const totalSgst = itemLines.reduce((sum, row) => sum + row.sgstAmt, 0) + freightSgstAmt;
-  const totalIgst = itemLines.reduce((sum, row) => sum + row.igstAmt, 0) + freightIgstAmt;
-  const amountBeforeTax = totalTaxable;
-  const amountWithTax = grandTotal;
+  const itemLines = challanItems.map((item, idx) => buildTaxItemLine(item, idx, challanFallbackGst, false));
   const challanDate = mergedMeta.date || primaryChallan?.date || primaryChallan?.createdAt;
   const challanNoLabel = isMergedPrint ? mergedMeta.challanLabel : primaryChallan?.challanNo;
   const jobRefLabel = isMergedPrint ? mergedMeta.jobRefLabel : primaryChallan?.jobNumber;
-  const emptyProductRows = getEmptyProductRowCount(
-    itemLines.length + getTaxChargeSubRowCount(totalFreight, isIGST),
-    { itemLineCount: itemLines.length },
-  );
-  const showPage1SignatureRow = itemLines.length >= 7;
-  const compactPrint = itemLines.length >= 8;
+  const emptyProductRows = Math.max(0, Math.min(itemLines.length <= 3 ? 5 : 2, 8 - itemLines.length));
+  const showPage1SignatureRow = false;
+  const compactPrint = itemLines.length >= 6;
 
   const [challanStatusFilter, setChallanStatusFilter] = useState('all'); // 'all', 'pending', 'completed'
 
@@ -242,7 +247,6 @@ const ChallanList = () => {
   const openPreview = (ch) => {
     const merged = mergeDocumentForPrint(ch);
     setPreviewChallans([merged]);
-    setTempGstType(merged.gstType || 'CGST/SGST');
     setCopySelection({ ...DEFAULT_TAX_COPY_SELECTION });
     setIsModalOpen(true);
   };
@@ -254,7 +258,6 @@ const ChallanList = () => {
       return;
     }
     setPreviewChallans(selected);
-    setTempGstType(selected[0]?.gstType || 'CGST/SGST');
     setCopySelection({ ...DEFAULT_TAX_COPY_SELECTION });
     setIsModalOpen(true);
   };
@@ -277,11 +280,41 @@ const ChallanList = () => {
     printElement('printable-challan', { copyIds: selected });
   };
 
+  const [downloadingChallanId, setDownloadingChallanId] = useState(null);
+
   const handleDownloadPDF = async () => {
+    const partyPrefix = (primaryChallan?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
     const label = isMergedPrint
-      ? `Challan_Combined_${primaryChallan?.partyName || 'party'}`
-      : `Challan_${primaryChallan?.challanNo}`;
+      ? `${partyPrefix}_Combined_Challan`
+      : `${partyPrefix}_Challan_${primaryChallan?.challanNo || 'doc'}`;
     await downloadAsPDF('printable-challan', label, setIsGenerating);
+  };
+
+  const handleDirectDownloadChallan = async (ch) => {
+    if (downloadingChallanId) return;
+    setDownloadingChallanId(ch._id);
+    try {
+      const merged = mergeDocumentForPrint(ch);
+      setPreviewChallans([merged]);
+      setCopySelection({ ...DEFAULT_TAX_COPY_SELECTION });
+      const partyPrefix = (merged.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
+      const docLabel = `${partyPrefix}_Challan_${merged.challanNo || 'doc'}`;
+      // Allow DOM to update printable-challan
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await downloadAsPDF(
+        'printable-challan',
+        docLabel,
+        () => {}
+      );
+    } catch (err) {
+      console.error('Error downloading challan PDF:', err);
+      alert('Failed to download Challan PDF.');
+    } finally {
+      if (!isModalOpen) {
+        setPreviewChallans([]);
+      }
+      setDownloadingChallanId(null);
+    }
   };
 
   return (
@@ -424,7 +457,6 @@ const ChallanList = () => {
                   <th className="px-4 sm:px-6 py-4">Challan Number</th>
                   <th className="px-4 sm:px-6 py-4">Job Card</th>
                   <th className="px-4 sm:px-6 py-4">Party Name</th>
-                  <th className="px-4 sm:px-6 py-4">Total Amount</th>
                   <th className="px-4 sm:px-6 py-4">Created At</th>
                   <th className="px-4 sm:px-6 py-4 text-center">Action</th>
                 </tr>
@@ -432,7 +464,7 @@ const ChallanList = () => {
               <tbody className="divide-y divide-gray-50">
                 {filteredChallans.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-4 sm:px-6 py-10 text-center text-gray-500">
+                    <td colSpan="7" className="px-4 sm:px-6 py-10 text-center text-gray-500">
                       {partyFilter ? `No challans found for ${partyFilter}.` : 'No challans found.'}
                     </td>
                   </tr>
@@ -480,20 +512,34 @@ const ChallanList = () => {
                           {ch.jobName}
                         </td>
                         <td className="px-4 sm:px-6 py-4 text-sm font-medium text-gray-800">{ch.partyName}</td>
-                        <td className="px-4 sm:px-6 py-4 text-sm font-bold text-gray-900">₹ {(ch.grandTotal ?? ch.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td className="px-4 sm:px-6 py-4 text-xs sm:text-sm text-gray-500">
                           {new Date(ch.createdAt).toLocaleDateString()}
                         </td>
                       <td className="px-4 sm:px-6 py-4 text-center">
-                        <div className="flex justify-center items-center gap-2 sm:gap-3">
+                        <div className="flex justify-center items-center gap-1.5 sm:gap-2">
                           {hasPermission('challan', 'print') && (
-                            <button
-                              onClick={() => openPreview(ch)}
-                              className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90"
-                              title="Print Challan"
-                            >
-                              <Printer size={16} />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openPreview(ch)}
+                                disabled={downloadingChallanId === ch._id}
+                                className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90 disabled:opacity-50"
+                                title="Print Preview"
+                              >
+                                <Printer size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDirectDownloadChallan(ch)}
+                                disabled={downloadingChallanId === ch._id}
+                                className="bg-indigo-50 text-indigo-600 p-2 rounded-lg hover:bg-indigo-100 transition-all active:scale-90 disabled:opacity-50"
+                                title="Direct Download PDF (A5)"
+                              >
+                                {downloadingChallanId === ch._id ? (
+                                  <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Download size={16} />
+                                )}
+                              </button>
+                            </>
                           )}
                           {hasPermission('challan', 'edit') && (
                             <button
@@ -534,8 +580,8 @@ const ChallanList = () => {
       </div>
 
       {/* Challan Preview & Print Modal */}
-      {isModalOpen && primaryChallan && (
-        <div className="print-modal-overlay fixed inset-0 bg-black/60 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0">
+      {(isModalOpen || downloadingChallanId) && primaryChallan && (
+        <div className={`print-modal-overlay fixed inset-0 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0 ${downloadingChallanId && !isModalOpen ? 'opacity-0 pointer-events-none -z-50' : 'bg-black/60'}`}>
           <div className="print-modal-shell bg-white border border-gray-300 w-full max-w-full relative h-dvh sm:h-auto max-h-dvh sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
             <div className="modal-header print-modal-header no-print p-3 sm:p-4 border-b bg-white">
               <div className="print-modal-title-row flex items-center justify-between gap-2">
@@ -557,17 +603,6 @@ const ChallanList = () => {
                     {getSelectedCopyIds(copySelection).length} copies will print
                   </span>
                 )}
-                <div className="flex items-center gap-1.5 bg-gray-100 px-3 py-2.5 rounded-xl text-sm font-bold border border-gray-200 w-full sm:w-auto">
-                  <span className="text-gray-500 font-medium shrink-0">GST Mode:</span>
-                  <select
-                    value={tempGstType}
-                    onChange={(e) => setTempGstType(e.target.value)}
-                    className="bg-transparent text-blue-700 outline-none cursor-pointer font-bold w-full sm:w-auto"
-                  >
-                    <option value="CGST/SGST">CGST + SGST</option>
-                    <option value="IGST">IGST</option>
-                  </select>
-                </div>
                 <div className="print-modal-actions grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
                 <button
                   onClick={handleDownloadPDF}
@@ -603,11 +638,11 @@ const ChallanList = () => {
                 id="printable-challan"
                 className={`bg-white w-full shadow-none tax-invoice-print-page${compactPrint ? ' tax-print-compact' : ''}`}
               >
-                <table className="tax-invoice w-full border-collapse text-black" style={{ fontSize: '11px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                  <TaxInvoiceColGroup />
+                <table className="tax-invoice challan-table w-full border-collapse text-black" style={{ fontSize: '10px', fontFamily: 'Arial, Helvetica, sans-serif' }}>
+                  <ChallanColGroup />
                   <tbody>
                     <tr>
-                      <td colSpan={taxColCount} className="tax-cell text-center align-middle py-2">
+                      <td colSpan={taxColCount} className="tax-cell text-center align-middle py-1.5">
                         <CompanyBrandName uppercase />
                         <p className="tax-header-line">{SELLER.address}</p>
                         {(SELLER.tel || SELLER.email) && (
@@ -678,19 +713,12 @@ const ChallanList = () => {
                       </td>
                     </tr>
 
-                    <TaxClassicItemsBlock
+                    <ChallanItemsBlock
                       itemLines={itemLines}
-                      freight={totalFreight}
-                      totalCgst={totalCgst}
-                      totalSgst={totalSgst}
-                      totalIgst={totalIgst}
-                      isIGST={isIGST}
                       emptyProductRows={emptyProductRows}
-                      amountWithTax={amountWithTax}
-                      amountInWords={numberToWords(amountWithTax)}
                       renderItemDescription={(row) => (
                         <>
-                          <div>{row.item.description}</div>
+                          <div className="font-bold">{row.item.description}</div>
                           {row.item.jobNumber && (
                             <div className="text-[9px] font-bold mt-0.5">Job Ref: {row.item.jobNumber}</div>
                           )}
@@ -700,21 +728,6 @@ const ChallanList = () => {
                         </>
                       )}
                     />
-
-                    <TaxAnalysisSection
-                      groups={buildTaxAnalysisGroups(itemLines, totalFreight, isIGST, freightGstPercent)}
-                      isIGST={isIGST}
-                      taxAmountInWords={numberToWords(totalGstAmount)}
-                      colSpan={taxColCount}
-                    />
-
-                    {showPage1SignatureRow && (
-                      <TaxDocumentSignaturesRow
-                        leftColSpan={taxHalfColSpan}
-                        rightColSpan={taxHalfColSpanRight}
-                        printOnly
-                      />
-                    )}
 
                     <tr className="tax-terms-bank-section">
                       <td colSpan={taxHalfColSpan} className="tax-cell tax-footer-cell align-top p-1">
