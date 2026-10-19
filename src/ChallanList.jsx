@@ -642,15 +642,19 @@ const ChallanList = () => {
                   <ChallanColGroup />
                   <tbody>
                     <tr>
-                      <td colSpan={taxColCount} className="tax-cell text-center align-middle py-1.5">
-                        <CompanyBrandName uppercase />
-                        <p className="tax-header-line">{SELLER.address}</p>
+                      <td colSpan={taxColCount} className="tax-cell text-center align-middle" style={{ padding: '6px 4px 4px 4px' }}>
+                        <div style={{ fontSize: '19px', fontWeight: 900, lineHeight: 1.25, letterSpacing: '0.02em', marginBottom: '3px', color: '#000' }}>
+                          <CompanyBrandName uppercase />
+                        </div>
+                        <p className="tax-header-line" style={{ fontSize: '8.5px', lineHeight: 1.3, margin: '2px 0', color: '#000' }}>{SELLER.address}</p>
                         {(SELLER.tel || SELLER.email) && (
-                          <p className="tax-header-line">
+                          <p className="tax-header-line" style={{ fontSize: '8.5px', lineHeight: 1.3, margin: '2px 0', color: '#000' }}>
                             {[SELLER.tel, SELLER.email].filter(Boolean).join(', ')}
                           </p>
                         )}
-                        <SellerGstinMsmeLines />
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.3, margin: '2px 0', color: '#000' }}>
+                          <SellerGstinMsmeLines />
+                        </div>
                       </td>
                     </tr>
 

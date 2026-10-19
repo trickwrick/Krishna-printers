@@ -125,7 +125,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       <html>
         <head>
           <style>
-            @page { margin: ${pageMargin}; size: A4 ${pageOrientation}; }
+            @page { margin: ${pageMargin}; size: ${isChallan ? 'A5 portrait' : isReport ? 'A4 landscape' : 'A4 portrait'}; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
             body { 
               margin: 0; 
@@ -216,8 +216,8 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
             .tax-invoice-print-page .tax-section-title,
             .tax-invoice-print-page .tax-blue,
             .tax-invoice-print-page .tax-item-header-row .tax-cell { font-weight: 900 !important; color: #000 !important; }
-            .tax-invoice-print-page .tax-company-name,
-            .tax-invoice-print-page .company-brand-name {
+            .tax-invoice-print-page:not(#printable-challan):not(.challan-table) .tax-company-name,
+            .tax-invoice-print-page:not(#printable-challan):not(.challan-table) .company-brand-name {
               font-weight: 900 !important;
               font-size: 36px !important;
               letter-spacing: 0.04em !important;
@@ -229,7 +229,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
             }
-            .tax-invoice-print-page .tax-title-text {
+            .tax-invoice-print-page:not(#printable-challan):not(.challan-table) .tax-title-text {
               font-size: 20px !important;
               font-weight: 900 !important;
               letter-spacing: 0.05em !important;
@@ -275,11 +275,129 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
             .job-card-print-table .tax-field-colon {
               font-weight: 900 !important;
               color: #000 !important;
+              font-size: 10px !important;
             }
             .job-card-print-table .tax-field-value {
               font-weight: 800 !important;
               color: #000 !important;
+              font-size: 11px !important;
             }
+
+            /* DELIVERY CHALLAN SPECIFIC STYLING (MATCHES PRINT EXACTLY) */
+            ${isChallan ? `
+            #printable-challan,
+            .tax-invoice-print-page#printable-challan,
+            .challan-print-page {
+              width: 100% !important;
+              max-width: 148mm !important;
+              margin: 0 auto !important;
+              padding: ${contentPadding} !important;
+              background: #ffffff !important;
+              font-size: 10px !important;
+            }
+            .challan-table,
+            #printable-challan .challan-table {
+              font-size: 10px !important;
+              border-collapse: collapse !important;
+            }
+            .challan-table .company-brand-name,
+            #printable-challan .company-brand-name,
+            .challan-table .tax-company-name,
+            #printable-challan .tax-company-name {
+              font-size: 19px !important;
+              font-weight: 900 !important;
+              letter-spacing: 0.02em !important;
+              line-height: 1.25 !important;
+              margin: 0 0 2px 0 !important;
+              display: block !important;
+            }
+            .challan-table .tax-header-line,
+            #printable-challan .tax-header-line {
+              font-size: 8.5px !important;
+              line-height: 1.3 !important;
+              margin: 2px 0 !important;
+              display: block !important;
+            }
+            .challan-table .tax-title-bar,
+            #printable-challan .tax-title-bar {
+              display: flex !important;
+              align-items: stretch !important;
+              min-height: 30px !important;
+            }
+            .challan-table .tax-title-text,
+            #printable-challan .tax-title-text {
+              font-size: 13px !important;
+              font-weight: 900 !important;
+              padding: 4px 0 !important;
+              letter-spacing: 0.03em !important;
+              line-height: 1.2 !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+            .challan-table .tax-copy-box,
+            #printable-challan .tax-copy-box {
+              font-size: 7px !important;
+              width: 95px !important;
+              padding: 2px 3px !important;
+              line-height: 1.25 !important;
+            }
+            .challan-table .tax-cell,
+            #printable-challan .tax-cell {
+              padding: 3px 4px !important;
+              font-size: 9.5px !important;
+              line-height: 1.3 !important;
+              vertical-align: top !important;
+            }
+            .challan-table .tax-item-header-row .tax-cell,
+            #printable-challan .tax-item-header-row .tax-cell {
+              padding: 5px 4px !important;
+              font-size: 9.5px !important;
+              line-height: 1.3 !important;
+              vertical-align: middle !important;
+            }
+            .challan-table .tax-item-main-row .tax-cell,
+            #printable-challan .tax-item-main-row .tax-cell {
+              padding: 4px 4px !important;
+              font-size: 9.5px !important;
+              line-height: 1.3 !important;
+            }
+            .challan-table .tax-item-grand-total-row .tax-cell,
+            #printable-challan .tax-item-grand-total-row .tax-cell {
+              padding: 4px 4px !important;
+              font-size: 9.5px !important;
+              line-height: 1.3 !important;
+              vertical-align: middle !important;
+            }
+            .challan-table .tax-fields-inner td,
+            #printable-challan .tax-fields-inner td {
+              padding: 1px 2px !important;
+              line-height: 1.3 !important;
+            }
+            .challan-table .tax-item-empty-row .tax-item-empty-cell,
+            #printable-challan .tax-item-empty-row .tax-item-empty-cell {
+              height: calc(26px * var(--empty-rows, 1)) !important;
+              min-height: 80px !important;
+              padding: 0 !important;
+            }
+            .challan-table .tax-terms-list,
+            #printable-challan .tax-terms-list {
+              font-size: 8px !important;
+              line-height: 1.3 !important;
+            }
+            .challan-table .tax-terms-list li,
+            #printable-challan .tax-terms-list li {
+              margin-bottom: 2px !important;
+            }
+            .challan-table .tax-footer-sign-block,
+            #printable-challan .tax-footer-sign-block {
+              min-height: 38px !important;
+            }
+            .challan-table .tax-sign-space,
+            #printable-challan .tax-sign-space {
+              height: 28px !important;
+            }
+            ` : ''}
 
             .challan-print-page {
               width: ${contentWidth} !important;
@@ -310,7 +428,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
         </head>
         <body class="bg-white">
           <div style="${wrapperStyle}">
-            ${element.innerHTML}
+            ${element.outerHTML}
           </div>
         </body>
       </html>
@@ -334,8 +452,9 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     });
 
     // 5. Capture with Extreme Resolution
-    const canvas = await html2canvas(iframeDoc.body, {
-      scale: 3.5,
+    const captureTarget = iframeDoc.getElementById(elementId) || iframeDoc.body.firstElementChild || iframeDoc.body;
+    const canvas = await html2canvas(captureTarget, {
+      scale: 3,
       useCORS: true,
       logging: false,
       backgroundColor: '#ffffff'
@@ -344,10 +463,13 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     // 6. Save as PDF
     const imgData = canvas.toDataURL('image/jpeg', 0.95);
     const pdf = new jsPDF({ orientation: pageOrientation, unit: 'mm', format: pdfPageFormat });
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const pdfPageWidth = pdf.internal.pageSize.getWidth();
+    const pdfPageHeight = pdf.internal.pageSize.getHeight();
+    const renderedHeight = (canvas.height * pdfPageWidth) / canvas.width;
     
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    // Fit onto single page if it's within tolerance to avoid blank second page
+    const finalHeight = renderedHeight <= pdfPageHeight ? renderedHeight : pdfPageHeight;
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageWidth, finalHeight);
     pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
     
   } catch (error) {
