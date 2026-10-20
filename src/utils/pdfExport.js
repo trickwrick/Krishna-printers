@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { generatePrintHtml } from './printDocument';
 
 /**
  * NUCLEAR STYLE SHIELD V3 - The Ultimate Solution for PDF Fidelity.
@@ -73,11 +74,10 @@ const sanitizeDOMInIframe = (doc) => {
   });
 };
 
-export const downloadAsPDF = async (elementId, filename, onProgressChange = () => {}) => {
+export const downloadAsPDF = async (elementId, filename, onProgressChange = () => {}, options = {}) => {
   let iframe = null;
   try {
     onProgressChange(true);
-    await new Promise(resolve => setTimeout(resolve, 300));
 
     const element = document.getElementById(elementId);
     if (!element) throw new Error(`Element with ID "${elementId}" not found`);
@@ -87,7 +87,50 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
     const isTaxInvoice = (elementId === 'printable-invoice' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
     const isReport = elementId === 'report-table-container';
-    
+
+    const pdfPageFormat = isChallan ? 'A5' : 'A4';
+    const pageOrientation = isReport ? 'landscape' : 'portrait';
+    const cleanFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+    // 1. PRIMARY ENGINE: Native Chromium Server Engine (100% Crisp Vector Quality, exactly like Print Preview)
+    try {
+      const fullHtml = generatePrintHtml(elementId, {
+        copyIds: options.copyIds,
+        docTitle: cleanFilename
+      });
+
+      if (fullHtml) {
+        const response = await fetch('/api/pdf/generate-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            html: fullHtml,
+            filename: cleanFilename,
+            format: pdfPageFormat,
+            orientation: pageOrientation
+          })
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = cleanFilename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(downloadUrl);
+          return;
+        }
+      }
+    } catch (serverErr) {
+      console.warn("Backend PDF generation fallback:", serverErr);
+    }
+
+    // 2. SECONDARY ENGINE FALLBACK: Client-side High-Resolution Canvas
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isReport;
     const pageMargin = isChallan ? '4mm' : isFullWidth ? '5mm' : '12mm';
     const contentWidth = isFullWidth ? '100%' : '186mm';
@@ -99,8 +142,6 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       : 'width:186mm;max-width:186mm;margin:0 auto;padding:0 4mm;background:white;box-sizing:border-box;';
 
     const iframeWidth = isChallan ? '148mm' : isReport ? '297mm' : '210mm';
-    const pageOrientation = isReport ? 'landscape' : 'portrait';
-    const pdfPageFormat = isChallan ? 'a5' : 'a4';
 
     // 1. Prepare Styles
     const sanitizedStyles = getSanitizedSystemStyles();
@@ -419,10 +460,12 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
               display: block !important;
             }
 
-            /* Remove scrollbars and clip for print */
-            .overflow-x-auto, .overflow-y-auto, .overflow-hidden {
-              overflow: visible !important;
-              max-height: none !important;
+            /* High-definition font smoothing & crisp line rendering */
+            body, table, td, th, span, div, p {
+              -webkit-font-smoothing: antialiased !important;
+              -moz-osx-font-smoothing: grayscale !important;
+              text-rendering: geometricPrecision !important;
+              shape-rendering: geometricPrecision !important;
             }
           </style>
         </head>
@@ -451,25 +494,51 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       } catch (e) {}
     });
 
-    // 5. Capture with Extreme Resolution
+    // 5. Capture with Extreme High Resolution (Sharp & crisp, matching print)
     const captureTarget = iframeDoc.getElementById(elementId) || iframeDoc.body.firstElementChild || iframeDoc.body;
+    
+    // Exact target width in pixels so html2canvas renders at true full document proportions without blur/downscaling
+    const targetPixelWidth = Math.round(captureTarget.getBoundingClientRect().width || (isChallan ? 560 : 794));
+
+    // Choose ultra-sharp rendering scale (scale 4 for 300+ DPI razor-sharp vector-like text & borders)
+    const renderScale = typeof window !== 'undefined' && window.devicePixelRatio && window.devicePixelRatio > 2 
+      ? Math.max(4, Math.round(window.devicePixelRatio * 2)) 
+      : 4;
+
     const canvas = await html2canvas(captureTarget, {
-      scale: 3,
+      scale: renderScale,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      allowTaint: true,
+      imageTimeout: 15000,
+      width: targetPixelWidth,
+      windowWidth: targetPixelWidth,
+      onclone: (clonedDoc) => {
+        // Ensure antialiasing and crisp rendering on cloned document
+        const clonedBody = clonedDoc.body;
+        if (clonedBody) {
+          clonedBody.style.webkitFontSmoothing = 'antialiased';
+          clonedBody.style.textRendering = 'geometricPrecision';
+        }
+      }
     });
 
-    // 6. Save as PDF
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    const pdf = new jsPDF({ orientation: pageOrientation, unit: 'mm', format: pdfPageFormat });
+    // 6. Save as PDF with lossless PNG format to eliminate JPEG compression artifacts and fuzziness
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ 
+      orientation: pageOrientation, 
+      unit: 'mm', 
+      format: pdfPageFormat,
+      compress: true
+    });
     const pdfPageWidth = pdf.internal.pageSize.getWidth();
     const pdfPageHeight = pdf.internal.pageSize.getHeight();
     const renderedHeight = (canvas.height * pdfPageWidth) / canvas.width;
     
     // Fit onto single page if it's within tolerance to avoid blank second page
     const finalHeight = renderedHeight <= pdfPageHeight ? renderedHeight : pdfPageHeight;
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfPageWidth, finalHeight);
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfPageWidth, finalHeight, undefined, 'FAST');
     pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
     
   } catch (error) {

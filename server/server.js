@@ -121,6 +121,7 @@ import estimateRoutes from "./routes/estimateRoutes.js";
 import itemRoutes from "./routes/itemRoutes.js";
 import staffRoutes from "./routes/staffRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
+import pdfRoutes from "./routes/pdfRoutes.js";
 import { seedStaffAndRoles } from "./utils/seedStaff.js";
 
 const app = express();
@@ -172,6 +173,7 @@ app.use("/api/estimate", estimateRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/roles", roleRoutes);
+app.use("/api/pdf", pdfRoutes);
 
 // API Test Route (Internal)
 app.get("/api/health", (req, res) => {

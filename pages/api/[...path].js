@@ -20,6 +20,7 @@ import itemRoutes from '../../server/routes/itemRoutes.js';
 import staffRoutes from '../../server/routes/staffRoutes.js';
 import roleRoutes from '../../server/routes/roleRoutes.js';
 import plateStockRoutes from '../../server/routes/plateStockRoutes.js';
+import pdfRoutes from '../../server/routes/pdfRoutes.js';
 import { seedStaffAndRoles } from '../../server/utils/seedStaff.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -97,6 +98,7 @@ app.use('/api/items', itemRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/plate-stock', plateStockRoutes);
+app.use('/api/pdf', pdfRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

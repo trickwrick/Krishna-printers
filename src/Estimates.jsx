@@ -191,13 +191,40 @@ export default function Estimates() {
     printElement('printable-estimate');
   };
 
+  const [downloadingEstimateId, setDownloadingEstimateId] = useState(null);
+
   const handleDownloadPDF = async () => {
     if (!selectedEstimate) return;
     await downloadAsPDF(
       'printable-estimate',
-      `Quotation_${selectedEstimate.quoteNumber}`,
+      `Quotation_${selectedEstimate.quoteNumber || 'estimate'}`,
       setIsGenerating
     );
+  };
+
+  const handleDirectDownloadEstimate = async (estimate) => {
+    if (downloadingEstimateId) return;
+    setDownloadingEstimateId(estimate._id);
+    try {
+      const merged = mergeItemNotes(estimate);
+      setSelectedEstimate(merged);
+      const partyPrefix = (merged.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
+      const docLabel = `${partyPrefix}_Quotation_${merged.quoteNumber || 'doc'}`;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await downloadAsPDF(
+        'printable-estimate',
+        docLabel,
+        () => {}
+      );
+    } catch (err) {
+      console.error('Error downloading estimate PDF:', err);
+      alert('Failed to download Quotation PDF.');
+    } finally {
+      if (!isModalOpen) {
+        setSelectedEstimate(null);
+      }
+      setDownloadingEstimateId(null);
+    }
   };
 
   const filteredEstimates = estimates.filter((item) =>
@@ -357,13 +384,27 @@ export default function Estimates() {
                           </button>
                         )}
                         {hasPermission('estimates', 'print') && (
-                          <button
-                            onClick={() => handlePrint(item)}
-                            className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
-                            title="Print Quotation"
-                          >
-                            <Printer size={18} />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handlePrint(item)}
+                              className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                              title="Print Preview"
+                            >
+                              <Printer size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleDirectDownloadEstimate(item)}
+                              disabled={downloadingEstimateId === item._id}
+                              className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-50"
+                              title="Direct Download PDF"
+                            >
+                              {downloadingEstimateId === item._id ? (
+                                <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Download size={18} />
+                              )}
+                            </button>
+                          </>
                         )}
                         {hasPermission('estimates', 'edit') && (
                           <button
@@ -412,10 +453,11 @@ export default function Estimates() {
                 <button
                   onClick={handleDownloadPDF}
                   disabled={isGenerating}
-                  className="flex items-center gap-2 bg-gray-100 text-gray-700 px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
+                  title="Direct 1-Click Download PDF"
+                  className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-6 py-2 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
                 >
-                  {isGenerating ? '...' : <Download size={18} />}
-                  PDF
+                  <Download size={18} />
+                  {isGenerating ? '...' : 'Download PDF'}
                 </button>
                 <button
                   onClick={executePrint}

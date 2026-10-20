@@ -63,54 +63,32 @@ const getSanitizedSystemStyles = () => {
   }
 };
 
-export function printElement(elementId, options = {}) {
-  const { copyIds } = options;
-  const element = document.getElementById(elementId);
-  if (!element) {
-    window.print();
-    return;
-  }
+export function generatePrintHtml(elementId, options = {}) {
+  const { copyIds, docTitle } = options;
+  const element = typeof elementId === 'string' ? document.getElementById(elementId) : elementId;
+  if (!element) return '';
 
-  const isJobCard = elementId === 'printable-inner';
-  const isEstimate = elementId === 'printable-estimate' || element.classList.contains('estimate-print-page');
-  const isFinancialStatement = elementId === 'printable-financial-statement' || element.classList.contains('financial-statement-print');
-  const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
-  const isTaxInvoice = (elementId === 'printable-invoice' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
+  const id = typeof elementId === 'string' ? elementId : (element.id || '');
+  const isJobCard = id === 'printable-inner';
+  const isEstimate = id === 'printable-estimate' || element.classList.contains('estimate-print-page');
+  const isFinancialStatement = id === 'printable-financial-statement' || element.classList.contains('financial-statement-print');
+  const isChallan = id === 'printable-challan' || element.classList.contains('challan-print-page');
+  const isTaxInvoice = (id === 'printable-invoice' || id === 'printable-inner' || id === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
   const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isFinancialStatement;
   const pageMargin = isChallan ? '4mm' : isFinancialStatement ? '4mm' : isFullWidth ? '5mm' : '12mm';
   const contentPadding = isChallan ? '1mm 2mm' : isFinancialStatement ? '2mm 3mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
   const wrapperStyle = isFullWidth
     ? 'width:100%;max-width:100%;margin:0;padding:0;background:#ffffff;box-sizing:border-box;min-height:100vh;'
     : 'width:210mm;max-width:210mm;margin:0 auto;padding:0;background:white;box-sizing:border-box;';
-  const iframeWidth = isChallan ? '148mm' : isFinancialStatement ? '297mm' : '210mm';
-
-  document.getElementById('print-root-temp')?.remove();
-  document.body.classList.remove('is-printing');
-
-  const iframe = document.createElement('iframe');
-  iframe.setAttribute('title', 'Print');
-  Object.assign(iframe.style, {
-    visibility: 'hidden',
-    position: 'fixed',
-    left: '-20000px',
-    top: '0',
-    width: iframeWidth,
-    height: '4000px',
-    border: 'none',
-  });
 
   const sanitizedStyles = getSanitizedSystemStyles();
 
-  document.body.appendChild(iframe);
-
-  const iframeDoc = iframe.contentWindow.document;
-  iframeDoc.open();
-  iframeDoc.write(`
+  return `
     <!DOCTYPE html>
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
-        <title>Print</title>
+        <title>${docTitle || 'Print'}</title>
         <style>
           @page { size: ${isChallan ? 'A5 portrait' : isFinancialStatement ? 'A4 landscape' : 'A4'}; margin: ${pageMargin}; }
           * {
@@ -796,7 +774,40 @@ export function printElement(elementId, options = {}) {
         </div>
       </body>
     </html>
-  `);
+  `;
+}
+
+export function printElement(elementId, options = {}) {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    window.print();
+    return;
+  }
+
+  const isChallan = elementId === 'printable-challan' || element.classList.contains('challan-print-page');
+  const isFinancialStatement = elementId === 'printable-financial-statement' || element.classList.contains('financial-statement-print');
+  const iframeWidth = isChallan ? '148mm' : isFinancialStatement ? '297mm' : '210mm';
+
+  document.getElementById('print-root-temp')?.remove();
+  document.body.classList.remove('is-printing');
+
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('title', 'Print');
+  Object.assign(iframe.style, {
+    visibility: 'hidden',
+    position: 'fixed',
+    left: '-20000px',
+    top: '0',
+    width: iframeWidth,
+    height: '4000px',
+    border: 'none',
+  });
+
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(generatePrintHtml(elementId, options));
   iframeDoc.close();
 
   const runPrint = () => {

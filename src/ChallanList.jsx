@@ -277,7 +277,11 @@ const ChallanList = () => {
       alert('Please select at least one copy type');
       return;
     }
-    printElement('printable-challan', { copyIds: selected });
+    const partyPrefix = (primaryChallan?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
+    const label = isMergedPrint
+      ? `${partyPrefix}_Combined_Challan`
+      : `${partyPrefix}_Challan_${primaryChallan?.challanNo || 'doc'}`;
+    printElement('printable-challan', { copyIds: selected, docTitle: label });
   };
 
   const [downloadingChallanId, setDownloadingChallanId] = useState(null);
@@ -287,7 +291,8 @@ const ChallanList = () => {
     const label = isMergedPrint
       ? `${partyPrefix}_Combined_Challan`
       : `${partyPrefix}_Challan_${primaryChallan?.challanNo || 'doc'}`;
-    await downloadAsPDF('printable-challan', label, setIsGenerating);
+    const selectedCopies = getSelectedCopyIds(copySelection);
+    await downloadAsPDF('printable-challan', label, setIsGenerating, { copyIds: selectedCopies });
   };
 
   const handleDirectDownloadChallan = async (ch) => {
@@ -301,10 +306,12 @@ const ChallanList = () => {
       const docLabel = `${partyPrefix}_Challan_${merged.challanNo || 'doc'}`;
       // Allow DOM to update printable-challan
       await new Promise((resolve) => setTimeout(resolve, 150));
+      const selectedCopies = getSelectedCopyIds(DEFAULT_TAX_COPY_SELECTION);
       await downloadAsPDF(
         'printable-challan',
         docLabel,
-        () => {}
+        () => {},
+        { copyIds: selectedCopies }
       );
     } catch (err) {
       console.error('Error downloading challan PDF:', err);
@@ -531,7 +538,7 @@ const ChallanList = () => {
                                 onClick={() => handleDirectDownloadChallan(ch)}
                                 disabled={downloadingChallanId === ch._id}
                                 className="bg-indigo-50 text-indigo-600 p-2 rounded-lg hover:bg-indigo-100 transition-all active:scale-90 disabled:opacity-50"
-                                title="Direct Download PDF (A5)"
+                                title="Direct Download PDF"
                               >
                                 {downloadingChallanId === ch._id ? (
                                   <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -607,10 +614,11 @@ const ChallanList = () => {
                 <button
                   onClick={handleDownloadPDF}
                   disabled={isGenerating}
-                  className="flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 sm:px-6 sm:py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
+                  title="Direct 1-Click Download PDF"
+                  className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-3 sm:px-6 sm:py-2 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
                 >
-                  {isGenerating ? "..." : <Download size={18} />}
-                  PDF
+                  <Download size={18} />
+                  {isGenerating ? "Generating..." : "Download PDF"}
                 </button>
                 <button
                   onClick={handlePrint}

@@ -810,12 +810,26 @@ export function getPreviewHighlightCopy(selection = DEFAULT_TAX_COPY_SELECTION) 
 
 export const TaxCopyBox = ({ highlightCopy = 'original' }) => (
   <div className="tax-copy-box">
-    {TAX_COPY_LINES.map((line) => (
-      <div key={line.id} className="tax-copy-row" data-copy-id={line.id}>
-        <span className="tax-copy-mark">{highlightCopy === line.id ? '☑' : '☐'}</span>
-        <p className="tax-copy-label">{line.text}</p>
-      </div>
-    ))}
+    {TAX_COPY_LINES.map((line) => {
+      const isChecked = highlightCopy === line.id;
+      return (
+        <div key={line.id} className="tax-copy-row" data-copy-id={line.id} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span className="tax-copy-mark" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '9px', height: '9px', flexShrink: 0 }}>
+            {isChecked ? (
+              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                <rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" strokeWidth="1.5" fill="#ffffff" />
+                <path d="M3.5 8L6.5 11.5L12.5 4.5" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                <rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" strokeWidth="1.5" fill="#ffffff" />
+              </svg>
+            )}
+          </span>
+          <p className="tax-copy-label" style={{ margin: 0, lineHeight: 1.25 }}>{line.text}</p>
+        </div>
+      );
+    })}
   </div>
 );
 
