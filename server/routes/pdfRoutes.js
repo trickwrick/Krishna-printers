@@ -1,8 +1,20 @@
 import express from 'express';
-import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 
 const router = express.Router();
+
+let puppeteerModule = null;
+const loadPuppeteer = async () => {
+  if (!puppeteerModule) {
+    try {
+      puppeteerModule = await import('puppeteer-core');
+    } catch (e) {
+      console.warn('puppeteer-core not installed on server, falling back.');
+      puppeteerModule = null;
+    }
+  }
+  return puppeteerModule ? (puppeteerModule.default || puppeteerModule) : null;
+};
 
 // Auto-detect Chrome or Edge executable on Windows/Linux/Mac
 const getExecutablePath = () => {
@@ -30,6 +42,10 @@ let browserInstance = null;
 const getBrowser = async () => {
   if (browserInstance && browserInstance.connected) {
     return browserInstance;
+  }
+  const puppeteer = await loadPuppeteer();
+  if (!puppeteer) {
+    throw new Error('Puppeteer is not available on this server environment.');
   }
   const execPath = getExecutablePath();
   if (!execPath) {
