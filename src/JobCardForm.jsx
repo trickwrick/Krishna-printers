@@ -7,6 +7,7 @@ import { mergePaperSizes } from './utils/paperStockSizes';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
 import { API_BASE_URL } from './utils/apiBase';
 import { printElement } from './utils/printDocument';
+import { downloadAsPDF } from './utils/pdfExport';
 import { mergeWithLocalJobCards, saveLocalJobCard } from './utils/localJobCards';
 import { getJobAttachments, readFileAsAttachment, MAX_JOB_ATTACHMENTS } from './utils/jobAttachments';
 
@@ -296,8 +297,19 @@ export default function JobCardForm() {
     setShowPrintPreview(true);
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const handlePrint = () => {
     printElement('printable-inner');
+  };
+
+  const handleDownloadPDF = async () => {
+    const partyPrefix = (previewData?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
+    await downloadAsPDF(
+      'printable-inner',
+      `${partyPrefix}_JobCard_${previewData?.jobNumber || 'preview'}`,
+      setIsGenerating
+    );
   };
 
   const handleJobAttachmentsChange = async (event) => {
@@ -2102,6 +2114,27 @@ export default function JobCardForm() {
               >
                 <Printer size={16} />
                 Print
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadPDF}
+                disabled={isGenerating}
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded transition-all ${
+                  isGenerating ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-md'
+                }`}
+                title="Direct 1-Click Download PDF"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    Download PDF
+                  </>
+                )}
               </button>
             </div>
           </div>
