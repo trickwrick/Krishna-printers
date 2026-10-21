@@ -88,48 +88,10 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     const isTaxInvoice = (elementId === 'printable-invoice' || elementId === 'printable-inner' || elementId === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
     const isReport = elementId === 'report-table-container';
 
-    const pdfPageFormat = isChallan ? 'A5' : 'A4';
-    const pageOrientation = isReport ? 'landscape' : 'portrait';
-    const cleanFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    const baseName = filename.replace(/\.(pdf|png)$/i, '');
+    const cleanFilename = `${baseName}.png`;
 
-    // 1. PRIMARY ENGINE: Native Chromium Server Engine (100% Crisp Vector Quality, exactly like Print Preview)
-    try {
-      const fullHtml = generatePrintHtml(elementId, {
-        copyIds: options.copyIds,
-        docTitle: cleanFilename
-      });
-
-      if (fullHtml) {
-        const response = await fetch('/api/pdf/generate-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            html: fullHtml,
-            filename: cleanFilename,
-            format: pdfPageFormat,
-            orientation: pageOrientation
-          })
-        });
-
-        if (response.ok) {
-          const blob = await response.blob();
-          const downloadUrl = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.download = cleanFilename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(downloadUrl);
-          return;
-        }
-      }
-    } catch (serverErr) {
-      console.warn("Backend PDF generation fallback:", serverErr);
-    }
-
-    // 2. SECONDARY ENGINE FALLBACK: Client-side High-Resolution Canvas
-    // Uses the EXACT same unified HTML and CSS as printDocument.js
+    // Client-side High-Resolution PNG capture of the EXACT print layout (same HTML/CSS as printDocument.js)
     await new Promise(resolve => setTimeout(resolve, 100));
 
     const fullPrintHtml = generatePrintHtml(elementId, {
@@ -176,13 +138,10 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
 
     // 5. Capture with Extreme High Resolution (Sharp & crisp, matching print)
     // Find top-level page container to capture the complete page structure
-    const captureTarget = iframeDoc.querySelector('.tax-print-copy-page') || 
-                          iframeDoc.querySelector('.job-card-print-page') || 
-                          iframeDoc.querySelector('.tax-invoice-print-page') || 
-                          iframeDoc.querySelector('.challan-print-page') || 
-                          iframeDoc.getElementById(elementId) || 
-                          iframeDoc.body.firstElementChild || 
-                          iframeDoc.body;
+    // Capture the wrapper so all selected copies are included; remove 100vh min-height to avoid blank space
+    const captureTarget = iframeDoc.body.firstElementChild || iframeDoc.body;
+    captureTarget.style.minHeight = '0';
+    captureTarget.style.height = 'auto';
     
     // Choose ultra-sharp rendering scale (scale 4 for 300+ DPI razor-sharp vector-like text & borders)
     const renderScale = typeof window !== 'undefined' && window.devicePixelRatio && window.devicePixelRatio > 2 
@@ -206,22 +165,16 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       }
     });
 
-    // 6. Save as PDF with lossless PNG format
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF({ 
-      orientation: pageOrientation, 
-      unit: 'mm', 
-      format: pdfPageFormat,
-      compress: true
-    });
-    const pdfPageWidth = pdf.internal.pageSize.getWidth();
-    const pdfPageHeight = pdf.internal.pageSize.getHeight();
-    const renderedHeight = (canvas.height * pdfPageWidth) / canvas.width;
-    
-    // Position on PDF: if the page is slightly shorter than A4/A5, render it cleanly with exact aspect ratio
-    const finalHeight = renderedHeight <= pdfPageHeight ? renderedHeight : pdfPageHeight;
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfPageWidth, finalHeight, undefined, 'FAST');
-    pdf.save(cleanFilename);
+    // 6. Save as lossless PNG image (no PDF scaling = no squish)
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = cleanFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 1000);
     
   } catch (error) {
     console.error("Shield Failure:", error);
