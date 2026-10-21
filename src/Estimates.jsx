@@ -384,27 +384,13 @@ export default function Estimates() {
                           </button>
                         )}
                         {hasPermission('estimates', 'print') && (
-                          <>
-                            <button
-                              onClick={() => handlePrint(item)}
-                              className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
-                              title="Print Preview"
-                            >
-                              <Printer size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDirectDownloadEstimate(item)}
-                              disabled={downloadingEstimateId === item._id}
-                              className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-50"
-                              title="Direct Download PDF"
-                            >
-                              {downloadingEstimateId === item._id ? (
-                                <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <Download size={18} />
-                              )}
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handlePrint(item)}
+                            className="p-2 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+                            title="Print Preview"
+                          >
+                            <Printer size={18} />
+                          </button>
                         )}
                         {hasPermission('estimates', 'edit') && (
                           <button
@@ -450,15 +436,6 @@ export default function Estimates() {
             <div className="p-4 border-b flex justify-between items-center bg-white modal-header no-print">
               <h2 className="text-xl font-bold text-gray-800">Quotation Preview</h2>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={handleDownloadPDF}
-                  disabled={isGenerating}
-                  title="Direct 1-Click Download PDF"
-                  className="flex items-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-6 py-2 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
-                >
-                  <Download size={18} />
-                  {isGenerating ? '...' : 'Download PDF'}
-                </button>
                 <button
                   onClick={executePrint}
                   className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg active:scale-95"

@@ -2110,31 +2110,10 @@ export default function JobCardForm() {
               <button
                 type="button"
                 onClick={handlePrint}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded transition-all shadow-md active:scale-95"
               >
                 <Printer size={16} />
                 Print
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadPDF}
-                disabled={isGenerating}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded transition-all ${
-                  isGenerating ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-md'
-                }`}
-                title="Direct 1-Click Download PDF"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} />
-                    Download PDF
-                  </>
-                )}
               </button>
             </div>
           </div>

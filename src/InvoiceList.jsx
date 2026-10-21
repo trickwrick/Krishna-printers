@@ -341,27 +341,13 @@ const InvoiceList = () => {
                       <td className="px-4 sm:px-6 py-4 text-center">
                         <div className="flex justify-center items-center gap-2 sm:gap-3">
                           {hasPermission('invoice', 'print') && (
-                            <>
-                              <button
-                                onClick={() => openPreview(inv)}
-                                className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90"
-                                title="Print Preview"
-                              >
-                                <Printer size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDirectDownloadInvoice(inv)}
-                                disabled={downloadingInvoiceId === inv._id}
-                                className="bg-indigo-50 text-indigo-600 p-2 rounded-lg hover:bg-indigo-100 transition-all active:scale-90 disabled:opacity-50"
-                                title="Direct Download PDF"
-                              >
-                                {downloadingInvoiceId === inv._id ? (
-                                  <span className="inline-block w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <Download size={16} />
-                                )}
-                              </button>
-                            </>
+                            <button
+                              onClick={() => openPreview(inv)}
+                              className="bg-blue-50 text-blue-600 p-2 rounded-lg hover:bg-blue-100 transition-all active:scale-90"
+                              title="Print Preview"
+                            >
+                              <Printer size={16} />
+                            </button>
                           )}
                           {hasPermission('invoice', 'edit') && (
                             <button
@@ -453,25 +439,16 @@ const InvoiceList = () => {
                     <option value="IGST">IGST</option>
                   </select>
                 </div>
-                <div className="print-modal-actions grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                <button
-                  onClick={handleDownloadPDF}
-                  disabled={isGenerating}
-                  title="Direct 1-Click Download PDF"
-                  className="flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 px-4 py-3 sm:px-6 sm:py-2 rounded-xl text-sm font-bold hover:bg-blue-100 transition-all active:scale-95 disabled:opacity-50 shadow-sm"
-                >
-                  <Download size={18} />
-                  {isGenerating ? "..." : "Download PDF"}
-                </button>
+                <div className="print-modal-actions flex items-center justify-end gap-2">
                 <button
                   onClick={handlePrint}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-3 sm:px-6 sm:py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg active:scale-95"
                 >
                   <Printer size={18} /> Print
                 </button>
                 <button
                   onClick={closePreview}
-                  className="hidden sm:inline-flex p-2 hover:bg-gray-200 rounded-full transition-colors col-span-2 sm:col-auto justify-self-end"
+                  className="hidden sm:inline-flex p-2 hover:bg-gray-200 rounded-full transition-colors"
                   aria-label="Close preview"
                 >
                   <X size={20} />

@@ -937,28 +937,14 @@ export default function JobCardListing() {
                               {expandedRows[cardKey] ? <EyeOff size={13} /> : <Eye size={13} />}
                             </button>
                             {hasPermission('jobCard', 'print') && (
-                              <>
-                                <button
-                                  onClick={() => openPreview(card)}
-                                  disabled={isActionLoading || downloadingCardId === card._id}
-                                  className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
-                                  title="Print Preview"
-                                >
-                                  <Printer size={13} />
-                                </button>
-                                <button
-                                  onClick={() => handleDirectDownloadJobCard(card)}
-                                  disabled={isActionLoading || downloadingCardId === card._id}
-                                  className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
-                                  title="Direct Download PDF"
-                                >
-                                  {downloadingCardId === card._id ? (
-                                    <span className="inline-block w-3 h-3 border border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                  ) : (
-                                    <Download size={13} />
-                                  )}
-                                </button>
-                              </>
+                              <button
+                                onClick={() => openPreview(card)}
+                                disabled={isActionLoading}
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors focus:outline-none disabled:opacity-50"
+                                title="Print Preview"
+                              >
+                                <Printer size={15} />
+                              </button>
                             )}
                             {hasPermission('jobCard', 'edit') && (
                               <button
@@ -1401,27 +1387,9 @@ export default function JobCardListing() {
               </button>
               <button
                 onClick={handlePrint}
-                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 transition-colors rounded-lg"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors rounded-lg shadow-md"
               >
                 <Printer size={16} /> Print
-              </button>
-              <button
-                onClick={handleSharePDF}
-                disabled={isGenerating}
-                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 sm:py-2 text-sm font-bold text-white transition-all rounded-lg ${isGenerating ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 active:scale-95 shadow-md'
-                  }`}
-                title="Direct 1-Click Download PDF"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} /> Download PDF
-                  </>
-                )}
               </button>
             </div>
           </div>
