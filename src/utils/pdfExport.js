@@ -157,6 +157,17 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       wrapper.style.height = 'auto';
     }
     const captureTarget = iframeDoc.body;
+
+    // Measure the REAL document bottom (last table / copy page), ignoring any 100vh/100% stretched containers
+    const bodyRect = captureTarget.getBoundingClientRect();
+    let contentBottom = 0;
+    captureTarget.querySelectorAll('table, .tax-print-copy-page, img').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.height > 0) contentBottom = Math.max(contentBottom, r.bottom - bodyRect.top);
+    });
+    const marginPx = Math.round(parseFloat(pageMargin) * 3.7795); // mm -> px
+    const captureHeight = Math.ceil((contentBottom || captureTarget.scrollHeight) + marginPx);
+    const captureWidth = Math.ceil(captureTarget.getBoundingClientRect().width);
     
     // Choose ultra-sharp rendering scale (scale 4 for 300+ DPI razor-sharp vector-like text & borders)
     const renderScale = typeof window !== 'undefined' && window.devicePixelRatio && window.devicePixelRatio > 2 
@@ -170,6 +181,9 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       backgroundColor: '#ffffff',
       allowTaint: true,
       imageTimeout: 15000,
+      width: captureWidth,
+      height: captureHeight,
+      windowWidth: captureWidth,
       onclone: (clonedDoc) => {
         // Ensure antialiasing and crisp rendering on cloned document
         const clonedBody = clonedDoc.body;
