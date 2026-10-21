@@ -94,11 +94,23 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     // Client-side High-Resolution PNG capture of the EXACT print layout (same HTML/CSS as printDocument.js)
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    const fullPrintHtml = generatePrintHtml(elementId, {
+    const rawPrintHtml = generatePrintHtml(elementId, {
       copyIds: options.copyIds,
       docTitle: cleanFilename
     });
 
+    // EMULATE PRINT MEDIA: html2canvas renders "screen" CSS, so activate every @media print rule
+    // (incl. Tailwind print: variants) and disable screen-only rules -> identical structure to Print.
+    const pageMargin = isJobCard ? '0mm' : (isChallan || isEstimate) ? '4mm' : isReport ? '4mm' : '5mm';
+    const printEmulationCss = `<style id="print-emulation">
+      html body { padding: ${pageMargin} !important; margin: 0 !important; background: #ffffff !important; box-sizing: border-box !important; }
+    </style>`;
+    const fullPrintHtml = rawPrintHtml
+      .replace(/@media\s+print/gi, '@media all')
+      .replace(/@media\s+screen/gi, '@media not all')
+      .replace('</head>', `${printEmulationCss}</head>`);
+
+    // Iframe = exact physical paper width (same as the print sheet)
     const iframeWidth = isChallan ? '148mm' : isReport ? '297mm' : '210mm';
 
     // Setup Isolation Ghost Iframe
@@ -138,10 +150,13 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
 
     // 5. Capture with Extreme High Resolution (Sharp & crisp, matching print)
     // Find top-level page container to capture the complete page structure
-    // Capture the wrapper so all selected copies are included; remove 100vh min-height to avoid blank space
-    const captureTarget = iframeDoc.body.firstElementChild || iframeDoc.body;
-    captureTarget.style.minHeight = '0';
-    captureTarget.style.height = 'auto';
+    // Capture the full sheet (body incl. page-margin padding) so all copies + margins match print
+    const wrapper = iframeDoc.body.firstElementChild;
+    if (wrapper) {
+      wrapper.style.minHeight = '0';
+      wrapper.style.height = 'auto';
+    }
+    const captureTarget = iframeDoc.body;
     
     // Choose ultra-sharp rendering scale (scale 4 for 300+ DPI razor-sharp vector-like text & borders)
     const renderScale = typeof window !== 'undefined' && window.devicePixelRatio && window.devicePixelRatio > 2 
