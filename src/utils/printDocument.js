@@ -2,12 +2,17 @@
  * Print helper — same isolation approach as pdfExport (full-size iframe + inlined styles).
  */
 
+const CHECKED_SVG = `<svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" stroke-width="1.5" fill="#ffffff"/><path d="M3.5 8L6.5 11.5L12.5 4.5" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const UNCHECKED_SVG = `<svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" stroke-width="1.5" fill="#ffffff"/></svg>`;
+
 export function applyTaxCopyHighlight(root, highlightCopy) {
   if (!root) return;
   root.querySelectorAll('[data-copy-id]').forEach((row) => {
     const copyId = row.getAttribute('data-copy-id');
     const mark = row.querySelector('.tax-copy-mark');
-    if (mark) mark.textContent = copyId === highlightCopy ? '☑' : '☐';
+    if (mark) {
+      mark.innerHTML = copyId === highlightCopy ? CHECKED_SVG : UNCHECKED_SVG;
+    }
   });
 }
 

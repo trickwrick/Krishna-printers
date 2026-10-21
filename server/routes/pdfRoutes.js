@@ -4,12 +4,14 @@ import fs from 'fs';
 const router = express.Router();
 
 let puppeteerModule = null;
+let puppeteerLoadError = null;
 const loadPuppeteer = async () => {
   if (!puppeteerModule) {
     try {
       puppeteerModule = await import('puppeteer-core');
     } catch (e) {
-      console.warn('puppeteer-core not installed on server, falling back.');
+      puppeteerLoadError = e.message;
+      console.warn('puppeteer-core load failed:', e.message);
       puppeteerModule = null;
     }
   }
@@ -45,7 +47,7 @@ const getBrowser = async () => {
   }
   const puppeteer = await loadPuppeteer();
   if (!puppeteer) {
-    throw new Error('Puppeteer is not available on this server environment.');
+    throw new Error(`Puppeteer is not available on this server environment: ${puppeteerLoadError || 'unknown'}`);
   }
   const execPath = getExecutablePath();
   if (!execPath) {
