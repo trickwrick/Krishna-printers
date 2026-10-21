@@ -175,11 +175,15 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     });
 
     // 5. Capture with Extreme High Resolution (Sharp & crisp, matching print)
-    const captureTarget = iframeDoc.getElementById(elementId) || iframeDoc.body.firstElementChild || iframeDoc.body;
+    // Find top-level page container to capture the complete page structure
+    const captureTarget = iframeDoc.querySelector('.tax-print-copy-page') || 
+                          iframeDoc.querySelector('.job-card-print-page') || 
+                          iframeDoc.querySelector('.tax-invoice-print-page') || 
+                          iframeDoc.querySelector('.challan-print-page') || 
+                          iframeDoc.getElementById(elementId) || 
+                          iframeDoc.body.firstElementChild || 
+                          iframeDoc.body;
     
-    // Exact target width in pixels so html2canvas renders at true full document proportions without blur/downscaling
-    const targetPixelWidth = Math.round(captureTarget.getBoundingClientRect().width || (isChallan ? 560 : 794));
-
     // Choose ultra-sharp rendering scale (scale 4 for 300+ DPI razor-sharp vector-like text & borders)
     const renderScale = typeof window !== 'undefined' && window.devicePixelRatio && window.devicePixelRatio > 2 
       ? Math.max(4, Math.round(window.devicePixelRatio * 2)) 
@@ -192,8 +196,6 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       backgroundColor: '#ffffff',
       allowTaint: true,
       imageTimeout: 15000,
-      width: targetPixelWidth,
-      windowWidth: targetPixelWidth,
       onclone: (clonedDoc) => {
         // Ensure antialiasing and crisp rendering on cloned document
         const clonedBody = clonedDoc.body;
@@ -204,7 +206,7 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
       }
     });
 
-    // 6. Save as PDF with lossless PNG format to eliminate JPEG compression artifacts and fuzziness
+    // 6. Save as PDF with lossless PNG format
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({ 
       orientation: pageOrientation, 
@@ -216,10 +218,10 @@ export const downloadAsPDF = async (elementId, filename, onProgressChange = () =
     const pdfPageHeight = pdf.internal.pageSize.getHeight();
     const renderedHeight = (canvas.height * pdfPageWidth) / canvas.width;
     
-    // Fit onto single page if it's within tolerance to avoid blank second page
+    // Position on PDF: if the page is slightly shorter than A4/A5, render it cleanly with exact aspect ratio
     const finalHeight = renderedHeight <= pdfPageHeight ? renderedHeight : pdfPageHeight;
     pdf.addImage(imgData, 'PNG', 0, 0, pdfPageWidth, finalHeight, undefined, 'FAST');
-    pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+    pdf.save(cleanFilename);
     
   } catch (error) {
     console.error("Shield Failure:", error);

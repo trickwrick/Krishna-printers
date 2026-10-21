@@ -74,14 +74,14 @@ export function generatePrintHtml(elementId, options = {}) {
   if (!element) return '';
 
   const id = typeof elementId === 'string' ? elementId : (element.id || '');
-  const isJobCard = id === 'printable-inner';
+  const isJobCard = id === 'printable-inner' || element.classList.contains('job-card-print-page') || !!element.querySelector?.('.job-card-print-table') || element.classList.contains('job-card-print-table');
   const isEstimate = id === 'printable-estimate' || element.classList.contains('estimate-print-page');
   const isFinancialStatement = id === 'printable-financial-statement' || element.classList.contains('financial-statement-print');
-  const isChallan = id === 'printable-challan' || element.classList.contains('challan-print-page');
-  const isTaxInvoice = (id === 'printable-invoice' || id === 'printable-inner' || id === 'printable-estimate' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isChallan;
+  const isChallan = id === 'printable-challan' || element.classList.contains('challan-print-page') || !!element.querySelector?.('.challan-table');
+  const isTaxInvoice = (id === 'printable-invoice' || element.classList.contains('tax-invoice-print-page') || element.classList.contains('estimate-print-page')) && !isJobCard && !isChallan;
   const isFullWidth = isJobCard || isTaxInvoice || isChallan || isEstimate || isFinancialStatement;
-  const pageMargin = isChallan ? '4mm' : isFinancialStatement ? '4mm' : isFullWidth ? '5mm' : '12mm';
-  const contentPadding = isChallan ? '1mm 2mm' : isFinancialStatement ? '2mm 3mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
+  const pageMargin = isJobCard ? '0' : isChallan ? '4mm' : isFinancialStatement ? '4mm' : isFullWidth ? '5mm' : '12mm';
+  const contentPadding = isJobCard ? '8mm' : isChallan ? '1mm 2mm' : isFinancialStatement ? '2mm 3mm' : isFullWidth ? '2mm 3mm' : '6mm 8mm';
   const wrapperStyle = isFullWidth
     ? 'width:100%;max-width:100%;margin:0;padding:0;background:#ffffff;box-sizing:border-box;min-height:100vh;'
     : 'width:210mm;max-width:210mm;margin:0 auto;padding:0;background:white;box-sizing:border-box;';
@@ -305,6 +305,11 @@ export function generatePrintHtml(elementId, options = {}) {
             print-color-adjust: exact !important;
             font-weight: 900 !important;
           }
+          .job-card-print-table {
+            width: 100% !important;
+            min-height: calc(297mm - 20mm) !important;
+            height: calc(297mm - 20mm) !important;
+          }
           .job-card-print-table .job-card-brand {
             color: #000000 !important;
             font-weight: 900 !important;
@@ -341,6 +346,10 @@ export function generatePrintHtml(elementId, options = {}) {
             font-size: 14px !important;
             line-height: 1.55 !important;
           }
+          .job-card-print-table tr:last-child td {
+            vertical-align: bottom !important;
+            padding-bottom: 5mm !important;
+          }
           ` : ''}
           ${isChallan ? `
           @page { size: A5 portrait; margin: 4mm !important; }
@@ -355,6 +364,8 @@ export function generatePrintHtml(elementId, options = {}) {
           #printable-challan .challan-table {
             font-size: 10px !important;
             border-collapse: collapse !important;
+            width: 100% !important;
+            min-height: calc(210mm - 12mm) !important;
           }
           .challan-table .company-brand-name,
           #printable-challan .company-brand-name,
