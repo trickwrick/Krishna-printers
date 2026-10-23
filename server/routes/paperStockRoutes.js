@@ -47,6 +47,11 @@ router.post('/usage', async (req, res) => {
       return res.status(400).json({ error: "Invalid quantity" });
     }
 
+    // If paper is marked as 'Custom' or 'None', it doesn't need to deduct from inventory
+    if (paperName.trim().toLowerCase() === 'custom' || paperName.trim().toLowerCase() === 'none') {
+      return res.json({ success: true, custom: true, balanceAfter: null });
+    }
+
     const searchRegex = new RegExp(`^${paperName.trim()}$`, 'i');
     const stock = await PaperStock.findOne({ 
       $or: [{ coverName: searchRegex }, { name: searchRegex }],
@@ -54,7 +59,8 @@ router.post('/usage', async (req, res) => {
     });
 
     if (!stock) {
-      return res.status(404).json({ error: `Paper stock '${paperName}' not found.` });
+      // Return success gracefully so that Job Card paper usage tracking still updates
+      return res.json({ success: true, notTracked: true, balanceAfter: null });
     }
 
     stock.coverQuantity = Math.max(0, (stock.coverQuantity || 0) - qty);

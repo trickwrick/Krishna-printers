@@ -131,29 +131,34 @@ export default function JobCardListing() {
       return;
     }
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/paper-stock/usage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobCardId: paperUsageModalCard._id || undefined,
-          jobNumber: paperUsageModalCard.jobNumber,
-          paperName: paperUsageModalCard.paper,
-          paperSource: paperUsageModalCard.paperSource || 'Company paper',
-          quantity: qty,
-          userName: currentUser.name
-        })
-      });
+    const paperName = (paperUsageModalCard.paper || '').trim();
+    const isCustomPaper = !paperName || paperName.toLowerCase() === 'custom' || paperName.toLowerCase() === 'none';
 
-      if (!response.ok) {
-        const data = await response.json();
-        alert(data.error || 'Failed to update paper stock.');
+    if (!isCustomPaper) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/paper-stock/usage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jobCardId: paperUsageModalCard._id || undefined,
+            jobNumber: paperUsageModalCard.jobNumber,
+            paperName: paperUsageModalCard.paper,
+            paperSource: paperUsageModalCard.paperSource || 'Company paper',
+            quantity: qty,
+            userName: currentUser.name
+          })
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          alert(data.error || 'Failed to update paper stock.');
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Network error connecting to paper stock.');
         return;
       }
-    } catch (err) {
-      console.error(err);
-      alert('Network error connecting to paper stock.');
-      return;
     }
 
     existingData.push({
