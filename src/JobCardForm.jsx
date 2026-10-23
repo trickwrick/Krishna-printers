@@ -110,7 +110,7 @@ export default function JobCardForm() {
   const [isInnerPaperDropdownOpen, setIsInnerPaperDropdownOpen] = useState(false);
   const [compose, setCompose] = useState(editData?.compose || 'No');
   const [design, setDesign] = useState(editData?.design || 'No');
-  const [coverPaperCount, setCoverPaperCount] = useState(editData?.coverPaperCount || 0);
+  const [coverPaperCount, setCoverPaperCount] = useState(editData?.coverPaperCount !== undefined && editData?.coverPaperCount !== null && editData?.coverPaperCount !== 0 ? editData.coverPaperCount : '');
   const [coverPaperDetails, setCoverPaperDetails] = useState(editData?.coverPaperDetails || '');
   const [innerPaperGSM, setInnerPaperGSM] = useState(editData?.innerPaperGSM || '');
   const [innerPaperCount, setInnerPaperCount] = useState(editData?.innerPaperCount || 0);
@@ -1611,25 +1611,29 @@ export default function JobCardForm() {
                     )}
                   </div>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="coverPaperCount"
-                    value={coverPaperCount}
+                    value={coverPaperCount === 0 ? '' : coverPaperCount}
                     onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value, 10) || 0);
-                      if (availableCoverStockQty !== null && val !== '' && val > availableCoverStockQty) {
+                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                      if (raw === '') {
+                        setCoverPaperCount('');
+                        return;
+                      }
+                      const num = parseInt(raw, 10) || 0;
+                      if (availableCoverStockQty !== null && num > availableCoverStockQty) {
                         setCoverPaperCount(availableCoverStockQty);
                       } else {
-                        setCoverPaperCount(val);
+                        setCoverPaperCount(num);
                       }
                     }}
-                    min="0"
-                    max={availableCoverStockQty !== null ? availableCoverStockQty : undefined}
                     className={`h-10 border rounded-lg px-4 focus:outline-none focus:ring-2 transition-all ${
                       availableCoverStockQty !== null && Number(coverPaperCount) > availableCoverStockQty
                         ? 'border-red-400 focus:ring-red-400'
                         : 'border-gray-200 focus:ring-sky-500'
                     }`}
-                    placeholder="0"
+                    placeholder="Enter paper count..."
                   />
                   {availableCoverStockQty !== null && (
                     <div className="flex items-center justify-between mt-1 text-[11px] font-semibold">
@@ -1905,8 +1909,14 @@ export default function JobCardForm() {
                               <span className="ml-4 tax-field-label">PAN :</span> {SELLER.pan}
                             </p>
                           </div>
-                          <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[13px] font-black uppercase tracking-widest shrink-0">
-                            JOB CARD
+                          <div className="flex flex-col items-end justify-between h-full pt-1 shrink-0">
+                            <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1 rounded-md text-[13px] font-black uppercase tracking-widest">
+                              JOB CARD
+                            </div>
+                            <div className="mt-3 bg-white border border-gray-300 rounded px-2.5 py-1 text-right shadow-xs">
+                              <span className="text-[10px] font-bold text-gray-700 mr-1.5 uppercase tracking-wider">Job Date:</span>
+                              <span className="text-[12px] font-black text-black">{fmtTaxDate(previewData.jobDate)}</span>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1918,7 +1928,6 @@ export default function JobCardForm() {
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
                             ['Job Number', previewData.jobNumber],
-                            ['Job Date', fmtTaxDate(previewData.jobDate)],
                             ['Item Name', previewData.jobName || '-'],
                             ['Item Size', previewData.pageSize || '-'],
                             ['Color Detail', previewData.printingType || '-'],

@@ -1183,8 +1183,14 @@ export default function JobCardListing() {
                               <span className="ml-4 tax-field-label">PAN :</span> {SELLER.pan}
                             </p>
                           </div>
-                          <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1.5 rounded-md text-[11px] font-black uppercase tracking-widest shrink-0">
-                            JOB CARD
+                          <div className="flex flex-col items-end justify-between h-full pt-1 shrink-0">
+                            <div className="job-card-doc-badge bg-blue-600 text-white px-5 py-1 rounded-md text-[11px] font-black uppercase tracking-widest">
+                              JOB CARD
+                            </div>
+                            <div className="mt-3 bg-white border border-gray-300 rounded px-2.5 py-1 text-right shadow-xs">
+                              <span className="text-[10px] font-bold text-gray-700 mr-1.5 uppercase tracking-wider">Job Date:</span>
+                              <span className="text-[11px] font-black text-black">{fmtTaxDate(selectedCard.jobDate)}</span>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1196,7 +1202,6 @@ export default function JobCardListing() {
                         <div className="job-card-section-body p-1.5">
                           <TaxFieldsTable rows={[
                             ['Job Number', selectedCard.jobNumber],
-                            ['Job Date', fmtTaxDate(selectedCard.jobDate)],
                             ['Item Name', selectedCard.jobName || '-'],
                             ['Item Size', selectedCard.pageSize || '-'],
                             ['Color Detail', selectedCard.printingType || '-'],
