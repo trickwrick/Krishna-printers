@@ -11,6 +11,7 @@ export const logPaperStockTransaction = async ({
   jobNumber = '',
   jobCardId,
   challanNo = '',
+  invoiceNo = '',
   paperSource = 'Company paper',
   paperSize = '',
   gsm,
