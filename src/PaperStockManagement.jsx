@@ -70,14 +70,21 @@ const PaperStockManagement = () => {
             const vName = (viewingStock.coverName || viewingStock.name || '').trim().toLowerCase();
             const vSource = viewingStock.paperSource || 'Company paper';
 
+            const vParty = (viewingStock.coverPartyName || viewingStock.innerPartyName || '').trim().toLowerCase();
+
             const filtered = (Array.isArray(data) ? data : []).filter(t => {
               const tId = String(t.paperStockId || t.stockId || '');
               if (vId && tId && vId === tId) return true;
 
-              // Fallback match by name and source
-              const tPaperName = (t.paperName || t.stockName || '').trim().toLowerCase();
-              const tSource = t.paperSource || 'Company paper';
-              return vName && tPaperName === vName && tSource === vSource;
+              // Fallback match only if paperStockId is missing, and party must also match
+              if (!tId) {
+                const tPaperName = (t.paperName || t.stockName || '').trim().toLowerCase();
+                const tParty = (t.partyName || '').trim().toLowerCase();
+                const tSource = t.paperSource || 'Company paper';
+                return vName && tPaperName === vName && tSource === vSource && (!vParty || tParty === vParty);
+              }
+
+              return false;
             });
             setStockHistory(filtered);
             setLoadingHistory(false);
@@ -637,11 +644,11 @@ const PaperStockManagement = () => {
                                 <div>
                                    <div className="flex items-center gap-2 flex-wrap">
                                      <p className="font-black text-gray-950 group-hover:text-blue-600 transition-colors uppercase text-sm">
-                                       {item.coverName || item.name || '--'}
+                                       {item.coverPartyName || item.innerPartyName || item.name || '--'}
                                      </p>
-                                     {item.coverPartyName && (
+                                     {(item.coverName || item.name) && (
                                        <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded text-[11px] shadow-sm tracking-wide">
-                                         Paper: {item.coverPartyName}
+                                         Paper: {item.coverName || item.name}
                                        </span>
                                      )}
                                      {(item.challanNo || item.coverChallanNo) ? (
@@ -723,7 +730,24 @@ const PaperStockManagement = () => {
             <div className="flex justify-between items-start p-6 border-b border-gray-100 bg-gray-50/50">
               <div>
                 <h3 className="text-xl font-black text-slate-800 tracking-tight">Stock History (Add/Deduct)</h3>
-                <p className="text-sm font-semibold text-slate-500 mt-1 uppercase tracking-wider">{viewingStock.coverName || viewingStock.innerName}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <p className="text-sm font-bold text-slate-700 uppercase tracking-wider">{viewingStock.coverName || viewingStock.name || viewingStock.innerName}</p>
+                  {(viewingStock.coverPartyName || viewingStock.innerPartyName) && (
+                    <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-2 py-0.5 rounded text-[11px]">
+                      Party: {viewingStock.coverPartyName || viewingStock.innerPartyName}
+                    </span>
+                  )}
+                  {(viewingStock.coverPaperSize || viewingStock.innerPaperSize) && (
+                    <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 font-black px-2 py-0.5 rounded text-[11px]">
+                      Size: {viewingStock.coverPaperSize || viewingStock.innerPaperSize}
+                    </span>
+                  )}
+                  {(viewingStock.coverGSM || viewingStock.gsm || viewingStock.innerGSM) && (
+                    <span className="bg-sky-100 text-sky-900 border border-sky-300 font-black px-2 py-0.5 rounded text-[11px]">
+                      {viewingStock.coverGSM || viewingStock.gsm || viewingStock.innerGSM} GSM
+                    </span>
+                  )}
+                </div>
               </div>
               <button 
                 onClick={() => setViewingStock(null)}
@@ -762,6 +786,8 @@ const PaperStockManagement = () => {
                     stockHistory.map((item, idx) => {
                       const d = new Date(item.createdAt);
                       const isAdd = item.transactionType === 'add';
+                      const sizeDisplay = item.paperSize || viewingStock.coverPaperSize || viewingStock.innerPaperSize || '';
+                      const gsmDisplay = item.gsm || viewingStock.coverGSM || viewingStock.gsm || viewingStock.innerGSM;
                       return (
                         <tr key={item._id || idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4">
@@ -775,7 +801,19 @@ const PaperStockManagement = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-slate-700">{item.note || (isAdd ? 'Stock Added' : 'Stock Used')}</div>
-                            {item.paperName && <div className="text-[10px] font-bold text-slate-400 mt-0.5">{item.paperName} {item.partyName ? `(${item.partyName})` : ''}</div>}
+                            <div className="text-[10px] font-bold text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                              {item.paperName && <span>{item.paperName} {item.partyName ? `(${item.partyName})` : ''}</span>}
+                              {sizeDisplay && (
+                                <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded font-black">
+                                  Size: {sizeDisplay}
+                                </span>
+                              )}
+                              {gsmDisplay && (
+                                <span className="bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.2 rounded font-black">
+                                  {gsmDisplay} GSM
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-sm font-bold text-slate-700">

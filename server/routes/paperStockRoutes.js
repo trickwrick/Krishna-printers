@@ -10,8 +10,24 @@ import { backfillPaperStockTransactionsIfEmpty } from '../utils/backfillPaperSto
 router.get('/transactions', async (req, res) => {
   try {
     await backfillPaperStockTransactionsIfEmpty();
-    const transactions = await PaperStockTransaction.find().sort({ createdAt: -1 });
-    res.json(transactions);
+    const transactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: -1 }).lean();
+    
+    const enriched = transactions.map(tx => {
+      const stock = tx.paperStockId;
+      const paperSize = tx.paperSize || (stock ? (tx.paperType === 'inner' ? (stock.innerPaperSize || stock.coverPaperSize) : (stock.coverPaperSize || stock.innerPaperSize)) : '');
+      const gsm = tx.gsm || (stock ? (tx.paperType === 'inner' ? (stock.innerGSM || stock.gsm) : (stock.coverGSM || stock.gsm)) : undefined);
+      const supplier = tx.supplier || (stock ? (tx.paperType === 'inner' ? stock.innerSupplier : stock.coverSupplier) : '');
+      
+      return {
+        ...tx,
+        paperStockId: stock?._id || tx.paperStockId,
+        paperSize,
+        gsm,
+        supplier,
+      };
+    });
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -108,51 +124,10 @@ router.post('/', async (req, res) => {
       || [resolvedCoverName, resolvedInnerName].filter((value, index, arr) => value && arr.indexOf(value) === index).join(' / ')
       || 'Unnamed Paper';
 
-    // Check if item with same name, party, and paperSource already exists
+
+
     const resolvedCoverParty = (coverPartyName || '').trim();
     const resolvedInnerParty = (innerPartyName || '').trim();
-
-    const existing = await PaperStock.findOne({ 
-      name: resolvedName, 
-      paperSource: paperSource || 'Company paper',
-      $or: [
-        { coverPartyName: resolvedCoverParty },
-        { innerPartyName: resolvedInnerParty }
-      ]
-    });
-
-    if (existing) {
-      // Auto-update quantity and log transaction instead of failing with 400
-      const addCover = Number(coverQuantity) || 0;
-      const addInner = Number(innerQuantity) || 0;
-      existing.coverQuantity = (existing.coverQuantity || 0) + addCover;
-      existing.innerQuantity = (existing.innerQuantity || 0) + addInner;
-      existing.quantity = (existing.quantity || 0) + addCover + addInner;
-      if (req.body.challanNo) existing.challanNo = req.body.challanNo.trim();
-      if (coverGSM) existing.coverGSM = coverGSM;
-      if (coverPaperSize) existing.coverPaperSize = coverPaperSize;
-      existing.updatedAt = Date.now();
-      await existing.save();
-
-      if (addCover > 0) {
-        await logPaperStockTransaction({
-          paperStockId: existing._id,
-          stockName: resolvedName,
-          paperName: resolvedCoverName || resolvedName,
-          paperType: 'cover',
-          transactionType: 'add',
-          quantity: addCover,
-          partyName: resolvedCoverParty,
-          challanNo: req.body.challanNo || '',
-          invoiceNo: req.body.invoiceNo || '',
-          paperSource: paperSource || 'Company paper',
-          balanceAfter: existing.coverQuantity,
-          note: req.body.note || 'Stock added (Existing paper)',
-        });
-      }
-
-      return res.json(existing);
-    }
 
     const newItem = new PaperStock({
       name: resolvedName,
@@ -192,6 +167,9 @@ router.post('/', async (req, res) => {
         challanNo: req.body.challanNo || '',
         invoiceNo: req.body.invoiceNo || '',
         paperSource: paperSource || 'Company paper',
+        paperSize: coverPaperSize || '',
+        gsm: coverGSM || gsm,
+        supplier: coverSupplier || '',
         balanceAfter: Number(coverQuantity),
         note: req.body.note || 'Initial stock added',
       });
@@ -209,6 +187,9 @@ router.post('/', async (req, res) => {
         challanNo: req.body.challanNo || '',
         invoiceNo: req.body.invoiceNo || '',
         paperSource: paperSource || 'Company paper',
+        paperSize: innerPaperSize || '',
+        gsm: innerGSM || gsm,
+        supplier: innerSupplier || '',
         balanceAfter: Number(innerQuantity),
         note: req.body.note || 'Initial inner stock added',
       });
@@ -260,12 +241,16 @@ router.put('/:id', async (req, res) => {
         paperType: 'cover',
         transactionType: 'add',
         quantity: coverAdded,
+        partyName: updated.coverPartyName || existing.coverPartyName || '',
         paperSource: paperSource || existing.paperSource || 'Company paper',
+        paperSize: updated.coverPaperSize || existing.coverPaperSize || '',
+        gsm: updated.coverGSM || existing.coverGSM || updated.gsm || existing.gsm,
+        supplier: updated.coverSupplier || existing.coverSupplier || '',
         balanceAfter: Number(updated.coverQuantity || 0),
         note: isQuickAdd ? 'Quick Add' : 'Cover stock added',
-          challanNo: challanNo || '',
-          invoiceNo: invoiceNo || '',
-          createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
+        challanNo: challanNo || '',
+        invoiceNo: invoiceNo || '',
+        createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
       });
     }
 
@@ -277,12 +262,16 @@ router.put('/:id', async (req, res) => {
         paperType: 'inner',
         transactionType: 'add',
         quantity: innerAdded,
+        partyName: updated.innerPartyName || existing.innerPartyName || '',
         paperSource: paperSource || existing.paperSource || 'Company paper',
+        paperSize: updated.innerPaperSize || existing.innerPaperSize || '',
+        gsm: updated.innerGSM || existing.innerGSM || updated.gsm || existing.gsm,
+        supplier: updated.innerSupplier || existing.innerSupplier || '',
         balanceAfter: Number(updated.innerQuantity || 0),
         note: isQuickAdd ? 'Quick Add' : 'Inner stock added',
-          challanNo: challanNo || '',
-          invoiceNo: invoiceNo || '',
-          createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
+        challanNo: challanNo || '',
+        invoiceNo: invoiceNo || '',
+        createdAt: isQuickAdd && createdAt ? new Date(createdAt) : Date.now(),
       });
     }
 

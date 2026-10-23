@@ -1495,17 +1495,48 @@ export default function JobCardForm() {
 
                     {isPaperDropdownOpen && (
                       <div className="absolute top-full left-0 min-w-full sm:min-w-95 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                        <div className="px-3 pb-2 mb-2 border-b border-gray-50">
-                          <div className="relative">
-                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={12} />
+                        <div className="px-3 pb-2.5 mb-2 border-b border-gray-100 bg-white sticky top-0 z-20">
+                          {/* Highlighted Search Bar */}
+                          <div className="relative mb-2">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500" size={14} />
                             <input
                               type="text"
-                              placeholder="Search paper..."
+                              placeholder="🔍 Search paper name, party, GSM..."
                               value={paperSearchTerm}
-                              className="w-full bg-gray-50 border-none rounded-md py-1 pl-8 pr-3 text-xs focus:ring-1 focus:ring-sky-500"
+                              className="w-full bg-sky-50/50 border border-sky-300 rounded-lg py-2 pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder-slate-400 shadow-xs focus:ring-2 focus:ring-sky-400/40 focus:border-sky-500 outline-none transition-all"
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) => setPaperSearchTerm(e.target.value)}
                             />
+                          </div>
+
+                          {/* Action buttons moved to top under search */}
+                          <div className="flex items-center gap-1.5 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsPaperDropdownOpen(false);
+                                setNewStockForm(prev => ({
+                                  ...prev,
+                                  partyName: partyName || prev.partyName
+                                }));
+                                setIsAddStockModalOpen(true);
+                              }}
+                              className="flex-1 px-2.5 py-1.5 text-left text-[11px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100/80 hover:bg-emerald-200/90 border border-emerald-300/80 rounded-lg transition-all shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <PlusCircle size={13} className="text-emerald-700" />
+                              <span>+ Add New Stock</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedPaper('Custom');
+                                setSelectedPaperLabel('Custom');
+                                setIsPaperDropdownOpen(false);
+                              }}
+                              className={`flex-1 px-2.5 py-1.5 text-center text-[11px] font-black uppercase tracking-wider rounded-lg border transition-all shadow-xs ${selectedPaper === 'Custom' ? 'text-purple-700 bg-purple-100 border-purple-300' : 'text-slate-600 bg-slate-50 border-slate-200 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-200'}`}
+                            >
+                              + Use Custom
+                            </button>
                           </div>
                         </div>
 
@@ -1548,35 +1579,6 @@ export default function JobCardForm() {
                         ) : (
                           <div className="px-4 py-2 text-xs text-gray-400 italic">No paper stocks found</div>
                         )}
-
-                        <div className="border-t border-gray-100 mt-2 pt-2 px-1 flex flex-col gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPaperDropdownOpen(false);
-                              setNewStockForm(prev => ({
-                                ...prev,
-                                partyName: partyName || prev.partyName
-                              }));
-                              setIsAddStockModalOpen(true);
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 rounded-lg transition-colors flex items-center gap-2"
-                          >
-                            <PlusCircle size={14} className="text-emerald-600" />
-                            + Add New Stock
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedPaper('Custom');
-                              setSelectedPaperLabel('Custom');
-                              setIsPaperDropdownOpen(false);
-                            }}
-                            className={`w-full px-3 py-2 text-left text-xs font-black uppercase tracking-widest rounded-lg transition-colors ${selectedPaper === 'Custom' ? 'text-purple-600 bg-purple-50' : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50'}`}
-                          >
-                            + Use Custom Paper
-                          </button>
-                        </div>
                       </div>
                     )}
                     <input type="hidden" name="paper" value={selectedPaper} />
