@@ -77,6 +77,7 @@
     -webkit-appearance: none;
     margin: 0;
   }
+
   input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
@@ -643,6 +644,52 @@ tr.tax-terms-bank-section {
   background: #fff;
 }
 
+/* Subtle Watermark Logo for all print documents (Job Card, Challan, Invoice, Estimate) */
+.job-card-print-page,
+.challan-print-page,
+.tax-invoice-print-page,
+.gst-invoice-print-page,
+.estimate-print-page,
+.invoice-print-page,
+.tax-print-copy-page,
+#printable-inner,
+#printable-challan,
+#printable-invoice,
+#printable-estimate {
+  position: relative !important;
+}
+
+.job-card-print-page::before,
+.challan-print-page::before,
+.tax-invoice-print-page::before,
+.gst-invoice-print-page::before,
+.estimate-print-page::before,
+.invoice-print-page::before,
+.tax-print-copy-page::before,
+#printable-inner::before,
+#printable-challan::before,
+#printable-invoice::before,
+#printable-estimate::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 460px !important;
+  height: 460px !important;
+  max-width: 80% !important;
+  max-height: 80% !important;
+  background-image: url('/kp_logo.jpg') !important;
+  background-repeat: no-repeat !important;
+  background-position: center center !important;
+  background-size: contain !important;
+  opacity: 0.05 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
 .tax-invoice .job-card-top-header .job-card-doc-badge {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -1116,7 +1163,7 @@ tr.tax-terms-bank-section {
     line-height: 1.15 !important;
   }
 
-  .estimate-print-page.estimate-print-compact .estimate-print-meta-grid > div {
+  .estimate-print-page.estimate-print-compact .estimate-print-meta-grid>div {
     padding: 4px !important;
   }
 
@@ -1227,6 +1274,7 @@ tr.tax-terms-bank-section {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
   .tax-invoice-print-page .tax-items-stripe-row .tax-cell,
   .tax-invoice-print-page .tax-item-grand-total-row .tax-cell,
   .tax-invoice-print-page .tax-items-empty-band .tax-item-empty-cell {
@@ -1235,24 +1283,30 @@ tr.tax-terms-bank-section {
     border-left: 1px solid #000 !important;
     border-right: 1px solid #000 !important;
   }
+
   .tax-invoice-print-page .tax-item-grand-total-row .tax-cell {
     border-top: 2px solid #000 !important;
     border-bottom: 1px solid #000 !important;
     background-color: #ffffff !important;
   }
+
   .tax-invoice-print-page .tax-stripe-white .tax-cell {
     background-color: #ffffff !important;
   }
+
   .tax-invoice-print-page .tax-stripe-grey .tax-cell {
     background-color: #ececec !important;
   }
+
   .tax-invoice-print-page tr.tax-item-header-row .tax-cell {
     background-color: #e8f5e9 !important;
   }
+
   .tax-invoice-print-page .tax-item-sub-transport .tax-item-sub-label {
     color: #1b5e20 !important;
     font-weight: 900 !important;
   }
+
   .tax-invoice-print-page .tax-amount-words-row .tax-cell {
     background-color: #ececec !important;
     border-top: none !important;
@@ -1377,6 +1431,7 @@ tr.tax-terms-bank-section {
     padding-bottom: 1px !important;
     font-size: 9px !important;
   }
+
   .tax-invoice-print-page .font-bold {
     font-weight: 900 !important;
     color: #000 !important;
@@ -1479,11 +1534,11 @@ tr.tax-terms-bank-section {
     margin-top: 1rem !important;
   }
 
-  .challan-print-page .invoice-footer > div:first-child {
+  .challan-print-page .invoice-footer>div:first-child {
     padding-top: 1.5rem !important;
   }
 
-  .challan-print-page .invoice-footer > div:last-child {
+  .challan-print-page .invoice-footer>div:last-child {
     padding-top: 0.5rem !important;
   }
 

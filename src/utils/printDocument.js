@@ -2,6 +2,8 @@
  * Print helper — same isolation approach as pdfExport (full-size iframe + inlined styles).
  */
 
+import { KP_LOGO_BASE64 } from './logoBase64';
+
 const CHECKED_SVG = `<svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" stroke-width="1.5" fill="#ffffff"/><path d="M3.5 8L6.5 11.5L12.5 4.5" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const UNCHECKED_SVG = `<svg width="9" height="9" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect x="0.75" y="0.75" width="14.5" height="14.5" rx="1.5" stroke="#000000" stroke-width="1.5" fill="#ffffff"/></svg>`;
 
@@ -18,17 +20,18 @@ export function applyTaxCopyHighlight(root, highlightCopy) {
 
 function buildTaxPrintContent(element, copyIds) {
   const pageClass = element.className || 'tax-invoice-print-page';
+  const elementId = element.id ? ` id="${element.id}"` : '';
 
   if (!copyIds?.length) {
     // Preserve the root wrapper classes in print iframe so
     // print-only CSS selectors like `.financial-statement-print ...` apply.
-    return `<div class="${pageClass}">${element.innerHTML}</div>`;
+    return `<div${elementId} class="${pageClass}">${element.innerHTML}</div>`;
   }
 
   if (copyIds.length === 1) {
     const clone = element.cloneNode(true);
     applyTaxCopyHighlight(clone, copyIds[0]);
-    return clone.innerHTML;
+    return `<div${elementId} class="${pageClass}">${clone.innerHTML}</div>`;
   }
 
   return copyIds
@@ -130,7 +133,7 @@ export function generatePrintHtml(elementId, options = {}) {
             background: #ffffff !important;
             display: block !important;
             overflow: visible !important;
-            position: static !important;
+            position: relative !important;
             border: none !important;
             box-shadow: none !important;
           }
@@ -161,7 +164,7 @@ export function generatePrintHtml(elementId, options = {}) {
             background: white !important;
             display: block !important;
             overflow: visible !important;
-            position: static !important;
+            position: relative !important;
           }
           .challan-print-page {
             width: 100% !important;
@@ -174,7 +177,7 @@ export function generatePrintHtml(elementId, options = {}) {
             background: white !important;
             display: block !important;
             overflow: visible !important;
-            position: static !important;
+            position: relative !important;
             border: none !important;
             box-shadow: none !important;
           }
@@ -201,6 +204,52 @@ export function generatePrintHtml(elementId, options = {}) {
           }
           td, th { display: table-cell !important; }
           ${sanitizedStyles}
+
+          /* Watermark Logo for all print documents */
+          .job-card-print-page,
+          .challan-print-page,
+          .tax-invoice-print-page,
+          .gst-invoice-print-page,
+          .estimate-print-page,
+          .invoice-print-page,
+          .tax-print-copy-page,
+          #printable-inner,
+          #printable-challan,
+          #printable-invoice,
+          #printable-estimate {
+            position: relative !important;
+          }
+          .job-card-print-page::before,
+          .challan-print-page::before,
+          .tax-invoice-print-page::before,
+          .gst-invoice-print-page::before,
+          .estimate-print-page::before,
+          .invoice-print-page::before,
+          .tax-print-copy-page::before,
+          #printable-inner::before,
+          #printable-challan::before,
+          #printable-invoice::before,
+          #printable-estimate::before {
+            content: "" !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 460px !important;
+            height: 460px !important;
+            max-width: 80% !important;
+            max-height: 80% !important;
+            background-image: url('${KP_LOGO_BASE64}') !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: contain !important;
+            opacity: 0.05 !important;
+            pointer-events: none !important;
+            z-index: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
           .invoice-print-page, .challan-print-page {
             background: #ffffff !important;
           }
@@ -243,7 +292,7 @@ export function generatePrintHtml(elementId, options = {}) {
             background: #ffffff !important;
             display: block !important;
             overflow: visible !important;
-            position: static !important;
+            position: relative !important;
             border: none !important;
             box-shadow: none !important;
           }

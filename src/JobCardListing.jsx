@@ -168,7 +168,13 @@ export default function JobCardListing() {
     });
     localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(existingData));
     setPaperUsageInput('');
-    setPaperUsageModalCard(null); // Close the popup after update
+
+    const newUsedSoFar = usedSoFar + qty;
+    const newRemaining = Math.max(0, totalUnits - newUsedSoFar);
+
+    if (totalUnits > 0 && newRemaining === 0) {
+      setPaperUsageModalCard(null); // Auto close only when 0 units remaining
+    }
     setJobCards(prev => [...prev]); // force re-render
   };
 
