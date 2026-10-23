@@ -168,6 +168,7 @@ export default function JobCardListing() {
     });
     localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(existingData));
     setPaperUsageInput('');
+    setPaperUsageModalCard(null); // Close the popup after update
     setJobCards(prev => [...prev]); // force re-render
   };
 
