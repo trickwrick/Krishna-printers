@@ -6,6 +6,7 @@ import Notification from '../models/Notification.js';
 import PaperStock from '../models/PaperStock.js';
 import { logPaperStockTransaction } from '../utils/paperStockTransactions.js';
 import { syncPaperStockWithJob } from '../utils/paperStockSync.js';
+import { syncPlateStockWithJob } from '../utils/plateStockSync.js';
 
 const computePlateUseCount = async (plateSize, editingId) => {
   if (!plateSize) return undefined;
@@ -338,7 +339,10 @@ router.post('/', async (req, res) => {
 
     // --- AUTO STOCK DEDUCTION LOGIC (Run in background) ---
     syncPaperStockWithJob({ ...req.body, _id: jobCard?._id || req.body._id }, previousJob).catch(stockErr => {
-      console.error("⚠️ Stock deduction failed in background:", stockErr.message);
+      console.error("⚠️ Paper stock deduction failed in background:", stockErr.message);
+    });
+    syncPlateStockWithJob({ ...req.body, _id: jobCard?._id || req.body._id }, previousJob).catch(plateErr => {
+      console.error("⚠️ Plate stock deduction failed in background:", plateErr.message);
     });
     // ----------------------------------
 

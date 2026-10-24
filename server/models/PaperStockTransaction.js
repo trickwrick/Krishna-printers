@@ -4,7 +4,7 @@ const paperStockTransactionSchema = new mongoose.Schema({
   paperStockId: { type: mongoose.Schema.Types.ObjectId, ref: 'PaperStock' },
   stockName: { type: String, trim: true },
   paperName: { type: String, trim: true },
-  paperType: { type: String, enum: ['cover', 'inner'], required: true },
+  paperType: { type: String, enum: ['cover', 'inner', 'paper'], required: true },
   transactionType: { type: String, enum: ['add', 'deduct'], required: true },
   quantity: { type: Number, required: true, min: 0 },
   partyName: { type: String, trim: true, default: '' },

@@ -10,24 +10,73 @@ import { backfillPaperStockTransactionsIfEmpty } from '../utils/backfillPaperSto
 router.get('/transactions', async (req, res) => {
   try {
     await backfillPaperStockTransactionsIfEmpty();
-    const transactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: -1 }).lean();
+    const transactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: 1 }).lean();
     
-    const enriched = transactions.map(tx => {
+    // Calculate running balance chronologically per stock/paper
+    const runningMap = {};
+    const withBalances = transactions.map(tx => {
       const stock = tx.paperStockId;
       const paperSize = tx.paperSize || (stock ? (tx.paperType === 'inner' ? (stock.innerPaperSize || stock.coverPaperSize) : (stock.coverPaperSize || stock.innerPaperSize)) : '');
       const gsm = tx.gsm || (stock ? (tx.paperType === 'inner' ? (stock.innerGSM || stock.gsm) : (stock.coverGSM || stock.gsm)) : undefined);
       const supplier = tx.supplier || (stock ? (tx.paperType === 'inner' ? stock.innerSupplier : stock.coverSupplier) : '');
       
+      const key = String(stock?._id || tx.stockName || tx.paperName || 'default');
+      if (runningMap[key] === undefined) {
+        runningMap[key] = 0;
+      }
+      if (tx.transactionType === 'add') {
+        runningMap[key] += (Number(tx.quantity) || 0);
+      } else {
+        runningMap[key] = Math.max(0, runningMap[key] - (Number(tx.quantity) || 0));
+      }
+
       return {
         ...tx,
         paperStockId: stock?._id || tx.paperStockId,
         paperSize,
         gsm,
         supplier,
+        balanceAfter: runningMap[key]
       };
     });
 
-    res.json(enriched);
+    // Return newest first for UI display
+    withBalances.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(withBalances);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/paper-stock/transactions/:id - Revert/Undo a transaction
+router.delete('/transactions/:id', async (req, res) => {
+  try {
+    const tx = await PaperStockTransaction.findById(req.params.id);
+    if (!tx) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    // Revert stock quantity if linked to a PaperStock
+    if (tx.paperStockId) {
+      const stock = await PaperStock.findById(tx.paperStockId);
+      if (stock) {
+        const qty = Number(tx.quantity) || 0;
+        // If it was an 'add', reverting means subtracting it; if it was 'deduct', reverting means adding it back
+        const delta = tx.transactionType === 'add' ? -qty : qty;
+        
+        if (tx.paperType === 'inner') {
+          stock.innerQuantity = Math.max(0, (stock.innerQuantity || 0) + delta);
+        } else {
+          stock.coverQuantity = Math.max(0, (stock.coverQuantity || 0) + delta);
+        }
+        stock.quantity = (stock.coverQuantity || 0) + (stock.innerQuantity || 0);
+        await stock.save();
+      }
+    }
+
+    await PaperStockTransaction.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Transaction reverted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -54,7 +103,7 @@ router.post('/usage', async (req, res) => {
 
     const searchRegex = new RegExp(`^${paperName.trim()}$`, 'i');
     const stock = await PaperStock.findOne({ 
-      $or: [{ coverName: searchRegex }, { name: searchRegex }],
+      $or: [{ coverName: searchRegex }, { innerName: searchRegex }, { name: searchRegex }],
       paperSource: paperSource || 'Company paper' 
     });
 
@@ -63,25 +112,41 @@ router.post('/usage', async (req, res) => {
       return res.json({ success: true, notTracked: true, balanceAfter: null });
     }
 
-    stock.coverQuantity = Math.max(0, (stock.coverQuantity || 0) - qty);
+    const requestedType = req.body.paperType; // 'cover' or 'inner'
+    const isInner = requestedType === 'inner' || (
+      stock.innerName && stock.innerName.trim().toLowerCase() === paperName.trim().toLowerCase() &&
+      (!stock.coverName || stock.coverName.trim().toLowerCase() !== paperName.trim().toLowerCase())
+    );
+
+    let balanceRemaining = 0;
+    const paperType = isInner ? 'inner' : 'cover';
+
+    if (isInner) {
+      stock.innerQuantity = Math.max(0, (stock.innerQuantity || 0) - qty);
+      balanceRemaining = stock.innerQuantity;
+    } else {
+      stock.coverQuantity = Math.max(0, (stock.coverQuantity || 0) - qty);
+      balanceRemaining = stock.coverQuantity;
+    }
+    stock.quantity = (stock.coverQuantity || 0) + (stock.innerQuantity || 0);
     await stock.save();
 
     await logPaperStockTransaction({
       paperStockId: stock._id,
       stockName: stock.name,
-      paperName: stock.coverName || stock.name,
-      paperType: 'cover',
+      paperName: isInner ? (stock.innerName || stock.name) : (stock.coverName || stock.name),
+      paperType,
       transactionType: 'deduct',
       quantity: qty,
-      partyName: stock.coverPartyName || stock.partyName,
+      partyName: isInner ? (stock.innerPartyName || stock.partyName) : (stock.coverPartyName || stock.partyName),
       jobNumber,
       jobCardId,
       paperSource: stock.paperSource,
-      balanceAfter: stock.coverQuantity,
+      balanceAfter: balanceRemaining,
       note: `Used in Job #${jobNumber} by ${userName}`
     });
 
-    res.json({ success: true, balanceAfter: stock.coverQuantity });
+    res.json({ success: true, balanceAfter: balanceRemaining });
   } catch (err) {
     console.error("Paper usage error:", err.message);
     res.status(500).json({ error: err.message });
@@ -135,6 +200,9 @@ router.post('/', async (req, res) => {
     const resolvedCoverParty = (coverPartyName || '').trim();
     const resolvedInnerParty = (innerPartyName || '').trim();
 
+    const calculatedQty = (Number(coverQuantity) || 0) + (Number(innerQuantity) || 0);
+    const resolvedQty = calculatedQty > 0 ? calculatedQty : (Number(quantity) || 0);
+
     const newItem = new PaperStock({
       name: resolvedName,
       coverPartyName: (coverPartyName || '').trim(),
@@ -144,7 +212,7 @@ router.post('/', async (req, res) => {
       innerName: resolvedInnerName || resolvedName,
       innerSupplier: (innerSupplier || '').trim(),
       gsm,
-      quantity,
+      quantity: resolvedQty,
       coverGSM,
       coverQuantity,
       coverPaperSize,
@@ -220,6 +288,9 @@ router.put('/:id', async (req, res) => {
     const existing = await PaperStock.findById(req.params.id);
     if (!existing) return res.status(404).json({ error: "Item not found" });
 
+    const calculatedQty = (Number(coverQuantity) || 0) + (Number(innerQuantity) || 0);
+    const resolvedQty = calculatedQty > 0 ? calculatedQty : (Number(quantity) || 0);
+
     const updated = await PaperStock.findByIdAndUpdate(
       req.params.id,
       {
@@ -229,7 +300,7 @@ router.put('/:id', async (req, res) => {
         coverSupplier: (coverSupplier || '').trim(),
         innerPartyName: (innerPartyName || '').trim(),
         innerName: resolvedInnerName || resolvedName,
-        gsm, quantity, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource,
+        gsm, quantity: resolvedQty, coverGSM, coverQuantity, coverPaperSize, innerGSM, innerQuantity, innerPaperSize, unit, description, lowStockThreshold, paperSource,
         ...(challanNo ? { challanNo: String(challanNo).trim() } : {}),
         updatedAt: Date.now()
       },

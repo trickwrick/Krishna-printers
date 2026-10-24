@@ -6,8 +6,51 @@ import PlateStockTransaction from '../models/PlateStockTransaction.js';
 // GET /api/plate-stock/transactions - Stock add/deduct history
 router.get('/transactions', async (req, res) => {
   try {
-    const transactions = await PlateStockTransaction.find().sort({ createdAt: -1 });
-    res.json(transactions);
+    const transactions = await PlateStockTransaction.find().sort({ createdAt: 1 }).lean();
+    
+    const runningMap = {};
+    const withBalances = transactions.map(tx => {
+      const key = String(tx.plateStockId || tx.plateName || 'default');
+      if (runningMap[key] === undefined) {
+        runningMap[key] = 0;
+      }
+      if (tx.transactionType === 'add') {
+        runningMap[key] += (Number(tx.quantity) || 0);
+      } else {
+        runningMap[key] = Math.max(0, runningMap[key] - (Number(tx.quantity) || 0));
+      }
+
+      return {
+        ...tx,
+        balanceAfter: runningMap[key]
+      };
+    });
+
+    withBalances.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json(withBalances);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/plate-stock/transactions/:id - Revert/Delete transaction
+router.delete('/transactions/:id', async (req, res) => {
+  try {
+    const tx = await PlateStockTransaction.findById(req.params.id);
+    if (!tx) return res.status(404).json({ error: "Transaction not found" });
+
+    if (tx.plateStockId) {
+      const stock = await PlateStock.findById(tx.plateStockId);
+      if (stock) {
+        const qty = Number(tx.quantity) || 0;
+        const delta = tx.transactionType === 'add' ? -qty : qty;
+        stock.quantity = Math.max(0, (stock.quantity || 0) + delta);
+        await stock.save();
+      }
+    }
+
+    await PlateStockTransaction.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: "Plate transaction reverted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

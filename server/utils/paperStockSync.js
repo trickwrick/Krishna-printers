@@ -98,18 +98,22 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
         { new: true }
       );
 
+      const balanceRemaining = type === 'cover'
+        ? (updatedStock.coverQuantity ?? updatedStock.quantity)
+        : (updatedStock.innerQuantity ?? updatedStock.quantity);
+
       await logPaperStockTransaction({
         paperStockId: updatedStock._id,
         stockName: updatedStock.name,
-        paperName: updatedStock.name,
-        paperType: 'paper', // Simplified type
+        paperName: type === 'cover' ? (updatedStock.coverName || updatedStock.name) : (updatedStock.innerName || updatedStock.name),
+        paperType: type, // 'cover' or 'inner'
         transactionType: delta > 0 ? 'deduct' : 'add',
         quantity: Math.abs(delta),
         partyName: jobCard.partyName,
         jobNumber: jobCard.jobNumber,
         jobCardId: jobCard._id,
         paperSource: updatedStock.paperSource,
-        balanceAfter: updatedStock.coverQuantity !== undefined ? updatedStock.coverQuantity : updatedStock.quantity,
+        balanceAfter: balanceRemaining,
         note: `Job Card ${delta > 0 ? 'Usage' : 'Restoration'}`
       });
     }

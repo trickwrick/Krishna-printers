@@ -167,21 +167,29 @@ export const buildFinancialStatement = ({
   statusFilter = 'all',
   searchQuery = '',
 }) => {
-  const allEntries = enrichLedgerWithBalance(buildLedgerEntries(invoices, payments));
-  const openingBalance = getOpeningBalance(allEntries, periodFilter, selectedMonth, dateRange);
   const query = searchQuery.trim().toLowerCase();
+  const rawEntries = buildLedgerEntries(invoices, payments);
+
+  // If a search query is present (e.g. party name or invoice number), 
+  // scope the relevant entries to that query FIRST so opening balance & running balance 
+  // belong only to that specific party rather than summing everyone together.
+  const scopedEntries = query
+    ? rawEntries.filter((entry) => (
+        entry.particulars.toLowerCase().includes(query) ||
+        entry.refNo.toLowerCase().includes(query) ||
+        entry.partyName.toLowerCase().includes(query) ||
+        entry.invoiceNumber.toLowerCase().includes(query)
+      ))
+    : rawEntries;
+
+  const allEntries = enrichLedgerWithBalance(scopedEntries);
+  const openingBalance = getOpeningBalance(allEntries, periodFilter, selectedMonth, dateRange);
 
   const filtered = allEntries.filter((entry) => {
     if (!isDateInPeriod(entry.date, periodFilter, selectedMonth, dateRange)) return false;
     if (statusFilter === 'complete' && entry.status !== 'complete') return false;
     if (statusFilter === 'pending' && entry.status !== 'pending') return false;
-    if (!query) return true;
-    return (
-      entry.particulars.toLowerCase().includes(query) ||
-      entry.refNo.toLowerCase().includes(query) ||
-      entry.partyName.toLowerCase().includes(query) ||
-      entry.invoiceNumber.toLowerCase().includes(query)
-    );
+    return true;
   });
 
   const filteredAsc = [...filtered].sort((a, b) => a.date - b.date);
