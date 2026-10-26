@@ -12,7 +12,7 @@ router.get('/transactions', async (req, res) => {
     await backfillPaperStockTransactionsIfEmpty();
     const transactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: 1 }).lean();
     
-    // Calculate running balance chronologically per stock/paper
+    // Calculate running balance chronologically per stock/paper item
     const runningMap = {};
     const withBalances = transactions.map(tx => {
       const stock = tx.paperStockId;
@@ -20,7 +20,11 @@ router.get('/transactions', async (req, res) => {
       const gsm = tx.gsm || (stock ? (tx.paperType === 'inner' ? (stock.innerGSM || stock.gsm) : (stock.coverGSM || stock.gsm)) : undefined);
       const supplier = tx.supplier || (stock ? (tx.paperType === 'inner' ? stock.innerSupplier : stock.coverSupplier) : '');
       
-      const key = String(stock?._id || tx.stockName || tx.paperName || 'default');
+      // Group by stock ID + paperType (or stock/paper name + type) to keep cover & inner independent
+      const stockIdentifier = stock?._id ? String(stock._id) : String(tx.stockName || tx.paperName || 'default').trim().toLowerCase();
+      const typeIdentifier = tx.paperType || 'cover';
+      const key = `${stockIdentifier}_${typeIdentifier}`;
+
       if (runningMap[key] === undefined) {
         runningMap[key] = 0;
       }
@@ -36,7 +40,8 @@ router.get('/transactions', async (req, res) => {
         paperSize,
         gsm,
         supplier,
-        balanceAfter: runningMap[key]
+        // Use dynamically calculated running balance or fallback to logged balanceAfter
+        balanceAfter: runningMap[key] !== undefined ? runningMap[key] : (tx.balanceAfter || 0)
       };
     });
 

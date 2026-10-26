@@ -74,11 +74,17 @@ const PaperStockStatements = () => {
     }
   };
 
-  const loadTransactions = async () => {
+  const loadTransactions = async (signal) => {
     setLoading(true);
     setError('');
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+    // If an external signal (e.g. component unmount) aborts, also abort our controller
+    if (signal) {
+      signal.addEventListener('abort', () => controller.abort());
+    }
+
     const fetchOptions = { signal: controller.signal };
 
     try {
@@ -110,20 +116,27 @@ const PaperStockStatements = () => {
       setTransactions(data);
     } catch (err) {
       clearTimeout(timeoutId);
+      if (err.name === 'AbortError' || signal?.aborted) {
+        // Aborted due to unmount or timeout
+        if (!signal?.aborted) {
+          setError('Server response timed out. Please try again later.');
+        }
+        return;
+      }
       console.error('Fetch error:', err);
       setTransactions([]);
-      if (err.name === 'AbortError') {
-        setError('Server response timed out. Please try again later.');
-      } else {
-        setError(err.message || 'Unable to load transaction history.');
-      }
+      setError(err.message || 'Unable to load transaction history.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadTransactions();
+    const abortController = new AbortController();
+    loadTransactions(abortController.signal);
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   const filteredTransactions = transactions.filter((item) => {
@@ -255,8 +268,7 @@ const PaperStockStatements = () => {
             <thead>
               <tr className="bg-gray-50/50 text-[11px] font-black uppercase text-gray-900 tracking-[0.12em] border-b border-gray-100">
                 <th className="px-6 py-4">Date & Time</th>
-                <th className="px-6 py-4">Stock Name</th>
-                <th className="px-6 py-4">Paper Type</th>
+                <th className="px-6 py-4">Paper Name</th>
                 <th className="px-6 py-4 text-center">Action</th>
                 <th className="px-6 py-4 text-right">Quantity</th>
                 <th className="px-6 py-4">Party / Job</th>
@@ -266,10 +278,10 @@ const PaperStockStatements = () => {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading ? (
-                <tr><td colSpan="8" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase">Loading...</td></tr>
+                <tr><td colSpan="7" className="px-6 py-20 text-center text-gray-400 font-bold animate-pulse uppercase">Loading...</td></tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-20 text-center">
+                  <td colSpan="7" className="px-6 py-20 text-center">
                     <p className="text-red-500 font-bold mb-3">{error}</p>
                     <button
                       type="button"
@@ -282,7 +294,7 @@ const PaperStockStatements = () => {
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-20 text-center text-gray-400 italic">
+                  <td colSpan="7" className="px-6 py-20 text-center text-gray-400 italic">
                     No transactions yet. Add new stock or consume paper via Job Cards — history will appear here.
                   </td>
                 </tr>
@@ -299,20 +311,14 @@ const PaperStockStatements = () => {
                       <div className="flex items-center gap-2">
                         <Layers size={14} className="text-indigo-500" />
                         <div>
-                          <p className="font-black text-gray-900 uppercase text-sm">{item.stockName || item.paperName}</p>
-                          {item.paperName && item.paperName !== item.stockName && (
-                            <p className="text-[10px] text-gray-400 font-bold mt-0.5">{item.paperName}</p>
+                          <p className="font-black text-gray-900 uppercase text-sm">{item.paperName || item.stockName || '-'}</p>
+                          {item.gsm && (
+                            <span className="inline-block mt-0.5 text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {item.gsm} GSM {item.paperSize ? `• ${item.paperSize}` : ''}
+                            </span>
                           )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${item.paperType === 'cover'
-                        ? 'bg-sky-50 text-sky-700 border border-sky-100'
-                        : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                        }`}>
-                        {item.paperType === 'cover' ? 'Cover Paper' : 'Inner Paper'}
-                      </span>
                     </td>
                     <td className="px-6 py-5 text-center">
                       {item.transactionType === 'add' ? (
@@ -416,9 +422,11 @@ const PaperStockStatements = () => {
                             <ArrowDownCircle size={10} /> DEDUCTED
                           </div>
                         )}
-                        <span className={`px-2 py-0.5 border rounded-md text-[9px] font-black uppercase tracking-wider shadow-sm ${t.paperType === 'cover' ? 'bg-sky-50 border-sky-100 text-sky-600' : 'bg-indigo-50 border-indigo-100 text-indigo-600'}`}>
-                          {t.paperType === 'cover' ? 'COVER' : 'INNER'}
-                        </span>
+                        {t.gsm && (
+                          <span className="px-2 py-0.5 border border-gray-200 rounded-md text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-50">
+                            {t.gsm} GSM
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-1">
                         <Calendar size={12} />
@@ -432,15 +440,15 @@ const PaperStockStatements = () => {
                         {t.partyName ? (
                           <>
                             <span className="text-indigo-400 text-lg leading-none">#</span> 
-                            Job Card: {t.jobNumber || '-'}
+                            Job Card: {t.jobNumber || '-'} {t.partyName ? `(${t.partyName})` : ''}
                           </>
                         ) : (
-                          'Direct Update'
+                          'Stock Addition / Update'
                         )}
                       </p>
                       <p className="text-xs font-semibold text-gray-500 mt-1.5 flex items-center gap-1">
                         <div className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px]">i</div>
-                        {t.note || (t.transactionType === 'add' ? `Initial ${t.paperType} stock added` : `Deducted for job card update`)}
+                        {t.note || (t.transactionType === 'add' ? `Stock added` : `Deducted for job card`)}
                       </p>
                     </div>
                   </div>
