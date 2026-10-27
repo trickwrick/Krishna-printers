@@ -82,9 +82,9 @@ const ChallanList = () => {
   const challanDate = mergedMeta.date || primaryChallan?.date || primaryChallan?.createdAt;
   const challanNoLabel = isMergedPrint ? mergedMeta.challanLabel : primaryChallan?.challanNo;
   const jobRefLabel = isMergedPrint ? mergedMeta.jobRefLabel : primaryChallan?.jobNumber;
-  const emptyProductRows = Math.max(0, Math.min(itemLines.length <= 3 ? 5 : 2, 8 - itemLines.length));
+  const emptyProductRows = Math.max(0, 6 - itemLines.length);
   const showPage1SignatureRow = false;
-  const compactPrint = itemLines.length >= 6;
+  const compactPrint = itemLines.length >= 5;
 
   const [challanStatusFilter, setChallanStatusFilter] = useState('all'); // 'all', 'pending', 'completed'
 

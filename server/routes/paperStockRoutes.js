@@ -208,6 +208,18 @@ router.post('/', async (req, res) => {
     const calculatedQty = (Number(coverQuantity) || 0) + (Number(innerQuantity) || 0);
     const resolvedQty = calculatedQty > 0 ? calculatedQty : (Number(quantity) || 0);
 
+    // Prevent duplicate entries created by rapid double-clicks (within 15 seconds)
+    const recentDuplicate = await PaperStock.findOne({
+      name: resolvedName,
+      challanNo: (req.body.challanNo || '').trim(),
+      paperSource: paperSource || 'Company paper',
+      createdAt: { $gte: new Date(Date.now() - 15000) }
+    });
+
+    if (recentDuplicate) {
+      return res.status(200).json(recentDuplicate);
+    }
+
     const newItem = new PaperStock({
       name: resolvedName,
       coverPartyName: (coverPartyName || '').trim(),

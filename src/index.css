@@ -2155,8 +2155,8 @@ tr.tax-terms-bank-section {
 }
 
 #printable-challan .tax-item-empty-row .tax-item-empty-cell {
-  height: calc(26px * var(--empty-rows, 1)) !important;
-  min-height: 80px !important;
+  height: calc(18px * var(--empty-rows, 1)) !important;
+  min-height: 70px !important;
 }
 
 #printable-challan .tax-footer-col {
@@ -2165,22 +2165,27 @@ tr.tax-terms-bank-section {
 
 #printable-challan .tax-terms-list {
   font-size: 8px !important;
-  line-height: 1.3 !important;
+  line-height: 1.25 !important;
 }
 
 #printable-challan .tax-terms-list li {
-  margin-bottom: 2px !important;
+  margin-bottom: 1.5px !important;
 }
 
 #printable-challan .tax-sign-space {
-  height: 28px !important;
+  height: 24px !important;
 }
 
 
 @media print {
   @page {
     size: A5 portrait;
-    margin: 4mm;
+    margin: 3mm;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: hidden !important;
   }
 
   body:has(#printable-challan) {
@@ -2195,38 +2200,42 @@ tr.tax-terms-bank-section {
     min-width: 0 !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #printable-challan .challan-table {
-    font-size: 10px !important;
+    font-size: 9.5px !important;
     border-collapse: collapse !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   #printable-challan .company-brand-name,
   #printable-challan .tax-company-name {
-    font-size: 19px !important;
-    line-height: 1.25 !important;
-    margin: 0 0 2px 0 !important;
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+    margin: 0 0 1px 0 !important;
     display: block !important;
   }
 
   #printable-challan .tax-header-line {
-    font-size: 8.5px !important;
-    line-height: 1.3 !important;
-    margin: 2px 0 !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+    margin: 1px 0 !important;
     display: block !important;
   }
 
   #printable-challan .tax-title-bar {
     display: flex !important;
     align-items: stretch !important;
-    min-height: 30px !important;
+    min-height: 26px !important;
   }
 
   #printable-challan .tax-title-text {
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: 900 !important;
-    padding: 4px 0 !important;
+    padding: 3px 0 !important;
     line-height: 1.2 !important;
     display: flex !important;
     align-items: center !important;
@@ -2234,59 +2243,59 @@ tr.tax-terms-bank-section {
   }
 
   #printable-challan .tax-copy-box {
-    width: 95px !important;
-    font-size: 7px !important;
-    padding: 2px 3px !important;
-    line-height: 1.25 !important;
+    width: 90px !important;
+    font-size: 6.5px !important;
+    padding: 1px 2px !important;
+    line-height: 1.2 !important;
   }
 
   #printable-challan .tax-cell {
-    padding: 3px 4px !important;
-    font-size: 9.5px !important;
-    line-height: 1.3 !important;
+    padding: 2.5px 3.5px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
     vertical-align: top !important;
   }
 
   #printable-challan .tax-item-header-row .tax-cell {
-    padding: 5px 4px !important;
-    font-size: 9.5px !important;
-    line-height: 1.3 !important;
+    padding: 3px 3px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
     vertical-align: middle !important;
   }
 
   #printable-challan .tax-item-main-row .tax-cell {
-    padding: 4px 4px !important;
-    font-size: 9.5px !important;
-    line-height: 1.3 !important;
+    padding: 3px 3px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
   }
 
   #printable-challan .tax-item-grand-total-row .tax-cell {
-    padding: 4px 4px !important;
-    font-size: 9.5px !important;
-    line-height: 1.3 !important;
+    padding: 3px 3px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
     vertical-align: middle !important;
   }
 
   #printable-challan .tax-fields-inner td {
-    padding: 1px 2px !important;
-    line-height: 1.3 !important;
+    padding: 0.5px 2px !important;
+    line-height: 1.2 !important;
   }
 
   #printable-challan .tax-item-empty-row .tax-item-empty-cell {
-    height: calc(26px * var(--empty-rows, 1)) !important;
-    min-height: 80px !important;
+    height: calc(16px * var(--empty-rows, 1)) !important;
+    min-height: 68px !important;
   }
 
   #printable-challan .tax-terms-list {
-    font-size: 8px !important;
-    line-height: 1.3 !important;
+    font-size: 7.5px !important;
+    line-height: 1.2 !important;
   }
 
   #printable-challan .tax-terms-list li {
-    margin-bottom: 2px !important;
+    margin-bottom: 1.5px !important;
   }
 
   #printable-challan .tax-sign-space {
-    height: 28px !important;
+    height: 22px !important;
   }
 }

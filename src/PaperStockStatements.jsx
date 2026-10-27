@@ -263,10 +263,10 @@ const PaperStockStatements = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto h-75 financial-statement-table-wrap">
+        <div className="overflow-x-auto financial-statement-table-wrap">
           <table className="w-full text-left whitespace-nowrap">
-            <thead>
-              <tr className="bg-gray-50/50 text-[11px] font-black uppercase text-gray-900 tracking-[0.12em] border-b border-gray-100">
+            <thead className="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-xs">
+              <tr className="text-[11px] font-black uppercase text-gray-900 tracking-[0.12em] border-b border-gray-200">
                 <th className="px-6 py-4">Date & Time</th>
                 <th className="px-6 py-4">Paper Name</th>
                 <th className="px-6 py-4 text-center">Action</th>

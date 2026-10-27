@@ -23,6 +23,7 @@ const PaperStockManagement = () => {
   const [editingId, setEditingId] = useState(null);
   const [currentStock, setCurrentStock] = useState({ cover: 0, inner: 0 });
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     coverPartyName: '',
     coverName: '',
@@ -120,6 +121,7 @@ const PaperStockManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!formData.coverName.trim() && !formData.innerName.trim()) {
       setMessage({ type: 'error', text: 'Enter at least one paper name in Cover or Inner section.' });
@@ -132,6 +134,8 @@ const PaperStockManagement = () => {
       setTimeout(() => setMessage({ type: '', text: '' }), 3500);
       return;
     }
+
+    setIsSubmitting(true);
 
     const url = editingId 
       ? `${API_BASE_URL}/api/paper-stock/${editingId}`
@@ -195,6 +199,8 @@ const PaperStockManagement = () => {
       }
     } catch (err) {
       setMessage({ type: 'error', text: 'Server error' });
+    } finally {
+      setIsSubmitting(false);
     }
 
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
@@ -505,9 +511,17 @@ const PaperStockManagement = () => {
                 ></textarea>
               </div>
               <div className="pt-4">
-                <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3">
-                  <CheckCircle2 size={20} />
-                  {editingId ? 'Add Stock & Save' : 'Save To Stock'}
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3 ${
+                    isSubmitting 
+                      ? 'bg-blue-400 text-white cursor-not-allowed opacity-75' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+                  }`}
+                >
+                  <CheckCircle2 size={20} className={isSubmitting ? 'animate-spin' : ''} />
+                  {isSubmitting ? 'Saving...' : (editingId ? 'Add Stock & Save' : 'Save To Stock')}
                 </button>
               </div>
             </form>
