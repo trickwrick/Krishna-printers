@@ -10,7 +10,16 @@ import { backfillPaperStockTransactionsIfEmpty } from '../utils/backfillPaperSto
 router.get('/transactions', async (req, res) => {
   try {
     await backfillPaperStockTransactionsIfEmpty();
-    const transactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: 1 }).lean();
+    const rawTransactions = await PaperStockTransaction.find().populate('paperStockId').sort({ createdAt: 1 }).lean();
+    
+    // If a transaction had a paperStockId assigned but that stock was deleted (populate returned null), omit it from statement
+    const transactions = rawTransactions.filter(tx => {
+      // If it has no stock reference but is an 'add' without stock, skip it
+      if (tx.transactionType === 'add' && !tx.paperStockId) {
+        return false;
+      }
+      return true;
+    });
     
     // Calculate running balance chronologically per stock/paper item
     const runningMap = {};
@@ -375,12 +384,25 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/paper-stock/:id - Delete stock item
+// DELETE /api/paper-stock/:id - Delete stock item and its statement transactions
 router.delete('/:id', async (req, res) => {
   try {
     const deleted = await PaperStock.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ error: "Item not found" });
-    res.json({ message: "Item deleted successfully" });
+
+    // Also delete all related transactions so statements stay clean
+    await PaperStockTransaction.deleteMany({
+      $or: [
+        { paperStockId: deleted._id },
+        {
+          paperStockId: null,
+          partyName: deleted.coverPartyName || deleted.innerPartyName || '',
+          challanNo: deleted.challanNo || ''
+        }
+      ]
+    });
+
+    res.json({ message: "Item and related transactions deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -100,15 +100,28 @@ const PaperStockStatements = () => {
       }
 
       let data = [];
+      const stocksData = await stockRes.json();
+      const liveStockSet = new Set((Array.isArray(stocksData) ? stocksData : []).map(s => String(s._id)));
+
       if (txRes.ok) {
         const txData = await txRes.json();
-        data = Array.isArray(txData) ? txData : [];
+        const rawTxs = Array.isArray(txData) ? txData : [];
+        // Filter out any 'add' transactions whose stock has been deleted
+        data = rawTxs.filter(tx => {
+          if (tx.transactionType === 'add') {
+            const sId = tx.paperStockId?._id ? String(tx.paperStockId._id) : (tx.paperStockId ? String(tx.paperStockId) : null);
+            if (!sId || !liveStockSet.has(sId)) {
+              return false;
+            }
+          }
+          return true;
+        });
       }
 
       if (data.length === 0) {
-        const [stocks, jobs] = await Promise.all([stockRes.json(), jobRes.json()]);
+        const jobs = await jobRes.json();
         data = buildPaperStockHistory(
-          Array.isArray(stocks) ? stocks : [],
+          Array.isArray(stocksData) ? stocksData : [],
           Array.isArray(jobs) ? jobs : [],
         );
       }
