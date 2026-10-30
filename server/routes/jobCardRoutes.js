@@ -313,7 +313,7 @@ router.post('/', async (req, res) => {
       }
     } else if (!isUpdate) {
       // AUTO-GENERATE jobNumber
-      const lastJobs = await JobCard.find({ jobNumber: { $regex: /^JOBKP-/i } }).select('jobNumber');
+      const lastJobs = await JobCard.find({ isDeleted: { $ne: true }, jobNumber: { $regex: /^JOBKP-/i } }).select('jobNumber');
       let maxNum = 0;
       for (const j of lastJobs) {
         if (j.jobNumber) {
