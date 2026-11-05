@@ -16,6 +16,7 @@ import {
   Hash,
   User,
   Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { API_BASE_URL } from './utils/apiBase';
 import { mergeWithLocalJobCards } from './utils/localJobCards';
@@ -67,7 +68,7 @@ const CountUp = ({ end, duration = 2000, prefix = '', suffix = '' }) => {
   );
 };
 
-const StatCard = ({ title, value, prefix = '', diff, icon: Icon, gradient, iconBg }) => (
+const StatCard = ({ title, value, prefix = '', diff, icon: IconComponent, gradient, iconBg }) => (
   <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
     <div className={`absolute top-0 right-0 w-24 h-24 bg-linear-to-br ${gradient} opacity-10 rounded-bl-full`} />
     <div className="flex items-start justify-between relative z-10">
@@ -88,13 +89,13 @@ const StatCard = ({ title, value, prefix = '', diff, icon: Icon, gradient, iconB
         </div>
       </div>
       <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
-        <Icon size={20} />
+        {IconComponent && <IconComponent size={20} />}
       </div>
     </div>
   </div>
 );
 
-const SimpleStatCard = ({ title, value, icon: Icon, iconBg, textColor = 'text-gray-900', subtitle, onClick }) => (
+const SimpleStatCard = ({ title, value, icon: IconComponent, iconBg, textColor = 'text-gray-900', subtitle, onClick }) => (
   <div
     onClick={onClick}
     className={`relative overflow-hidden rounded-2xl bg-white border border-gray-100 p-5 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 ${onClick ? 'cursor-pointer' : ''}`}
@@ -108,7 +109,7 @@ const SimpleStatCard = ({ title, value, icon: Icon, iconBg, textColor = 'text-gr
         {subtitle && <p className="text-xs text-gray-400 font-medium mt-2">{subtitle}</p>}
       </div>
       <div className={`w-11 h-11 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
-        <Icon size={20} />
+        {IconComponent && <IconComponent size={20} />}
       </div>
     </div>
   </div>
@@ -269,6 +270,232 @@ export default function Dashboard() {
           <PlusSquare size={18} />
           New Job Card
         </button>
+      </div>
+
+      {/* Diwali Festive Special Banner with Animated Fireworks, Rockets & Diya */}
+      <div className="relative overflow-hidden rounded-3xl mb-8 p-6 sm:p-9 text-white shadow-2xl border border-amber-500/40 bg-gradient-to-r from-[#2e0510] via-[#520a18] to-[#420917]">
+        {/* Decorative Golden Ambient Glows */}
+        <div className="absolute -top-24 -left-24 w-80 h-80 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-orange-500/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 left-1/3 -translate-y-1/2 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* --- DYNAMIC FIREWORKS / PATAKHE OVERLAYS --- */}
+        {/* Firework Burst 1 (Top Left) */}
+        <div className="absolute top-3 left-12 w-28 h-28 pointer-events-none firework-anim-1">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <circle cx="50" cy="50" r="3" fill="#fef08a" />
+            <line x1="50" y1="50" x2="50" y2="10" stroke="#fde047" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="85" y2="20" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="90" y2="50" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="80" y2="80" stroke="#f43f5e" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="50" y2="90" stroke="#ec4899" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="20" y2="80" stroke="#a855f7" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="10" y2="50" stroke="#06b6d4" strokeWidth="2" strokeDasharray="4 2" />
+            <line x1="50" y1="50" x2="20" y2="20" stroke="#10b981" strokeWidth="2" strokeDasharray="4 2" />
+            <circle cx="50" cy="8" r="2.5" fill="#fef08a" />
+            <circle cx="87" cy="18" r="2.5" fill="#f59e0b" />
+            <circle cx="92" cy="50" r="2.5" fill="#ef4444" />
+            <circle cx="18" cy="18" r="2.5" fill="#10b981" />
+          </svg>
+        </div>
+
+        {/* Firework Burst 2 (Center Top) */}
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-36 pointer-events-none firework-anim-2">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <circle cx="50" cy="50" r="4" fill="#ffffff" />
+            <line x1="50" y1="50" x2="50" y2="5" stroke="#fde047" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="90" y2="25" stroke="#fb923c" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="95" y2="60" stroke="#f43f5e" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="70" y2="92" stroke="#e879f9" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="30" y2="92" stroke="#38bdf8" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="5" y2="60" stroke="#4ade80" strokeWidth="2.5" strokeDasharray="5 3" />
+            <line x1="50" y1="50" x2="10" y2="25" stroke="#facc15" strokeWidth="2.5" strokeDasharray="5 3" />
+            <circle cx="50" cy="4" r="3" fill="#ffffff" />
+            <circle cx="92" cy="23" r="3" fill="#fb923c" />
+            <circle cx="97" cy="62" r="3" fill="#f43f5e" />
+            <circle cx="8" cy="23" r="3" fill="#facc15" />
+          </svg>
+        </div>
+
+        {/* Firework Burst 3 (Right Center behind Diya) */}
+        <div className="absolute top-6 right-8 w-32 h-32 pointer-events-none firework-anim-3">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <circle cx="50" cy="50" r="3" fill="#fef08a" />
+            <line x1="50" y1="50" x2="50" y2="12" stroke="#38bdf8" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="80" y2="20" stroke="#ec4899" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="88" y2="50" stroke="#facc15" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="75" y2="80" stroke="#4ade80" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="25" y2="80" stroke="#fb923c" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="12" y2="50" stroke="#a855f7" strokeWidth="2" strokeDasharray="3 2" />
+            <line x1="50" y1="50" x2="20" y2="20" stroke="#f43f5e" strokeWidth="2" strokeDasharray="3 2" />
+          </svg>
+        </div>
+
+        {/* Rising Rocket 1 (Patakha) */}
+        <div className="absolute bottom-2 left-1/4 pointer-events-none rocket-trail-1">
+          <div className="flex flex-col items-center">
+            <div className="text-xl">🚀</div>
+            <div className="w-1 h-12 bg-gradient-to-t from-transparent via-orange-400 to-yellow-200 blur-[1px]" />
+            <div className="w-2 h-2 rounded-full bg-yellow-300 shadow-[0_0_8px_#f59e0b]" />
+          </div>
+        </div>
+
+        {/* Rising Rocket 2 (Patakha) */}
+        <div className="absolute bottom-4 right-1/4 pointer-events-none rocket-trail-2 hidden sm:block">
+          <div className="flex flex-col items-center">
+            <div className="text-xl -rotate-12">🎆</div>
+            <div className="w-1 h-14 bg-gradient-to-t from-transparent via-amber-400 to-yellow-100 blur-[1px]" />
+          </div>
+        </div>
+
+        {/* Anar Spark Sprays (Bottom left & right) */}
+        <div className="absolute -bottom-2 left-6 pointer-events-none text-amber-300 text-xs anar-spray-1 select-none">
+          ✨ 💥 ✨
+        </div>
+        <div className="absolute -bottom-2 right-44 pointer-events-none text-yellow-200 text-xs anar-spray-2 select-none hidden md:block">
+          ⚡ 🌟 💥
+        </div>
+
+        {/* Floating Twinkling Stars & Sparklers */}
+        <div className="absolute top-4 left-6 diwali-star-twinkle-1 text-amber-300 text-lg select-none pointer-events-none">✦</div>
+        <div className="absolute top-8 left-1/3 diwali-star-twinkle-2 text-yellow-200 text-xs select-none pointer-events-none">✨</div>
+        <div className="absolute bottom-6 left-1/2 diwali-star-twinkle-3 text-amber-300 text-sm select-none pointer-events-none">★</div>
+        <div className="absolute top-5 right-1/3 diwali-star-twinkle-2 text-yellow-100 text-sm select-none pointer-events-none">✦</div>
+        <div className="absolute bottom-5 right-20 diwali-star-twinkle-1 text-amber-200 text-base select-none pointer-events-none">✨</div>
+        <div className="absolute top-1/2 right-12 sparkle-spinner text-yellow-300 text-xl select-none pointer-events-none">🎇</div>
+
+        {/* Content Layout */}
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6">
+          <div className="flex-1 text-center lg:text-left">
+            {/* Festive Badge with Patakha Emoji */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-red-500/25 border border-amber-400/50 rounded-full px-4 py-1.5 text-xs font-bold text-amber-200 shadow-lg shadow-amber-900/40 mb-3.5 backdrop-blur-md">
+              <span className="text-base">🎆</span>
+              <span>दीपावली महापर्व की हार्दिक शुभकामनाएं</span>
+              <span className="text-base">🪔</span>
+            </div>
+
+            {/* Main Greeting Heading (Removed & Prosperous New Year) */}
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-3">
+              <span className="diwali-gold-text drop-shadow-[0_2px_18px_rgba(245,158,11,0.6)]">
+                Happy Diwali!
+              </span>
+            </h2>
+
+            {/* Subtitle / Wish with printosync family */}
+            <p className="text-amber-100/90 text-sm sm:text-base font-medium max-w-2xl leading-relaxed mb-4">
+              भगवान श्री गणेश एवं माता लक्ष्मी जी की कृपा से आपके जीवन और व्यापार में सुख, समृद्धि और नई ऊंचाइयां आएं।
+              <span className="block mt-1.5 font-bold text-amber-300 text-base">
+                — printosync family
+              </span>
+            </p>
+
+            {/* Quick Action / Festive Badges */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 text-xs font-bold text-amber-200/90">
+              <span className="px-3.5 py-1.5 rounded-xl bg-black/35 border border-amber-500/30 backdrop-blur-md shadow-sm flex items-center gap-1.5">
+                <span>🪔</span> Light & Prosperity
+              </span>
+              <span className="px-3.5 py-1.5 rounded-xl bg-black/35 border border-amber-500/30 backdrop-blur-md shadow-sm flex items-center gap-1.5">
+                <span>💥</span> Festive Celebrations
+              </span>
+              <span className="px-3.5 py-1.5 rounded-xl bg-black/35 border border-amber-500/30 backdrop-blur-md shadow-sm flex items-center gap-1.5">
+                <span>✨</span> Quality Print Services
+              </span>
+              <span className="px-3.5 py-1.5 rounded-xl bg-black/35 border border-amber-500/30 backdrop-blur-md shadow-sm flex items-center gap-1.5">
+                <span>🤝</span> Trusted Partnership
+              </span>
+            </div>
+          </div>
+
+          {/* Right Visual: Glowing Traditional Brass Diya Illustration + Sparklers */}
+          <div className="shrink-0 flex items-center justify-center relative p-3">
+            {/* Radiant Diya Aura */}
+            <div className="absolute inset-0 bg-gradient-to-t from-amber-500/40 via-yellow-500/25 to-transparent rounded-full blur-2xl" />
+
+            <svg
+              viewBox="0 0 240 180"
+              className="w-48 sm:w-56 h-auto relative z-10 drop-shadow-[0_12px_28px_rgba(0,0,0,0.7)]"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Hanging Lantern Strings & Lanterns on Top */}
+              <g className="diwali-lantern-swing">
+                <line x1="45" y1="0" x2="45" y2="40" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="3 3" />
+                <polygon points="45,40 55,54 35,54" fill="#f59e0b" />
+                <polygon points="35,54 55,54 45,68" fill="#d97706" />
+                <circle cx="45" cy="54" r="3" fill="#fef08a" />
+              </g>
+
+              <g className="diwali-lantern-swing" style={{ animationDelay: '0.8s' }}>
+                <line x1="195" y1="0" x2="195" y2="35" stroke="#fcd34d" strokeWidth="1.5" strokeDasharray="3 3" />
+                <polygon points="195,35 205,49 185,49" fill="#f59e0b" />
+                <polygon points="185,49 205,49 195,63" fill="#d97706" />
+                <circle cx="195" cy="49" r="3" fill="#fef08a" />
+              </g>
+
+              {/* Big Center Golden Diya Base / Oil Bowl */}
+              <ellipse cx="120" cy="155" rx="70" ry="12" fill="rgba(0,0,0,0.35)" />
+              <path
+                d="M 45 130 C 52 165, 188 165, 195 130 C 182 142, 58 142, 45 130 Z"
+                fill="url(#diyaBodyGrad)"
+                stroke="#fef08a"
+                strokeWidth="1.5"
+              />
+              <ellipse cx="120" cy="130" rx="75" ry="14" fill="url(#diyaRimGrad)" stroke="#fde047" strokeWidth="1" />
+              <ellipse cx="120" cy="130" rx="66" ry="9" fill="url(#diyaOilGrad)" />
+
+              {/* Diya Wick Tip */}
+              <path d="M 118 126 C 117 115, 123 115, 122 126 Z" fill="#78350f" />
+
+              {/* Glowing Dynamic Flames */}
+              <g className="diwali-flame-glow">
+                {/* Outer Flame (Orange) */}
+                <path
+                  d="M 120 48 C 100 85, 105 118, 120 125 C 135 118, 140 85, 120 48 Z"
+                  fill="url(#outerFlameGrad)"
+                />
+                {/* Mid Flame (Yellow) */}
+                <path
+                  d="M 120 62 C 107 90, 110 115, 120 123 C 130 115, 133 90, 120 62 Z"
+                  fill="url(#midFlameGrad)"
+                />
+                {/* Core Flame (Pure Bright Light) */}
+                <path
+                  d="M 120 78 C 113 95, 114 112, 120 120 C 126 112, 127 95, 120 78 Z"
+                  fill="#ffffff"
+                />
+              </g>
+
+              {/* Gradients */}
+              <defs>
+                <linearGradient id="diyaBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="50%" stopColor="#b45309" />
+                  <stop offset="100%" stopColor="#78350f" />
+                </linearGradient>
+                <linearGradient id="diyaRimGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#b45309" />
+                  <stop offset="30%" stopColor="#fef08a" />
+                  <stop offset="70%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#b45309" />
+                </linearGradient>
+                <linearGradient id="diyaOilGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#451a03" />
+                  <stop offset="100%" stopColor="#92400e" />
+                </linearGradient>
+                <linearGradient id="outerFlameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="35%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#ea580c" />
+                </linearGradient>
+                <linearGradient id="midFlameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="40%" stopColor="#fef08a" />
+                  <stop offset="100%" stopColor="#f59e0b" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
       </div>
 
       {/* Hero Banner */}

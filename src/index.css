@@ -2299,3 +2299,286 @@ tr.tax-terms-bank-section {
     height: 22px !important;
   }
 }
+
+/* Diwali Greetings Glow & Shimmer Animations */
+@keyframes diwaliFlicker {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.9)) drop-shadow(0 0 16px rgba(245, 158, 11, 0.7));
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08) rotate(1.5deg);
+    filter: drop-shadow(0 0 14px rgba(251, 191, 36, 1)) drop-shadow(0 0 24px rgba(234, 88, 12, 0.9));
+    opacity: 1;
+  }
+}
+
+@keyframes diwaliFloatStar {
+  0%, 100% {
+    transform: translateY(0px) scale(0.9);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-5px) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes diwaliLanternSway {
+  0%, 100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes diwaliGoldShine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.diwali-flame-glow {
+  animation: diwaliFlicker 2.2s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.diwali-star-twinkle-1 {
+  animation: diwaliFloatStar 2.6s ease-in-out infinite;
+}
+
+.diwali-star-twinkle-2 {
+  animation: diwaliFloatStar 3.2s ease-in-out infinite 0.7s;
+}
+
+.diwali-star-twinkle-3 {
+  animation: diwaliFloatStar 2.9s ease-in-out infinite 1.4s;
+}
+
+.diwali-lantern-swing {
+  transform-origin: top center;
+  animation: diwaliLanternSway 3.8s ease-in-out infinite alternate;
+}
+
+.diwali-gold-text {
+  background: linear-gradient(90deg, #fef08a 0%, #fde047 25%, #ffffff 50%, #fde047 75%, #fef08a 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: diwaliGoldShine 4.5s linear infinite;
+}
+
+/* Fireworks & Patakhe Animations */
+@keyframes fireworkBurst {
+  0% {
+    transform: scale(0.1);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+@keyframes rocketRise {
+  0% {
+    transform: translateY(120px) scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-20px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-40px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkleSpin {
+  0% {
+    transform: rotate(0deg) scale(0.8);
+    opacity: 0.3;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(360deg) scale(0.8);
+    opacity: 0.3;
+  }
+}
+
+@keyframes anarSparks {
+  0% {
+    transform: translateY(0) scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(-40px) scale(1.2);
+    opacity: 1;
+    filter: drop-shadow(0 0 10px #f59e0b);
+  }
+  100% {
+    transform: translateY(-70px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.firework-anim-1 {
+  animation: fireworkBurst 3.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  transform-origin: center;
+}
+
+.firework-anim-2 {
+  animation: fireworkBurst 3.8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.4s;
+  transform-origin: center;
+}
+
+.firework-anim-3 {
+  animation: fireworkBurst 3.5s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 2.2s;
+  transform-origin: center;
+}
+
+.rocket-trail-1 {
+  animation: rocketRise 3.4s ease-out infinite 0.2s;
+}
+
+/* Navbar Hanging Ladi & Lights Animations */
+@keyframes ladiBlink1 {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px #f59e0b) brightness(1.2);
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 1px #d97706) brightness(0.7);
+    opacity: 0.55;
+  }
+}
+
+@keyframes ladiBlink2 {
+  0%, 100% {
+    filter: drop-shadow(0 0 1px #dc2626) brightness(0.7);
+    opacity: 0.55;
+  }
+  50% {
+    filter: drop-shadow(0 0 6px #ef4444) brightness(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes ladiBlink3 {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px #10b981) brightness(1.2);
+    opacity: 1;
+  }
+  50% {
+    filter: drop-shadow(0 0 1px #059669) brightness(0.6);
+    opacity: 0.5;
+  }
+}
+
+@keyframes navRocketZoom {
+  0% {
+    transform: translateY(45px) rotate(-15deg) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-40px) rotate(-10deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-65px) rotate(-5deg) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes navMiniBurst {
+  0% {
+    transform: scale(0.2) rotate(0deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  85% {
+    transform: scale(1.1) rotate(45deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.3) rotate(60deg);
+    opacity: 0;
+  }
+}
+
+.nav-ladi-bulb-1 {
+  animation: ladiBlink1 1.4s ease-in-out infinite;
+}
+
+.nav-ladi-bulb-2 {
+  animation: ladiBlink2 1.4s ease-in-out infinite 0.45s;
+}
+
+.nav-ladi-bulb-3 {
+  animation: ladiBlink3 1.4s ease-in-out infinite 0.9s;
+}
+
+.nav-rocket-left {
+  animation: navRocketZoom 3.6s ease-out infinite 0.5s;
+}
+
+.nav-rocket-right {
+  animation: navRocketZoom 4.2s ease-out infinite 2s;
+}
+
+.nav-burst-left {
+  animation: navMiniBurst 3.2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+  transform-origin: center;
+}
+
+.nav-burst-right {
+  animation: navMiniBurst 3.8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.5s;
+  transform-origin: center;
+}
+
+
+.rocket-trail-2 {
+  animation: rocketRise 4s ease-out infinite 1.8s;
+}
+
+.sparkle-spinner {
+  animation: sparkleSpin 4s linear infinite;
+  transform-origin: center;
+}
+
+.anar-spray-1 {
+  animation: anarSparks 1.6s ease-out infinite;
+}
+
+.anar-spray-2 {
+  animation: anarSparks 1.9s ease-out infinite 0.5s;
+}
+
+.anar-spray-3 {
+  animation: anarSparks 1.7s ease-out infinite 0.9s;
+}
+
