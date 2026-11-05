@@ -331,21 +331,40 @@ export default function Dashboard() {
           </svg>
         </div>
 
-        {/* Rising Rocket 1 (Patakha) */}
-        <div className="absolute bottom-2 left-1/4 pointer-events-none rocket-trail-1">
-          <div className="flex flex-col items-center">
-            <div className="text-xl">🚀</div>
-            <div className="w-1 h-12 bg-gradient-to-t from-transparent via-orange-400 to-yellow-200 blur-[1px]" />
-            <div className="w-2 h-2 rounded-full bg-yellow-300 shadow-[0_0_8px_#f59e0b]" />
-          </div>
+        {/* Rising Real Diwali Rocket 1 (Patakha with Stick & Sparks) */}
+        <div className="absolute bottom-1 left-1/4 pointer-events-none rocket-trail-1">
+          <svg width="26" height="75" viewBox="0 0 26 75" fill="none" className="overflow-visible drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]">
+            <polygon points="13,0 5,16 21,16" fill="#dc2626" stroke="#fef08a" strokeWidth="1" />
+            <rect x="6" y="16" width="14" height="26" rx="2" fill="#f97316" stroke="#fde047" strokeWidth="1" />
+            <rect x="6" y="21" width="14" height="4" fill="#facc15" />
+            <rect x="6" y="32" width="14" height="4" fill="#16a34a" />
+            {/* Wooden Stick */}
+            <line x1="13" y1="30" x2="13" y2="70" stroke="#ca8a04" strokeWidth="2" strokeLinecap="round" />
+            {/* Real Fire Tail & Smoke Glow */}
+            <g className="real-rocket-sparks">
+              <circle cx="13" cy="44" r="3" fill="#ffffff" />
+              <path d="M 9,42 Q 13,56 17,42" fill="#ef4444" />
+              <line x1="13" y1="42" x2="13" y2="58" stroke="#f59e0b" strokeWidth="3" strokeDasharray="3 1" />
+            </g>
+          </svg>
         </div>
 
-        {/* Rising Rocket 2 (Patakha) */}
-        <div className="absolute bottom-4 right-1/4 pointer-events-none rocket-trail-2 hidden sm:block">
-          <div className="flex flex-col items-center">
-            <div className="text-xl -rotate-12">🎆</div>
-            <div className="w-1 h-14 bg-gradient-to-t from-transparent via-amber-400 to-yellow-100 blur-[1px]" />
-          </div>
+        {/* Rising Real Diwali Rocket 2 (Patakha with Stick & Sparks) */}
+        <div className="absolute bottom-2 right-1/4 pointer-events-none rocket-trail-2 hidden sm:block">
+          <svg width="26" height="75" viewBox="0 0 26 75" fill="none" className="overflow-visible drop-shadow-[0_0_12px_rgba(234,88,12,0.8)]">
+            <polygon points="13,0 5,16 21,16" fill="#7c3aed" stroke="#fef08a" strokeWidth="1" />
+            <rect x="6" y="16" width="14" height="26" rx="2" fill="#ea580c" stroke="#fde047" strokeWidth="1" />
+            <rect x="6" y="21" width="14" height="4" fill="#38bdf8" />
+            <rect x="6" y="32" width="14" height="4" fill="#facc15" />
+            {/* Wooden Stick */}
+            <line x1="13" y1="30" x2="13" y2="70" stroke="#ca8a04" strokeWidth="2" strokeLinecap="round" />
+            {/* Real Fire Tail & Smoke Glow */}
+            <g className="real-rocket-sparks">
+              <circle cx="13" cy="44" r="3" fill="#ffffff" />
+              <path d="M 9,42 Q 13,56 17,42" fill="#f97316" />
+              <line x1="13" y1="42" x2="13" y2="58" stroke="#eab308" strokeWidth="3" strokeDasharray="3 1" />
+            </g>
+          </svg>
         </div>
 
         {/* Anar Spark Sprays (Bottom left & right) */}
