@@ -667,73 +667,6 @@ export default function App() {
               )}
             </span>
           </div>
-
-          {/* --- LEFT SIDE: LOGO & KRISHNA PRINTERS SE LEKAR DASHBOARD TAK DIWALI LADI & ROCKET --- */}
-          {/* Extended Hanging Electric Ladi Lights under Logo & Title extending till Dashboard */}
-          <div className="absolute -bottom-5 left-2 flex items-start pointer-events-none select-none z-50">
-            <svg className="w-[310px] sm:w-[350px] h-4 overflow-visible" viewBox="0 0 320 20">
-              {/* Connected scalloped golden wire curves */}
-              <path
-                d="M 0,0 Q 25,11 50,2 Q 75,11 100,2 Q 125,11 150,2 Q 175,11 200,2 Q 225,11 250,2 Q 275,11 300,2 Q 310,8 320,0"
-                fill="none"
-                stroke="#ca8a04"
-                strokeWidth="1"
-                strokeDasharray="2 1.5"
-                opacity="0.6"
-              />
-              {/* Colored glowing bulbs along the curve */}
-              <circle cx="15" cy="5" r="3" fill="#facc15" className="nav-ladi-bulb-1" />
-              <circle cx="35" cy="7.5" r="3.2" fill="#ef4444" className="nav-ladi-bulb-2" />
-              <circle cx="65" cy="7" r="3" fill="#10b981" className="nav-ladi-bulb-3" />
-              <circle cx="85" cy="5" r="3.2" fill="#f59e0b" className="nav-ladi-bulb-1" />
-
-              <circle cx="115" cy="6" r="3" fill="#3b82f6" className="nav-ladi-bulb-2" />
-              <circle cx="135" cy="8" r="3.2" fill="#ec4899" className="nav-ladi-bulb-3" />
-              <circle cx="165" cy="7" r="3" fill="#facc15" className="nav-ladi-bulb-1" />
-              <circle cx="185" cy="5" r="3.2" fill="#10b981" className="nav-ladi-bulb-2" />
-
-              <circle cx="215" cy="6" r="3" fill="#ef4444" className="nav-ladi-bulb-3" />
-              <circle cx="235" cy="8" r="3.2" fill="#f59e0b" className="nav-ladi-bulb-1" />
-              <circle cx="265" cy="7" r="3" fill="#38bdf8" className="nav-ladi-bulb-2" />
-              <circle cx="285" cy="5.5" r="3.2" fill="#facc15" className="nav-ladi-bulb-3" />
-              <circle cx="308" cy="4" r="2.8" fill="#ec4899" className="nav-ladi-bulb-1" />
-            </svg>
-          </div>
-
-          {/* Left Real Diwali Wooden Stick Rocket (Bam/Rocket) */}
-          <div className="absolute -bottom-10 -left-4 pointer-events-none select-none nav-rocket-left">
-            <svg width="22" height="65" viewBox="0 0 22 65" fill="none" className="overflow-visible">
-              {/* Rocket Nose Cone (Red/Gold) */}
-              <polygon points="11,0 4,14 18,14" fill="#dc2626" stroke="#fef08a" strokeWidth="0.8" />
-              {/* Cylindrical Rocket Cartridge Body */}
-              <rect x="5" y="14" width="12" height="22" rx="1.5" fill="#ea580c" stroke="#fde047" strokeWidth="0.8" />
-              {/* Decorative Banding */}
-              <rect x="5" y="18" width="12" height="3" fill="#facc15" />
-              <rect x="5" y="27" width="12" height="3" fill="#16a34a" />
-              {/* Wooden Stick (Bambooki lakdi) */}
-              <line x1="11" y1="26" x2="11" y2="58" stroke="#ca8a04" strokeWidth="1.8" strokeLinecap="round" />
-              {/* Burning Fuse Sparks & Fire Tail */}
-              <g className="real-rocket-sparks">
-                <circle cx="11" cy="38" r="2.5" fill="#fef08a" />
-                <path d="M 8,36 Q 11,46 14,36" fill="#f97316" />
-                <line x1="11" y1="36" x2="11" y2="48" stroke="#f59e0b" strokeWidth="2.5" strokeDasharray="3 1" />
-              </g>
-            </svg>
-          </div>
-
-          {/* Firework Burst near Krishna Printers text */}
-          <div className="absolute -bottom-9 left-40 w-8 h-8 pointer-events-none select-none nav-burst-left">
-            <svg viewBox="0 0 50 50" className="w-full h-full">
-              <circle cx="25" cy="25" r="2" fill="#fef08a" />
-              <line x1="25" y1="25" x2="25" y2="5" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="42" y2="12" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="45" y2="25" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="38" y2="40" stroke="#10b981" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="12" y2="40" stroke="#ec4899" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="5" y2="25" stroke="#facc15" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="10" y2="10" stroke="#8b5cf6" strokeWidth="1.5" strokeDasharray="2 1" />
-            </svg>
-          </div>
         </div>
 
         {/* Desktop Navigation */}
@@ -781,68 +714,7 @@ export default function App() {
           })}
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 ml-auto relative">
-          {/* --- RIGHT SIDE: PROFILE/NOTIFICATION SE LEKAR REPORT MENU TAK DIWALI HANGING LADI, ROCKET & FIREWORK BURST --- */}
-          {/* Extended Hanging Electric Ladi Lights under Profile / Bell extending towards Report */}
-          <div className="absolute -bottom-5 right-2 flex items-start pointer-events-none select-none z-50">
-            <svg className="w-[200px] sm:w-[240px] h-4 overflow-visible" viewBox="0 0 220 20">
-              <path
-                d="M 0,0 Q 25,11 50,2 Q 75,11 100,2 Q 125,11 150,2 Q 175,11 200,2 Q 210,8 220,0"
-                fill="none"
-                stroke="#ca8a04"
-                strokeWidth="1"
-                strokeDasharray="2 1.5"
-                opacity="0.6"
-              />
-              {/* Colored glowing bulbs along the curve reaching towards Report */}
-              <circle cx="15" cy="5" r="3" fill="#facc15" className="nav-ladi-bulb-1" />
-              <circle cx="35" cy="7.5" r="3.2" fill="#ef4444" className="nav-ladi-bulb-2" />
-              <circle cx="65" cy="7" r="3" fill="#10b981" className="nav-ladi-bulb-3" />
-              <circle cx="85" cy="5" r="3.2" fill="#f59e0b" className="nav-ladi-bulb-1" />
-
-              <circle cx="115" cy="6" r="3" fill="#3b82f6" className="nav-ladi-bulb-2" />
-              <circle cx="135" cy="8" r="3.2" fill="#ec4899" className="nav-ladi-bulb-3" />
-              <circle cx="165" cy="7" r="3" fill="#facc15" className="nav-ladi-bulb-1" />
-              <circle cx="185" cy="5.5" r="3.2" fill="#10b981" className="nav-ladi-bulb-2" />
-              <circle cx="208" cy="4" r="2.8" fill="#ef4444" className="nav-ladi-bulb-3" />
-            </svg>
-          </div>
-
-          {/* Right Real Diwali Wooden Stick Rocket (Bam/Rocket) */}
-          <div className="absolute -bottom-10 -right-3 pointer-events-none select-none nav-rocket-right">
-            <svg width="22" height="65" viewBox="0 0 22 65" fill="none" className="overflow-visible">
-              {/* Rocket Nose Cone (Red/Gold) */}
-              <polygon points="11,0 4,14 18,14" fill="#dc2626" stroke="#fef08a" strokeWidth="0.8" />
-              {/* Cylindrical Rocket Cartridge Body */}
-              <rect x="5" y="14" width="12" height="22" rx="1.5" fill="#ea580c" stroke="#fde047" strokeWidth="0.8" />
-              {/* Decorative Banding */}
-              <rect x="5" y="18" width="12" height="3" fill="#facc15" />
-              <rect x="5" y="27" width="12" height="3" fill="#2563eb" />
-              {/* Wooden Stick (Bambooki lakdi) */}
-              <line x1="11" y1="26" x2="11" y2="58" stroke="#ca8a04" strokeWidth="1.8" strokeLinecap="round" />
-              {/* Burning Fuse Sparks & Fire Tail */}
-              <g className="real-rocket-sparks">
-                <circle cx="11" cy="38" r="2.5" fill="#fef08a" />
-                <path d="M 8,36 Q 11,46 14,36" fill="#f97316" />
-                <line x1="11" y1="36" x2="11" y2="48" stroke="#f59e0b" strokeWidth="2.5" strokeDasharray="3 1" />
-              </g>
-            </svg>
-          </div>
-
-          {/* Right Firework Burst near Report & Profile */}
-          <div className="absolute -bottom-9 right-36 w-8 h-8 pointer-events-none select-none nav-burst-right">
-            <svg viewBox="0 0 50 50" className="w-full h-full">
-              <circle cx="25" cy="25" r="2" fill="#ffffff" />
-              <line x1="25" y1="25" x2="25" y2="4" stroke="#f43f5e" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="44" y2="12" stroke="#facc15" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="45" y2="25" stroke="#10b981" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="38" y2="40" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="12" y2="40" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="5" y2="25" stroke="#ec4899" strokeWidth="1.5" strokeDasharray="2 1" />
-              <line x1="25" y1="25" x2="10" y2="10" stroke="#a855f7" strokeWidth="1.5" strokeDasharray="2 1" />
-            </svg>
-          </div>
-
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 ml-auto">
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
