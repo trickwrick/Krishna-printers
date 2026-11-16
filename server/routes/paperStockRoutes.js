@@ -28,6 +28,9 @@ router.get('/transactions', async (req, res) => {
       const paperSize = tx.paperSize || (stock ? (tx.paperType === 'inner' ? (stock.innerPaperSize || stock.coverPaperSize) : (stock.coverPaperSize || stock.innerPaperSize)) : '');
       const gsm = tx.gsm || (stock ? (tx.paperType === 'inner' ? (stock.innerGSM || stock.gsm) : (stock.coverGSM || stock.gsm)) : undefined);
       const supplier = tx.supplier || (stock ? (tx.paperType === 'inner' ? stock.innerSupplier : stock.coverSupplier) : '');
+      const partyName = tx.partyName || (stock ? (tx.paperType === 'inner' ? (stock.innerPartyName || stock.coverPartyName) : (stock.coverPartyName || stock.innerPartyName)) : '');
+      const stockName = tx.stockName || stock?.name || tx.paperName || '';
+      const paperName = tx.paperName || (stock ? (tx.paperType === 'inner' ? (stock.innerName || stock.name) : (stock.coverName || stock.name)) : tx.stockName) || '';
       
       // Group by stock ID + paperType (or stock/paper name + type) to keep cover & inner independent
       const stockIdentifier = stock?._id ? String(stock._id) : String(tx.stockName || tx.paperName || 'default').trim().toLowerCase();
@@ -46,6 +49,9 @@ router.get('/transactions', async (req, res) => {
       return {
         ...tx,
         paperStockId: stock?._id || tx.paperStockId,
+        stockName,
+        paperName,
+        partyName,
         paperSize,
         gsm,
         supplier,

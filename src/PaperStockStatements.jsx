@@ -26,6 +26,62 @@ const PaperStockStatements = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
+  // Helper to determine if transaction belongs to the exact same paper stock
+  const isSameStock = (t, target) => {
+    if (!t || !target) return false;
+
+    // 1. Source must match ('Company paper' vs 'Party paper')
+    const tSource = t.paperSource || 'Company paper';
+    const targetSource = target.paperSource || 'Company paper';
+    if (tSource !== targetSource) return false;
+
+    const getStockId = (item) => {
+      if (!item) return '';
+      const id = item.paperStockId?._id || item.paperStockId || item.stockId;
+      return id ? String(id) : '';
+    };
+
+    const tStockId = getStockId(t);
+    const targetStockId = getStockId(target);
+
+    // 2. If both have paperStockId, compare them
+    if (tStockId && targetStockId) {
+      if (tStockId !== targetStockId) return false;
+
+      // If a single stock item has separate cover and inner paper with different names
+      if (t.paperType && target.paperType && t.paperType !== target.paperType) {
+        const tPName = (t.paperName || t.stockName || '').trim().toLowerCase();
+        const targetPName = (target.paperName || target.stockName || '').trim().toLowerCase();
+        if (tPName && targetPName && tPName !== targetPName) return false;
+      }
+      return true;
+    }
+
+    // 3. Fallback matching when paperStockId is not present on either:
+    const tName = (t.paperName || t.stockName || '').trim().toLowerCase();
+    const targetName = (target.paperName || target.stockName || '').trim().toLowerCase();
+    if (!tName || !targetName || tName !== targetName) return false;
+
+    // For Party paper, Party Name MUST match!
+    if (targetSource === 'Party paper') {
+      const tParty = (t.partyName || '').trim().toLowerCase();
+      const targetParty = (target.partyName || '').trim().toLowerCase();
+      if (tParty && targetParty && tParty !== targetParty) return false;
+    }
+
+    // Match GSM if present on both
+    if (t.gsm && target.gsm && Number(t.gsm) !== Number(target.gsm)) {
+      return false;
+    }
+
+    // Match Paper Size if present on both
+    if (t.paperSize && target.paperSize && t.paperSize.trim().toLowerCase() !== target.paperSize.trim().toLowerCase()) {
+      return false;
+    }
+
+    return true;
+  };
+
   // 1. View Function (Eye Icon)
   const handleView = (item) => {
     setSelectedTransaction(item);
@@ -350,7 +406,7 @@ const PaperStockStatements = () => {
                       </p>
                     </td>
                     <td className="px-6 py-5">
-                      {item.transactionType === 'deduct' && item.partyName ? (
+                      {item.partyName ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5 text-sm font-bold text-gray-800">
                             <User size={13} className="text-gray-400" />
@@ -399,88 +455,152 @@ const PaperStockStatements = () => {
       </div>
 
       {/* View Modal */}
-      {isViewModalOpen && selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-white">
-              <div>
-                <h3 className="text-2xl font-black text-gray-900">Stock Ledger</h3>
-                <p className="text-sm font-black text-indigo-600 uppercase mt-1 tracking-wider">
-                  {selectedTransaction.stockName || selectedTransaction.paperName || '-'}
-                </p>
-              </div>
-              <button 
-                onClick={closeViewModal}
-                className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-4 bg-gray-50/50 overflow-y-auto grow space-y-3">
-              {transactions
-                .filter(t => (t.stockName || t.paperName) === (selectedTransaction.stockName || selectedTransaction.paperName))
-                .map((t, idx) => (
-                <div key={t._id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm gap-4">
-                  <div className="flex items-start gap-4 flex-1">
-                    {/* Left: Action badges and Date */}
-                    <div className="flex flex-col gap-2 w-40 shrink-0 border-r border-gray-50 pr-2">
-                      <div className="flex items-center gap-1.5">
-                        {t.transactionType === 'add' ? (
-                          <div className="flex items-center gap-1 px-2 py-0.5 border border-emerald-100 rounded-md bg-white text-emerald-600 text-[9px] font-black tracking-wider uppercase shadow-sm">
-                            <ArrowUpCircle size={10} /> ADDED
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 px-2 py-0.5 border border-red-100 rounded-md bg-white text-red-500 text-[9px] font-black tracking-wider uppercase shadow-sm">
-                            <ArrowDownCircle size={10} /> DEDUCTED
-                          </div>
-                        )}
-                        {t.gsm && (
-                          <span className="px-2 py-0.5 border border-gray-200 rounded-md text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-50">
-                            {t.gsm} GSM
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-1">
-                        <Calendar size={12} />
-                        {new Date(t.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </div>
-                    </div>
+      {isViewModalOpen && selectedTransaction && (() => {
+        const ledgerTransactions = transactions.filter(t => isSameStock(t, selectedTransaction));
+        const modalAdded = ledgerTransactions
+          .filter(t => t.transactionType === 'add')
+          .reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+        const modalDeducted = ledgerTransactions
+          .filter(t => t.transactionType === 'deduct')
+          .reduce((sum, t) => sum + (Number(t.quantity) || 0), 0);
+        const modalBalance = ledgerTransactions.length > 0
+          ? (ledgerTransactions[0].balanceAfter !== undefined
+              ? ledgerTransactions[0].balanceAfter
+              : Math.max(0, modalAdded - modalDeducted))
+          : 0;
 
-                    {/* Middle: Name/Job and Details */}
-                    <div className="flex flex-col justify-center flex-1 py-1">
-                      <p className="text-sm font-black text-indigo-700 flex items-center gap-1.5">
-                        {t.partyName ? (
-                          <>
-                            <span className="text-indigo-400 text-lg leading-none">#</span> 
-                            Job Card: {t.jobNumber || '-'} {t.partyName ? `(${t.partyName})` : ''}
-                          </>
-                        ) : (
-                          'Stock Addition / Update'
-                        )}
-                      </p>
-                      <p className="text-xs font-semibold text-gray-500 mt-1.5 flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px]">i</div>
-                        {t.note || (t.transactionType === 'add' ? `Stock added` : `Deducted for job card`)}
-                      </p>
-                    </div>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-white">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-gray-900">Stock Ledger</h3>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      (selectedTransaction.paperSource || 'Company paper') === 'Party paper'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {(selectedTransaction.paperSource || 'Company paper') === 'Party paper' ? '🎉 Party Paper' : '🏢 Company Paper'}
+                    </span>
                   </div>
-
-                  {/* Right: Quantity and Balance */}
-                  <div className="text-right flex flex-col justify-center sm:pl-4">
-                    <p className={`text-2xl font-black tracking-tight ${t.transactionType === 'add' ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {t.transactionType === 'add' ? '+' : '-'}{t.quantity?.toLocaleString()}
-                    </p>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                      BALANCE: <span className="text-gray-700">{t.balanceAfter?.toLocaleString()}</span>
-                    </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
+                    <span className="font-black text-indigo-600 uppercase tracking-wider">
+                      {selectedTransaction.paperName || selectedTransaction.stockName || '-'}
+                    </span>
+                    {selectedTransaction.partyName && (
+                      <span className="flex items-center gap-1 font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md text-xs">
+                        <User size={12} className="text-gray-500" />
+                        {selectedTransaction.partyName}
+                      </span>
+                    )}
+                    {selectedTransaction.gsm && (
+                      <span className="font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md text-xs">
+                        {selectedTransaction.gsm} GSM
+                      </span>
+                    )}
+                    {selectedTransaction.paperSize && (
+                      <span className="font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md text-xs">
+                        Size: {selectedTransaction.paperSize}
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
+                <button 
+                  onClick={closeViewModal}
+                  className="p-2 hover:bg-gray-100 text-gray-500 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Quick Stock Summary for this specific paper */}
+              <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-100">
+                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Total Added</p>
+                  <p className="text-base sm:text-lg font-black text-emerald-600 mt-0.5">+{modalAdded.toLocaleString()}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Total Deducted</p>
+                  <p className="text-base sm:text-lg font-black text-red-500 mt-0.5">-{modalDeducted.toLocaleString()}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-indigo-100 shadow-xs">
+                  <p className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">Current Balance</p>
+                  <p className="text-base sm:text-lg font-black text-indigo-700 mt-0.5">{modalBalance.toLocaleString()} Sheets</p>
+                </div>
+              </div>
+              
+              {/* Transactions List */}
+              <div className="p-4 bg-gray-50/50 overflow-y-auto grow space-y-3">
+                {ledgerTransactions.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400 italic">
+                    Is paper ka koi transaction record nahi mila.
+                  </div>
+                ) : (
+                  ledgerTransactions.map((t, idx) => (
+                    <div key={t._id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm gap-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        {/* Left: Action badges and Date */}
+                        <div className="flex flex-col gap-2 w-40 shrink-0 border-r border-gray-50 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            {t.transactionType === 'add' ? (
+                              <div className="flex items-center gap-1 px-2 py-0.5 border border-emerald-100 rounded-md bg-white text-emerald-600 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                                <ArrowUpCircle size={10} /> ADDED
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 px-2 py-0.5 border border-red-100 rounded-md bg-white text-red-500 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                                <ArrowDownCircle size={10} /> DEDUCTED
+                              </div>
+                            )}
+                            {t.gsm && (
+                              <span className="px-2 py-0.5 border border-gray-200 rounded-md text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-50">
+                                {t.gsm} GSM
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 mt-1">
+                            <Calendar size={12} />
+                            {new Date(t.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                          </div>
+                        </div>
+
+                        {/* Middle: Name/Job and Details */}
+                        <div className="flex flex-col justify-center flex-1 py-1">
+                          <p className="text-sm font-black text-indigo-700 flex items-center gap-1.5">
+                            {t.partyName ? (
+                              <>
+                                <span className="text-indigo-400 text-lg leading-none">#</span> 
+                                Job Card: {t.jobNumber || '-'} {t.partyName ? `(${t.partyName})` : ''}
+                              </>
+                            ) : (
+                              'Stock Addition / Update'
+                            )}
+                          </p>
+                          <p className="text-xs font-semibold text-gray-500 mt-1.5 flex items-center gap-1">
+                            <span className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px]">i</span>
+                            {t.note || (t.transactionType === 'add' ? `Stock added` : `Deducted for job card`)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Right: Quantity and Balance */}
+                      <div className="text-right flex flex-col justify-center sm:pl-4">
+                        <p className={`text-2xl font-black tracking-tight ${t.transactionType === 'add' ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {t.transactionType === 'add' ? '+' : '-'}{t.quantity?.toLocaleString()}
+                        </p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                          BALANCE: <span className="text-gray-700">{t.balanceAfter?.toLocaleString()}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
