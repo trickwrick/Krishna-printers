@@ -2,7 +2,7 @@ import PaperStock from '../models/PaperStock.js';
 import { logPaperStockTransaction } from './paperStockTransactions.js';
 
 // Helper to find a paper stock document
-export const findPaperStock = async (stockId, paperName, gsm) => {
+export const findPaperStock = async (stockId, paperName, gsm, paperSource = null, partyName = null) => {
   if (stockId) {
     const stock = await PaperStock.findById(stockId);
     if (stock) return stock;
@@ -31,7 +31,21 @@ export const findPaperStock = async (stockId, paperName, gsm) => {
     }));
   }
 
-  return await PaperStock.findOne(query);
+  if (paperSource) {
+    query.paperSource = paperSource;
+    if (paperSource === 'Party paper' && partyName) {
+      query.partyName = partyName;
+    }
+  }
+
+  let stock = await PaperStock.findOne(query);
+  if (!stock && paperSource) {
+    // Fallback without paperSource filter if not found
+    delete query.paperSource;
+    delete query.partyName;
+    stock = await PaperStock.findOne(query);
+  }
+  return stock;
 };
 
 export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
@@ -77,30 +91,36 @@ export const syncPaperStockWithJob = async (jobCard, oldJobCard = null) => {
       const paperName = newLine?.paperName || (key.includes('_') ? key.split('_')[0] : '');
       const gsm = newLine?.gsm || (key.includes('_') ? key.split('_')[1] : null);
 
-      const stock = await findPaperStock(stockId, paperName, gsm);
+      const stock = await findPaperStock(stockId, paperName, gsm, jobCard.paperSource, jobCard.partyName);
       
       if (!stock) {
         console.warn(`Paper Stock not found for ${paperName} (${gsm} GSM)`);
         continue;
       }
 
-      // We always decrement the total 'quantity'.
-      // To ensure legacy fields stay in sync, we only decrement coverQuantity if we're processing a cover line
-      // and innerQuantity if we're processing an inner line.
-      const updateOp = {};
-      updateOp['quantity'] = -delta;
-      if (type === 'cover' && stock.coverQuantity !== undefined) updateOp['coverQuantity'] = -delta;
-      if (type === 'inner' && stock.innerQuantity !== undefined) updateOp['innerQuantity'] = -delta;
+      // We ensure stock quantity never drops below 0 (clamped to Math.max(0, ...))
+      const currentQty = stock.quantity !== undefined ? Number(stock.quantity) : 0;
+      const newQuantity = Math.max(0, currentQty - delta);
+
+      const setOp = { quantity: newQuantity };
+      if (type === 'cover' && stock.coverQuantity !== undefined) {
+        const currentCover = Number(stock.coverQuantity) || 0;
+        setOp.coverQuantity = Math.max(0, currentCover - delta);
+      }
+      if (type === 'inner' && stock.innerQuantity !== undefined) {
+        const currentInner = Number(stock.innerQuantity) || 0;
+        setOp.innerQuantity = Math.max(0, currentInner - delta);
+      }
 
       const updatedStock = await PaperStock.findByIdAndUpdate(
         stock._id,
-        { $inc: updateOp },
+        { $set: setOp },
         { new: true }
       );
 
-      const balanceRemaining = type === 'cover'
+      const balanceRemaining = Math.max(0, type === 'cover'
         ? (updatedStock.coverQuantity ?? updatedStock.quantity)
-        : (updatedStock.innerQuantity ?? updatedStock.quantity);
+        : (updatedStock.innerQuantity ?? updatedStock.quantity));
 
       await logPaperStockTransaction({
         paperStockId: updatedStock._id,

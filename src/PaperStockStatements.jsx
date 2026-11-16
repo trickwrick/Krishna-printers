@@ -9,7 +9,8 @@ import {
   Layers,
   Eye,
   RotateCcw,
-  X
+  X,
+  PackageCheck
 } from 'lucide-react';
 import { buildPaperStockHistory } from './utils/buildPaperStockHistory.js';
 import { API_BASE_URL } from './utils/apiBase';
@@ -21,6 +22,7 @@ const PaperStockStatements = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Company paper');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [availabilityFilter, setAvailabilityFilter] = useState('all'); // 'all', 'available', 'completed'
 
   // Modal State for Viewing Data
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -208,10 +210,21 @@ const PaperStockStatements = () => {
     };
   }, []);
 
-  const filteredTransactions = transactions.filter((item) => {
+  const baseTabTransactions = transactions.filter((item) => {
     const matchesTab = (item.paperSource || 'Company paper') === activeTab;
     const matchesType = typeFilter === 'all' || item.transactionType === typeFilter;
-    if (!matchesTab || !matchesType) return false;
+    return matchesTab && matchesType;
+  });
+
+  const availabilityCounts = {
+    all: baseTabTransactions.length,
+    available: baseTabTransactions.filter(t => (Number(t.balanceAfter) || 0) > 0).length,
+    completed: baseTabTransactions.filter(t => (Number(t.balanceAfter) || 0) <= 0).length,
+  };
+
+  const filteredTransactions = baseTabTransactions.filter((item) => {
+    if (availabilityFilter === 'available' && (Number(item.balanceAfter) || 0) <= 0) return false;
+    if (availabilityFilter === 'completed' && (Number(item.balanceAfter) || 0) > 0) return false;
 
     const query = searchQuery.trim().toLowerCase();
     if (!query) return true;
@@ -238,6 +251,7 @@ const PaperStockStatements = () => {
   const totalDeducted = filteredTransactions
     .filter((t) => t.transactionType === 'deduct')
     .reduce((sum, t) => sum + (t.quantity || 0), 0);
+  const totalRemaining = Math.max(0, totalAdded - totalDeducted);
 
   const formatDateTime = (value) => {
     const date = new Date(value);
@@ -265,7 +279,7 @@ const PaperStockStatements = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5">
           <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
             <ArrowUpCircle size={26} />
@@ -275,6 +289,7 @@ const PaperStockStatements = () => {
             <h3 className="text-2xl font-black text-gray-900 tracking-tight">{totalAdded.toLocaleString()} Sheets</h3>
           </div>
         </div>
+
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-5">
           <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center text-red-500">
             <ArrowDownCircle size={26} />
@@ -284,6 +299,16 @@ const PaperStockStatements = () => {
             <h3 className="text-2xl font-black text-gray-900 tracking-tight">{totalDeducted.toLocaleString()} Sheets</h3>
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-indigo-100 flex items-center gap-5">
+          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
+            <PackageCheck size={26} />
+          </div>
+          <div>
+            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1">Available / Remaining</p>
+            <h3 className="text-2xl font-black text-indigo-900 tracking-tight">{totalRemaining.toLocaleString()} Sheets</h3>
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-3 mb-6">
@@ -291,7 +316,10 @@ const PaperStockStatements = () => {
           {['Company paper', 'Party paper'].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setAvailabilityFilter('all');
+              }}
               className={`flex-1 py-3 px-4 rounded-xl font-bold uppercase tracking-wider text-xs transition-all ${activeTab === tab ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'
                 }`}
             >
@@ -318,8 +346,65 @@ const PaperStockStatements = () => {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h2 className="text-lg font-bold text-gray-900">Stock Transaction History</h2>
+        <div className="p-6 border-b border-gray-50 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-bold text-gray-900">Stock Transaction History</h2>
+
+            {/* Availability / Stock Status Filter Buttons */}
+            <div className="flex bg-gray-100/80 p-1 rounded-2xl gap-1 text-xs font-bold border border-gray-200/50">
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('all')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                  availabilityFilter === 'all'
+                    ? 'bg-white text-gray-900 shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <span>All</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  availabilityFilter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {availabilityCounts.all}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('available')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                  availabilityFilter === 'available'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-emerald-700'
+                }`}
+              >
+                <span>Available Stock</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  availabilityFilter === 'available' ? 'bg-emerald-800 text-white' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {availabilityCounts.available}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAvailabilityFilter('completed')}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                  availabilityFilter === 'completed'
+                    ? 'bg-gray-800 text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <span>Completed / Nil</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  availabilityFilter === 'completed' ? 'bg-gray-950 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {availabilityCounts.completed}
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div className="relative w-full sm:w-72">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -426,7 +511,18 @@ const PaperStockStatements = () => {
                       )}
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <p className="font-black text-gray-900 text-sm">{item.balanceAfter?.toLocaleString()} Sheets</p>
+                      <div className="flex flex-col items-end gap-1">
+                        <p className="font-black text-gray-900 text-sm">{item.balanceAfter?.toLocaleString()} Sheets</p>
+                        {(Number(item.balanceAfter) || 0) > 0 ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[9px] font-black uppercase ring-1 ring-emerald-100">
+                            Available
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full text-[9px] font-black uppercase ring-1 ring-gray-200">
+                            Completed
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center justify-center gap-3">

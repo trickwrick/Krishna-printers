@@ -51,7 +51,7 @@ import ContactSupport from './ContactSupport';
 import Report from './Report';
 import StaffTeamManagement from './StaffTeamManagement';
 import { clearSession, saveSession, getLegacyAdminUser } from './utils/authSession';
-import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser } from './utils/permissions';
+import { hasPermission, canAccessStaffTeam, canAccessDashboard, getDefaultRoute, isAdminUser, getCurrentUser } from './utils/permissions';
 import { STAFF_TEAM_ENABLED } from './utils/featureFlags';
 import { API_BASE_URL } from './utils/apiBase';
 
@@ -159,7 +159,7 @@ const DropdownMenu = ({ title, icon: Icon, items, isActive }) => {
   );
 };
 
-const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, showSettings, location, onContactSupport, onLogout }) => {
+const ProfileMenu = ({ currentUser, settingsItems, staffTeamItems, showStaffTeam, showSettings, location, onContactSupport, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStaffOpen, setIsStaffOpen] = useState(false);
@@ -311,7 +311,7 @@ const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, showSetting
       </button>
 
       <div
-        className={`absolute top-full right-0 w-55 z-60 transition-opacity duration-150 ${
+        className={`absolute top-full right-0 w-64 z-60 transition-opacity duration-150 ${
           isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
         }`}
         onMouseEnter={openMenu}
@@ -319,6 +319,23 @@ const ProfileMenu = ({ settingsItems, staffTeamItems, showStaffTeam, showSetting
       >
         <div className="pt-2">
           <div className="bg-white border border-gray-100 rounded-xl shadow-2xl p-2 space-y-1">
+            {/* User Info Header */}
+            <div className="px-3 py-2.5 bg-blue-50/50 rounded-lg border border-blue-100/50 mb-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                  {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+                    {currentUser?.name || 'User'}
+                  </p>
+                  <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                    {currentUser?.roleName || currentUser?.team || currentUser?.email || 'Logged In'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {showSettings && renderFlyout({
               isSubOpen: isSettingsOpen,
               setSubOpen: setIsSettingsOpen,
@@ -379,6 +396,11 @@ export default function App() {
 
   // Auth Protection
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+
+  useEffect(() => {
+    setCurrentUser(getCurrentUser());
+  }, [location.pathname]);
 
   // Site Settings Integration
   const [siteSettings, setSiteSettings] = useState(() => {
@@ -766,6 +788,7 @@ export default function App() {
           </div>
 
           <ProfileMenu
+            currentUser={currentUser}
             settingsItems={profileSettingsItems}
             staffTeamItems={staffTeamItems}
             showStaffTeam={showStaffTeamMenu}
@@ -788,10 +811,22 @@ export default function App() {
             }`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xl font-bold text-gray-900">Menu</span>
-            <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-gray-600">
-              <CloseIcon size={24} />
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+              <div className="min-w-0">
+                <span className="text-sm font-bold text-gray-900 truncate block leading-tight">
+                  {currentUser?.name || 'User'}
+                </span>
+                <span className="text-[11px] text-gray-500 truncate block">
+                  {currentUser?.roleName || currentUser?.team || currentUser?.email || 'Logged In'}
+                </span>
+              </div>
+            </div>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-400 hover:text-gray-600 shrink-0 ml-2">
+              <CloseIcon size={22} />
             </button>
           </div>
           <div className="p-4 overflow-y-auto h-[calc(100%-80px)]">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2, ZoomIn, Eye, Download, ExternalLink } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2, ZoomIn, Eye, Download, ExternalLink, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
@@ -139,6 +139,8 @@ export default function JobCardForm() {
   const [formErrors, setFormErrors] = useState([]);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [isUpdatedSuccess, setIsUpdatedSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [useShipAddress, setUseShipAddress] = useState(
     editData?.useShipAddress || !!(editData?.shipAddress || editData?.shipPartyName)
   );
@@ -495,15 +497,20 @@ export default function JobCardForm() {
   const activeCoverStock = React.useMemo(() => {
     if (!selectedPaper || selectedPaper === 'Custom' || !paperStocks.length) return null;
     return paperStocks.find((stock) => {
+      // If paperSource is party paper, match partyName as well
+      if (paperSource && stock.paperSource && stock.paperSource !== paperSource) return false;
+      if (paperSource === 'Party paper' && partyName && stock.partyName && stock.partyName.toLowerCase() !== partyName.toLowerCase()) {
+        return false;
+      }
       const label = formatCoverPaperOption(stock);
       const name = getCoverPaperLabel(stock);
       return (selectedPaperLabel && label === selectedPaperLabel) ||
              (name && name.toLowerCase() === selectedPaper.toLowerCase());
     }) || null;
-  }, [selectedPaper, selectedPaperLabel, paperStocks]);
+  }, [selectedPaper, selectedPaperLabel, paperStocks, paperSource, partyName]);
 
   const availableCoverStockQty = activeCoverStock
-    ? (activeCoverStock.coverQuantity !== undefined ? Number(activeCoverStock.coverQuantity) : Number(activeCoverStock.quantity) || 0)
+    ? Math.max(0, (activeCoverStock.coverQuantity !== undefined ? Number(activeCoverStock.coverQuantity) : Number(activeCoverStock.quantity) || 0))
     : null;
 
   useEffect(() => {
@@ -780,6 +787,7 @@ export default function JobCardForm() {
 
     const saveAndOpenList = async () => {
       let savedJobId = null;
+      setIsSaving(true);
       try {
         const response = await fetch(`${API_BASE_URL}/api/jobcard`, {
           method: 'POST',
@@ -809,10 +817,25 @@ export default function JobCardForm() {
       } catch (err) {
         console.error("Server save error:", err);
         saveLocalJobCard(jobCard);
+      } finally {
+        setIsSaving(false);
       }
       window.dispatchEvent(new Event('jobCardsUpdated'));
       window.dispatchEvent(new Event('fetchNotifications'));
-      navigate('/job-card-list');
+
+      // If user was editing an existing job card, stay on page and show Back & Print buttons
+      if (editData) {
+        setIsUpdatedSuccess(true);
+        if (savedJobId || editData._id || editData.jobNumber) {
+          sessionStorage.setItem('lastEditedJobCardId', savedJobId || editData._id || editData.jobNumber);
+        }
+        // Scroll smoothly to action buttons
+        setTimeout(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }, 100);
+      } else {
+        navigate('/job-card-list');
+      }
     };
 
     await saveAndOpenList();
@@ -1852,10 +1875,46 @@ export default function JobCardForm() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-end">
-          <button type="submit" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-            {editData ? 'Update Job Card' : 'Save Job Card'}
-          </button>
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-end gap-3">
+          {editData && isUpdatedSuccess ? (
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2.5 text-emerald-800">
+                <CheckCircle2 size={22} className="text-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold">Job Card Updated Successfully!</p>
+                  <p className="text-xs text-emerald-600">Aap yahan se direct print kar sakte hain ya wapas list par ja sakte hain.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => navigate('/job-card-list')}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl border border-gray-300 shadow-sm transition-all focus:outline-none"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenPrint}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm rounded-xl shadow-md hover:shadow-lg transition-all focus:outline-none"
+                >
+                  <Printer size={16} />
+                  Print
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+            >
+              {isSaving && <Loader2 size={18} className="animate-spin" />}
+              {editData ? 'Update Job Card' : 'Save Job Card'}
+            </button>
+          )}
         </div>
       </form>
 

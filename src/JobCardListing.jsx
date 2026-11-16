@@ -80,6 +80,9 @@ export default function JobCardListing() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [highlightedCardId, setHighlightedCardId] = useState(() => {
+    return sessionStorage.getItem('lastEditedJobCardId') || null;
+  });
   const [columnVisibility, setColumnVisibility] = useState(() => {
     const saved = localStorage.getItem('jobCardColumnVisibility');
     if (saved) {
@@ -195,6 +198,32 @@ export default function JobCardListing() {
       });
       
       setJobCards(mergedData);
+
+      // Auto-scroll to last edited job card if present
+      const lastEditedId = sessionStorage.getItem('lastEditedJobCardId');
+      const savedScrollY = sessionStorage.getItem('lastJobCardScrollY');
+      if (lastEditedId) {
+        setHighlightedCardId(lastEditedId);
+        setTimeout(() => {
+          const el = document.getElementById(`jobcard-row-${lastEditedId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } else if (savedScrollY) {
+            window.scrollTo({ top: parseInt(savedScrollY, 10), behavior: 'smooth' });
+          }
+          // Keep highlight visible for 8 seconds, then fade out
+          setTimeout(() => {
+            setHighlightedCardId(null);
+            sessionStorage.removeItem('lastEditedJobCardId');
+            sessionStorage.removeItem('lastJobCardScrollY');
+          }, 8000);
+        }, 150);
+      } else if (savedScrollY) {
+        setTimeout(() => {
+          window.scrollTo({ top: parseInt(savedScrollY, 10), behavior: 'smooth' });
+          sessionStorage.removeItem('lastJobCardScrollY');
+        }, 150);
+      }
     } catch (error) {
       console.error("Error loading job cards:", error);
       setJobCards(mergeWithLocalJobCards([]));
@@ -551,6 +580,8 @@ export default function JobCardListing() {
   };
 
   const handleEditClick = (card) => {
+    sessionStorage.setItem('lastEditedJobCardId', card._id || card.jobNumber);
+    sessionStorage.setItem('lastJobCardScrollY', window.scrollY.toString());
     navigate('/job-card', { state: { editData: card, needsAttachments: true } });
   };
 
@@ -836,14 +867,23 @@ export default function JobCardListing() {
                   const isCompleted = cardStatus === 'completed';
                   const isProcessing = cardStatus === 'processing';
 
-                  // Distinct green styling if completed, blue accent if processing
-                  const rowBg = isCompleted
+                  const isLastEdited = highlightedCardId && (
+                    (card._id && highlightedCardId === card._id) ||
+                    (card.jobNumber && highlightedCardId === card.jobNumber)
+                  );
+
+                  // Distinct green styling if completed, blue accent if processing, or highlighted blue row
+                  const rowBg = isLastEdited
+                    ? 'bg-blue-100/90 text-blue-950 font-medium border-y-2 border-y-blue-500 border-l-4 border-l-blue-600 shadow-sm'
+                    : isCompleted
                     ? 'bg-emerald-50/90 text-emerald-950 font-medium border-l-4 border-l-emerald-500'
                     : isProcessing
                     ? 'bg-blue-50/50 text-gray-900 border-l-4 border-l-blue-500'
                     : (index % 2 === 0 ? 'bg-white border-l-4 border-l-transparent' : 'bg-gray-50/40 border-l-4 border-l-transparent');
 
-                  const rowHoverBg = isCompleted
+                  const rowHoverBg = isLastEdited
+                    ? 'hover:bg-blue-200/80'
+                    : isCompleted
                     ? 'hover:bg-emerald-100/90'
                     : isProcessing
                     ? 'hover:bg-blue-100/60'
@@ -851,7 +891,10 @@ export default function JobCardListing() {
 
                   return (
                     <React.Fragment key={cardKey || index}>
-                      <tr className={`border-b border-gray-100 transition-colors ${rowBg} ${rowHoverBg}`}>
+                      <tr 
+                        id={`jobcard-row-${card._id || card.jobNumber}`}
+                        className={`border-b border-gray-100 transition-all duration-300 ${rowBg} ${rowHoverBg}`}
+                      >
                         <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">
                           <span>{index + 1}</span>
                         </td>
