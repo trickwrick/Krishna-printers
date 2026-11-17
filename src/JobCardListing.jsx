@@ -457,10 +457,11 @@ export default function JobCardListing() {
   const getCardStatus = (card) => {
     const cardKey = getCardKey(card);
     const doneSteps = workflowProgress[cardKey] ?? 0;
-    if (doneSteps >= 4 || card.status === 'completed') {
+    // Done status ONLY when Step 4 (QC & Delivery) is explicitly done (doneSteps >= 4)
+    if (doneSteps >= 4) {
       return 'completed';
     }
-    if (doneSteps > 0 || card.status === 'in-progress') {
+    if (doneSteps > 0 || card.status === 'in-progress' || card.status === 'completed') {
       return 'processing';
     }
     return 'pending';

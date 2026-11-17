@@ -84,8 +84,24 @@ export const saveLocalJobCard = (card) => {
   const cards = readLocalJobCards();
   const idx = cards.findIndex((item) => item._id === id || item.jobNumber === savedCard.jobNumber);
   if (idx >= 0) {
+    const existingTimeline = Array.isArray(cards[idx].timeline) ? [...cards[idx].timeline] : [];
+    existingTimeline.push({
+      action: 'Job Card Updated',
+      details: 'Edited job card details',
+      userName: card.userName || card.createdBy || 'Admin',
+      timestamp: now,
+    });
+    savedCard.timeline = existingTimeline;
     cards[idx] = { ...cards[idx], ...savedCard };
   } else {
+    if (!savedCard.timeline || !savedCard.timeline.length) {
+      savedCard.timeline = [{
+        action: 'Job Card Created',
+        details: 'Initial creation',
+        userName: card.userName || card.createdBy || 'Admin',
+        timestamp: now,
+      }];
+    }
     cards.unshift(savedCard);
   }
   writeLocalJobCards(cards);

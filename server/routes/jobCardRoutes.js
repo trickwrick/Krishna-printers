@@ -251,9 +251,16 @@ router.post('/', async (req, res) => {
     if (_id) {
       // UPDATE by _id (most reliable)
       let updatePayload = { ...req.body, updatedAt: new Date() };
+      delete updatePayload._id;
+      delete updatePayload.timeline;
       
       // Determine what changed for timeline
-      const timelineEvents = [];
+      const timelineEvents = [{
+        action: 'Job Card Updated',
+        details: 'Edited job card details',
+        userName: userName || req.body.createdBy || 'Admin',
+        timestamp: new Date()
+      }];
       if (previousJob) {
         if (attachmentsChanged(previousJob, req.body)) {
            const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
@@ -284,7 +291,14 @@ router.post('/', async (req, res) => {
         previousJob = previousJob || existingJob;
         
         let updatePayload = { ...req.body, updatedAt: new Date() };
-        const timelineEvents = [];
+        delete updatePayload._id;
+        delete updatePayload.timeline;
+        const timelineEvents = [{
+          action: 'Job Card Updated',
+          details: 'Edited job card details',
+          userName: userName || req.body.createdBy || 'Admin',
+          timestamp: new Date()
+        }];
         if (attachmentsChanged(previousJob, req.body)) {
            const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
            if (attachmentEvent) timelineEvents.push(attachmentEvent);
@@ -304,10 +318,17 @@ router.post('/', async (req, res) => {
       } else {
         // NEW job card with provided jobNumber
         const newJobPayload = { ...req.body };
+        const creationEvents = [{
+          action: 'Job Card Created',
+          details: 'Initial creation',
+          userName: userName || req.body.createdBy || 'Admin',
+          timestamp: new Date()
+        }];
         if (getJobAttachments(req.body).length) {
            const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
-           newJobPayload.timeline = attachmentEvent ? [attachmentEvent] : [];
+           if (attachmentEvent) creationEvents.push(attachmentEvent);
         }
+        newJobPayload.timeline = creationEvents;
         jobCard = new JobCard(newJobPayload);
         await jobCard.save();
       }
@@ -328,10 +349,17 @@ router.post('/', async (req, res) => {
       req.body.jobNumber = generatedJobNumber;
       
       const newJobPayload = { ...req.body };
+      const creationEvents = [{
+        action: 'Job Card Created',
+        details: 'Initial creation',
+        userName: userName || req.body.createdBy || 'Admin',
+        timestamp: new Date()
+      }];
       if (getJobAttachments(req.body).length) {
          const attachmentEvent = buildAttachmentTimelineEvent(req.body, userName);
-         newJobPayload.timeline = attachmentEvent ? [attachmentEvent] : [];
+         if (attachmentEvent) creationEvents.push(attachmentEvent);
       }
+      newJobPayload.timeline = creationEvents;
       jobCard = new JobCard(newJobPayload);
       await jobCard.save();
     }
@@ -401,7 +429,13 @@ router.get('/deleted/all', async (req, res) => {
 // GET /api/jobcard/:id - Fetch single Job Card
 router.get('/:id', async (req, res) => {
   try {
-    const jobCard = await JobCard.findById(req.params.id).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
+    const target = req.params.id;
+    let jobCard;
+    if (mongoose.Types.ObjectId.isValid(target)) {
+      jobCard = await JobCard.findById(target).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
+    } else {
+      jobCard = await JobCard.findOne({ jobNumber: target }).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
+    }
     if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
     res.json(jobCard);
   } catch (err) {

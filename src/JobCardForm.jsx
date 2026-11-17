@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import DatePicker from 'react-datepicker';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2, ZoomIn, Eye, Download, ExternalLink, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Layers, Search, FileText, Printer, X, ImagePlus, PlusCircle, Loader2, ZoomIn, Eye, Download, ExternalLink, ArrowLeft, CheckCircle2, Clock, History } from 'lucide-react';
 import { rememberPlateUsage, resolvePlateUseCount } from './utils/plateUsage';
 import { mergePaperSizes } from './utils/paperStockSizes';
 import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/taxDocumentPrint';
@@ -141,6 +141,7 @@ export default function JobCardForm() {
   const [previewData, setPreviewData] = useState(null);
   const [isUpdatedSuccess, setIsUpdatedSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [jobTimeline, setJobTimeline] = useState(editData?.timeline || []);
   const [useShipAddress, setUseShipAddress] = useState(
     editData?.useShipAddress || !!(editData?.shipAddress || editData?.shipPartyName)
   );
@@ -530,15 +531,27 @@ export default function JobCardForm() {
   }, []);
 
   useEffect(() => {
-    if (editData?._id && location.state?.needsAttachments) {
-      fetch(`${API_BASE_URL}/api/jobcard/${editData._id}/attachments`)
-        .then(r => r.json())
+    if (editData?._id) {
+      // Fetch latest job card details to get updated timeline (history of edits)
+      fetch(`${API_BASE_URL}/api/jobcard/${editData._id}`)
+        .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (data.jobAttachments?.length || data.jobAttachment) {
-            setJobAttachments(getJobAttachments(data));
+          if (data && data.timeline) {
+            setJobTimeline(data.timeline);
           }
         })
         .catch(console.error);
+
+      if (location.state?.needsAttachments) {
+        fetch(`${API_BASE_URL}/api/jobcard/${editData._id}/attachments`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.jobAttachments?.length || data.jobAttachment) {
+              setJobAttachments(getJobAttachments(data));
+            }
+          })
+          .catch(console.error);
+      }
     }
   }, [editData?._id, location.state?.needsAttachments]);
 
@@ -731,6 +744,7 @@ export default function JobCardForm() {
     
     const jobCard = {
       createdBy: editData?.createdBy || currentUser.name,
+      userName: currentUser.name || 'Admin',
       ...Object.fromEntries(fd.entries()),
       jobDate: jobDate.toISOString(),
       companyName: fd.get('partyName'), // alias for backward compatibility
@@ -798,6 +812,9 @@ export default function JobCardForm() {
           const savedData = await response.json();
           savedJobId = savedData._id;
           rememberPlateUsage(savedData.plateSize || [...newPlateSizes, ...oldPlateSizes].join(', '), savedData.plateUseCount);
+          if (savedData && Array.isArray(savedData.timeline)) {
+            setJobTimeline(savedData.timeline);
+          }
 
           // Background upload for attachments
           if (savedJobId && jobAttachments !== undefined) {
@@ -826,8 +843,23 @@ export default function JobCardForm() {
       // If user was editing an existing job card, stay on page and show Back & Print buttons
       if (editData) {
         setIsUpdatedSuccess(true);
-        if (savedJobId || editData._id || editData.jobNumber) {
-          sessionStorage.setItem('lastEditedJobCardId', savedJobId || editData._id || editData.jobNumber);
+        const newTimelineEvent = {
+          action: 'Job Card Updated',
+          details: 'Edited job card details',
+          userName: currentUser.name || 'Admin',
+          timestamp: new Date().toISOString()
+        };
+        setJobTimeline(prev => [...(prev || []), newTimelineEvent]);
+        const targetId = savedJobId || editData._id || editData.jobNumber;
+        if (targetId) {
+          sessionStorage.setItem('lastEditedJobCardId', targetId);
+          // Re-fetch updated timeline to reflect new edit entry
+          fetch(`${API_BASE_URL}/api/jobcard/${editData._id || savedJobId}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data && data.timeline) setJobTimeline(data.timeline);
+            })
+            .catch(() => {});
         }
         // Scroll smoothly to action buttons
         setTimeout(() => {
@@ -840,6 +872,30 @@ export default function JobCardForm() {
 
     await saveAndOpenList();
   };
+
+  const formatHistoryDateTime = (value) => {
+    if (!value) return { date: '-', time: '-' };
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return { date: '-', time: '-' };
+    return {
+      date: d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+      time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    };
+  };
+
+  const editEvents = React.useMemo(() => {
+    if (!Array.isArray(jobTimeline)) return [];
+    return jobTimeline.filter(evt => {
+      if (!evt) return false;
+      const action = (evt.action || '').trim().toLowerCase();
+      const userName = (evt.userName || '').trim().toLowerCase();
+      // Exclude automated system events, status changes, and image uploads
+      if (userName === 'system' || action.includes('status') || action.includes('image') || action.includes('created')) {
+        return false;
+      }
+      return action === 'job card updated' || action === 'job card edited' || action === 'edited';
+    });
+  }, [jobTimeline]);
 
   const isNewPlateActive = activePlateTab === 'New Plate' || activePlateTab === 'Both' || activePlateTab === 'New';
   const isOldPlateActive = activePlateTab === 'Old Plate' || activePlateTab === 'Both' || activePlateTab === 'Old';
@@ -1874,6 +1930,106 @@ export default function JobCardForm() {
             </div>
           </div>
         </div>
+
+        {/* Edit & Revision History box - displays every edit with date, time, and user */}
+        {editData && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-5 mt-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-100 pb-3 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600">
+                  <History size={18} />
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                    Edit History
+                    <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full text-xs font-semibold">
+                      {editEvents.length} {editEvents.length === 1 ? 'Edit' : 'Edits'}
+                    </span>
+                  </h4>
+                  <p className="text-xs text-gray-500">Is job card ko kab kab edit kiya gaya tha uski puri history</p>
+                </div>
+              </div>
+              {editEvents.length > 0 && (
+                <span className="self-start sm:self-center text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5">
+                  <Clock size={13} className="text-emerald-600" />
+                  Last Edited: {formatHistoryDateTime(editEvents[editEvents.length - 1].timestamp).date} at {formatHistoryDateTime(editEvents[editEvents.length - 1].timestamp).time}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {/* Created baseline entry */}
+              {editData.createdAt && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-2 px-3 bg-gray-50/80 rounded-xl border border-gray-100 gap-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span>
+                    <span className="font-bold text-gray-700 uppercase tracking-wide text-[10px] bg-gray-200 px-1.5 py-0.5 rounded">
+                      Created
+                    </span>
+                    <span className="text-gray-500 text-[11px]">by</span>
+                    <span className="font-semibold text-gray-800 bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px]">
+                      {editData.createdBy || 'Admin'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-500 font-mono text-[11px] shrink-0">
+                    <Clock size={12} className="text-gray-400" />
+                    <span>{formatHistoryDateTime(editData.createdAt).date}, {formatHistoryDateTime(editData.createdAt).time}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* List of edits */}
+              {editEvents.length === 0 ? (
+                <div className="py-2.5 px-3 text-xs text-gray-400 italic bg-gray-50/40 rounded-xl border border-dashed border-gray-200 text-center">
+                  Abhi tak koi edit nahi kiya gaya hai. "Update Job Card" karne par yahan date aur time ki line aa jayegi.
+                </div>
+              ) : (
+                editEvents.map((evt, idx) => {
+                  const dt = formatHistoryDateTime(evt.timestamp);
+                  const isLatest = idx === editEvents.length - 1;
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between text-xs py-2 px-3 rounded-xl border transition-all gap-1.5 ${
+                        isLatest
+                          ? 'bg-amber-50/80 border-amber-300 text-amber-950 font-medium shadow-xs'
+                          : 'bg-white border-gray-200/80 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            isLatest ? 'bg-amber-500 ring-2 ring-amber-200' : 'bg-blue-400'
+                          }`}
+                        ></span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${
+                            isLatest
+                              ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                              : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          }`}
+                        >
+                          Edited #{idx + 1} {isLatest && '(Latest)'}
+                        </span>
+                        <span className="text-gray-400 text-[11px]">by</span>
+                        <span className="font-semibold bg-white px-2 py-0.5 rounded border border-gray-200 text-[11px] text-gray-800">
+                          {evt.userName || editData.createdBy || 'Admin'}
+                        </span>
+                        {evt.details && evt.details !== 'Edited job card details' && (
+                          <span className="text-[11px] text-gray-500 italic">({evt.details})</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 font-mono text-[11px] shrink-0 text-gray-600">
+                        <Clock size={12} className={isLatest ? 'text-amber-600' : 'text-gray-400'} />
+                        <span className="font-semibold">{dt.date}, {dt.time}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-end gap-3">
           {editData && isUpdatedSuccess ? (
