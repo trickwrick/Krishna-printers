@@ -2,6 +2,7 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import zlib from "zlib";
 import { fileURLToPath } from "url";
 import { parse } from "url";
 import express from "express";
@@ -157,6 +158,29 @@ const connectDB = async () => {
         });
     }
 };
+
+/* ================= GZIP COMPRESSION FOR API JSON ================= */
+app.use("/api", (req, res, next) => {
+    const acceptEncoding = String(req.headers["accept-encoding"] || "");
+    if (!acceptEncoding.includes("gzip")) return next();
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+        const jsonStr = JSON.stringify(body);
+        if (!jsonStr || jsonStr.length < 2048) {
+            return originalJson(body);
+        }
+        zlib.gzip(Buffer.from(jsonStr, "utf8"), (err, compressed) => {
+            if (err) return originalJson(body);
+            res.setHeader("Content-Encoding", "gzip");
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.setHeader("Vary", "Accept-Encoding");
+            res.setHeader("Content-Length", compressed.length);
+            res.end(compressed);
+        });
+        return res;
+    };
+    next();
+});
 
 /* ================= ROUTES ================= */
 app.use("/api/jobcard", jobCardRoutes);

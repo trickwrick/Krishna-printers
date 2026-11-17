@@ -97,7 +97,13 @@ export default function JobCardForm() {
   const editData = location.state?.editData;
   const formRef = useRef(null);
 
-  const [jobDate, setJobDate] = useState(editData ? new Date(editData.jobDate) : new Date());
+  const [jobDate, setJobDate] = useState(() => {
+    if (editData?.jobDate) {
+      const parsed = new Date(editData.jobDate);
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
   const [paperStocks, setPaperStocks] = useState([]);
   const [selectedPaper, setSelectedPaper] = useState(editData?.paper || '');
   const [selectedPaperLabel, setSelectedPaperLabel] = useState(editData?.paper || '');
@@ -203,7 +209,6 @@ export default function JobCardForm() {
     }
     return {};
   });
-  const [plateUseCount, setPlateUseCount] = useState({});
   const [jobCards, setJobCards] = useState([]);
   const [partySuggestions, setPartySuggestions] = useState([]);
   const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
@@ -215,6 +220,7 @@ export default function JobCardForm() {
   const [jobQty, setJobQty] = useState(editData?.jobQty || '');
   const [printingQty, setPrintingQty] = useState(editData?.printingQty || '');
   const [jobAttachments, setJobAttachments] = useState(() => getJobAttachments(editData));
+  const [attachmentsDirty, setAttachmentsDirty] = useState(false);
   const [previewAttachmentModal, setPreviewAttachmentModal] = useState(null);
   const [shipPartyName, setShipPartyName] = useState(editData?.shipPartyName || '');
   const [shipAddress, setShipAddress] = useState(editData?.shipAddress || '');
@@ -253,15 +259,17 @@ export default function JobCardForm() {
       plateType: newPlateSizes.length > 0 && oldPlateSizes.length > 0 ? 'Both' : (oldPlateSizes.length > 0 ? 'Old' : 'New'),
       plateSize: [...newPlateSizes, ...oldPlateSizes].join(', '),
       plateDetails: (() => {
-        const combined = [...newPlateSizes, ...oldPlateSizes];
-        if (!combined.length) return undefined;
-        const fullDetails = {};
-        combined.forEach(size => {
-          const detail = plateSizeDetails[size] || { qty: 1, color: 'Single color' };
-          const pType = newPlateSizes.includes(size) ? 'New Plate' : 'Old Plate';
-          fullDetails[size] = { ...detail, type: pType };
+        const arr = [];
+        newPlateSizes.forEach(size => {
+          const d = plateSizeDetails[`${size}_New Plate`] || { qty: 1, color: 'Single color' };
+          arr.push({ size, type: 'New Plate', qty: d.qty, color: d.color });
         });
-        return JSON.stringify(fullDetails);
+        oldPlateSizes.forEach(size => {
+          const d = plateSizeDetails[`${size}_Old Plate`] || { qty: 1, color: 'Single color' };
+          arr.push({ size, type: 'Old Plate', qty: d.qty, color: d.color });
+        });
+        if (!arr.length) return undefined;
+        return JSON.stringify(arr);
       })(),
       plateUseCount: Object.entries(plateUseCount).map(([s, c]) => `${s}: ${c}`).join(', '),
       paper: selectedPaper,
@@ -334,6 +342,7 @@ export default function JobCardForm() {
     try {
       const uploaded = await Promise.all(selectedFiles.map((file) => readFileAsAttachment(file)));
       setJobAttachments((current) => [...current, ...uploaded].slice(0, MAX_JOB_ATTACHMENTS));
+      setAttachmentsDirty(true);
     } catch (error) {
       alert(error.message || 'Could not upload file.');
     }
@@ -341,6 +350,7 @@ export default function JobCardForm() {
 
   const removeJobAttachment = (index) => {
     setJobAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setAttachmentsDirty(true);
   };
 
   const validateForm = (fd) => {
@@ -351,11 +361,11 @@ export default function JobCardForm() {
     return errors;
   };
 
-  const filteredPartySuggestions = partySuggestions.filter((party) => {
+  const filteredPartySuggestions = React.useMemo(() => {
     const query = partyName.trim().toLowerCase();
-    if (!query) return true;
-    return party.partyName.toLowerCase().includes(query);
-  }).slice(0, 8);
+    if (!query) return partySuggestions.slice(0, 8);
+    return partySuggestions.filter((party) => party.partyName.toLowerCase().includes(query)).slice(0, 8);
+  }, [partySuggestions, partyName]);
 
   // Extract unique past values for suggestions in each input field
   const fieldSuggestions = React.useMemo(() => {
@@ -418,23 +428,22 @@ export default function JobCardForm() {
     setIsPartyDropdownOpen(false);
   };
 
-  const refreshPlateUseCount = (sizes, cards = [], currentParty = partyName) => {
-    const arr = Array.isArray(sizes) ? sizes : (sizes ? [sizes] : []);
-    if (!arr.length) {
-      setPlateUseCount({});
-      return;
-    }
+  const plateUseCount = React.useMemo(() => {
+    const arr = [...newPlateSizes, ...oldPlateSizes];
+    if (!arr.length) return {};
     const countMap = {};
     arr.forEach((size) => {
-      countMap[size] = resolvePlateUseCount(size, cards, editData, currentParty);
+      countMap[size] = resolvePlateUseCount(size, jobCards, editData, partyName);
     });
-    setPlateUseCount(countMap);
-  };
+    return countMap;
+  }, [newPlateSizes, oldPlateSizes, jobCards, editData, partyName]);
 
-  const filteredStocks = paperStocks.filter(stock => {
-    const source = stock.paperSource || 'Company paper';
-    return source === paperSource;
-  });
+  const filteredStocks = React.useMemo(() => {
+    return paperStocks.filter(stock => {
+      const source = stock.paperSource || 'Company paper';
+      return source === paperSource;
+    });
+  }, [paperStocks, paperSource]);
 
   const getCoverPaperLabel = (stock) => stock.coverName || stock.name || '';
   const getInnerPaperLabel = (stock) => stock.innerName || stock.name || '';
@@ -558,7 +567,7 @@ export default function JobCardForm() {
   useEffect(() => {
     const fetchJobCards = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/jobcard`);
+        const res = await fetch(`${API_BASE_URL}/api/jobcard?light=1`);
         const data = res.ok ? await res.json() : [];
         const cards = mergeWithLocalJobCards(data);
         setJobCards(cards);
@@ -704,10 +713,6 @@ export default function JobCardForm() {
     }
   }, [paperStocks, editData?.paper, editData?.innerPaper]);
 
-  useEffect(() => {
-    refreshPlateUseCount([...newPlateSizes, ...oldPlateSizes], jobCards, partyName);
-  }, [newPlateSizes, oldPlateSizes, jobCards, editData?._id, partyName]);
-
   const handleNewPlateSizeChange = (e) => {
     const { value, checked } = e.target;
     setNewPlateSizes((prev) => checked ? [...prev, value] : prev.filter((s) => s !== value));
@@ -746,7 +751,7 @@ export default function JobCardForm() {
       createdBy: editData?.createdBy || currentUser.name,
       userName: currentUser.name || 'Admin',
       ...Object.fromEntries(fd.entries()),
-      jobDate: jobDate.toISOString(),
+      jobDate: (jobDate instanceof Date && !isNaN(jobDate.getTime()) ? jobDate : new Date()).toISOString(),
       companyName: fd.get('partyName'), // alias for backward compatibility
       useShipAddress,
       shipPartyName: useShipAddress ? (fd.get('shipPartyName') || '') : '',
@@ -801,6 +806,8 @@ export default function JobCardForm() {
 
     const saveAndOpenList = async () => {
       let savedJobId = null;
+      let serverTimelineUpdated = false;
+      let saveFailedMsg = '';
       setIsSaving(true);
       try {
         const response = await fetch(`${API_BASE_URL}/api/jobcard`, {
@@ -814,52 +821,61 @@ export default function JobCardForm() {
           rememberPlateUsage(savedData.plateSize || [...newPlateSizes, ...oldPlateSizes].join(', '), savedData.plateUseCount);
           if (savedData && Array.isArray(savedData.timeline)) {
             setJobTimeline(savedData.timeline);
+            serverTimelineUpdated = true;
           }
 
-          // Background upload for attachments
-          if (savedJobId && jobAttachments !== undefined) {
+          // Background upload for attachments ONLY if user added/removed files (prevents wiping existing attachments on fast edits)
+          const shouldUploadAttachments = attachmentsDirty || (!editData && Array.isArray(jobAttachments) && jobAttachments.length > 0);
+          if (savedJobId && shouldUploadAttachments) {
             fetch(`${API_BASE_URL}/api/jobcard/${savedJobId}/attachments`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ jobAttachments })
+              body: JSON.stringify({ jobAttachments, userName: currentUser.name || 'Admin' })
             }).then(r => {
-              if(!r.ok) console.error("Background upload returned error", r.status);
-              else console.log("Background upload success");
+              if (!r.ok) console.error("Background upload returned error", r.status);
+              else setAttachmentsDirty(false);
             }).catch(e => console.error("Background attachment upload failed:", e));
           }
         } else {
-          console.warn("Backend save failed, saving locally...");
-          saveLocalJobCard(jobCard);
+          const errData = await response.json().catch(() => ({}));
+          saveFailedMsg = errData.error || `Server error (${response.status})`;
+          console.warn("Backend save failed:", saveFailedMsg);
+          if (!editData) {
+            saveLocalJobCard(jobCard);
+          }
         }
       } catch (err) {
         console.error("Server save error:", err);
+        saveFailedMsg = 'Could not connect to server.';
         saveLocalJobCard(jobCard);
       } finally {
         setIsSaving(false);
       }
+
+      if (editData && saveFailedMsg) {
+        setFormErrors([`Update failed: ${saveFailedMsg}`]);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       window.dispatchEvent(new Event('jobCardsUpdated'));
       window.dispatchEvent(new Event('fetchNotifications'));
 
       // If user was editing an existing job card, stay on page and show Back & Print buttons
       if (editData) {
         setIsUpdatedSuccess(true);
-        const newTimelineEvent = {
-          action: 'Job Card Updated',
-          details: 'Edited job card details',
-          userName: currentUser.name || 'Admin',
-          timestamp: new Date().toISOString()
-        };
-        setJobTimeline(prev => [...(prev || []), newTimelineEvent]);
+        if (!serverTimelineUpdated) {
+          const newTimelineEvent = {
+            action: 'Job Card Updated',
+            details: 'Edited job card details',
+            userName: currentUser.name || 'Admin',
+            timestamp: new Date().toISOString()
+          };
+          setJobTimeline(prev => [...(prev || []), newTimelineEvent]);
+        }
         const targetId = savedJobId || editData._id || editData.jobNumber;
         if (targetId) {
           sessionStorage.setItem('lastEditedJobCardId', targetId);
-          // Re-fetch updated timeline to reflect new edit entry
-          fetch(`${API_BASE_URL}/api/jobcard/${editData._id || savedJobId}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-              if (data && data.timeline) setJobTimeline(data.timeline);
-            })
-            .catch(() => {});
         }
         // Scroll smoothly to action buttons
         setTimeout(() => {
@@ -998,7 +1014,12 @@ export default function JobCardForm() {
 
   return (
     <>
-      <form ref={formRef} onSubmit={handleSubmit} className="mx-auto mt-8 pb-12">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit}
+        onChange={() => { if (isUpdatedSuccess) setIsUpdatedSuccess(false); }}
+        className="mx-auto mt-8 pb-12"
+      >
         {editData?._id && <input type="hidden" name="_id" value={editData._id} />}
         {editData?.jobNumber && <input type="hidden" name="jobNumber" value={editData.jobNumber} />}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

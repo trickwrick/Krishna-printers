@@ -388,6 +388,121 @@ const ProfileMenu = ({ currentUser, settingsItems, staffTeamItems, showStaffTeam
   );
 };
 
+const NotificationBell = React.memo(({ isLoggedIn }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+  const lastSigRef = useRef('');
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications`);
+      const data = res.ok ? await res.json() : [];
+      const notificationList = Array.isArray(data) ? data : [];
+      const unread = notificationList.filter(n => !n.isRead).length;
+      const sig = `${notificationList.length}:${unread}:${notificationList[0]?._id || ''}:${notificationList[0]?.isRead || ''}`;
+      if (sig !== lastSigRef.current) {
+        lastSigRef.current = sig;
+        setNotifications(notificationList);
+        setUnreadCount(unread);
+      }
+    } catch (err) {
+      console.error("Notif Error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchNotifications();
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    }, 30000);
+
+    const handleCustomFetch = () => fetchNotifications();
+    window.addEventListener('fetchNotifications', handleCustomFetch);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('fetchNotifications', handleCustomFetch);
+    };
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const markAllAsRead = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/api/notifications/read-all`, { method: 'PUT' });
+      lastSigRef.current = '';
+      fetchNotifications();
+    } catch (err) {
+      console.error("Read Error:", err);
+    }
+  };
+
+  return (
+    <div className="relative" ref={notifRef}>
+      <button
+        onClick={() => setIsNotifOpen(!isNotifOpen)}
+        className="text-gray-500 hover:text-gray-700 transition p-2 relative flex items-center justify-center"
+      >
+        <Bell size={22} />
+        {unreadCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] h-4 min-w-4 flex items-center justify-center font-bold px-1 rounded-full border-2 border-white z-10 shadow-sm">
+            {unreadCount}
+          </span>
+        )}
+      </button>
+
+      {isNotifOpen && (
+        <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl z-60 overflow-hidden transform animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+            <h3 className="font-bold text-gray-900">Notifications</h3>
+            <button
+              onClick={markAllAsRead}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+            >
+              Mark all read
+            </button>
+          </div>
+          <div className="max-h-96 overflow-y-auto pl-1 pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 italic text-sm">
+                No notifications yet
+              </div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n._id}
+                  className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-blue-50/30' : ''}`}
+                >
+                  {!n.isRead && <div className="absolute top-4 right-4 w-2 h-2 bg-blue-600 rounded-full" />}
+                  <p className={`text-sm ${!n.isRead ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                    {n.message}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1 font-medium">
+                    {new Date(n.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -606,57 +721,6 @@ export default function App() {
     window.location.reload();
   };
 
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const notifRef = useRef(null);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/notifications`);
-      const data = res.ok ? await res.json() : [];
-      const notificationList = Array.isArray(data) ? data : [];
-      setNotifications(notificationList);
-      setUnreadCount(notificationList.filter(n => !n.isRead).length);
-    } catch (err) {
-      console.error("Notif Error:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 5000); // Polling every 5s for real-time feel
-
-      const handleCustomFetch = () => fetchNotifications();
-      window.addEventListener('fetchNotifications', handleCustomFetch);
-
-      return () => {
-        clearInterval(interval);
-        window.removeEventListener('fetchNotifications', handleCustomFetch);
-      };
-    }
-  }, [isLoggedIn]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (notifRef.current && !notifRef.current.contains(event.target)) {
-        setIsNotifOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const markAllAsRead = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/notifications/read-all`, { method: 'PUT' });
-      fetchNotifications();
-    } catch (err) {
-      console.error("Read Error:", err);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#f4f7fa] font-sans pb-10 text-gray-800 overflow-x-clip">
       {/* Top Navbar */}
@@ -737,55 +801,7 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 ml-auto">
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="text-gray-500 hover:text-gray-700 transition p-2 relative flex items-center justify-center"
-            >
-              <Bell size={22} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] h-4 min-w-4 flex items-center justify-center font-bold px-1 rounded-full border-2 border-white z-10 shadow-sm">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-
-            {isNotifOpen && (
-              <div className="absolute top-full right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl z-60 overflow-hidden transform animate-in fade-in slide-in-from-top-2 duration-200">
-                <div className="p-4 border-b border-gray-50 flex items-center justify-between">
-                  <h3 className="font-bold text-gray-900">Notifications</h3>
-                  <button
-                    onClick={markAllAsRead}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    Mark all read
-                  </button>
-                </div>
-                <div className="max-h-96 overflow-y-auto pl-1 pr-1 scrollbar-thin scrollbar-thumb-gray-200">
-                  {notifications.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400 italic text-sm">
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n._id}
-                        className={`p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-blue-50/30' : ''}`}
-                      >
-                        {!n.isRead && <div className="absolute top-4 right-4 w-2 h-2 bg-blue-600 rounded-full" />}
-                        <p className={`text-sm ${!n.isRead ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
-                          {n.message}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-2 flex items-center gap-1 font-medium">
-                          {new Date(n.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <NotificationBell isLoggedIn={isLoggedIn} />
 
           <ProfileMenu
             currentUser={currentUser}

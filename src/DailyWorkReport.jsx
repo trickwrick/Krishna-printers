@@ -17,12 +17,27 @@ export default function DailyWorkReport({ jobCards }) {
 
   useEffect(() => {
     try {
-      setWorkflowProgress(JSON.parse(localStorage.getItem('krishnaJobWorkflowProgress') || '{}'));
+      const localProg = JSON.parse(localStorage.getItem('krishnaJobWorkflowProgress') || '{}');
+      const mergedProg = { ...localProg };
+      if (Array.isArray(jobCards)) {
+        jobCards.forEach(c => {
+          const key = c._id || c.jobNumber;
+          if (key && c.workflowStep != null) {
+            const step = Number(c.workflowStep) || 0;
+            if (step > 0) {
+              mergedProg[key] = step;
+            } else {
+              delete mergedProg[key];
+            }
+          }
+        });
+      }
+      setWorkflowProgress(mergedProg);
       setWorkflowHistory(JSON.parse(localStorage.getItem('krishnaJobWorkflowHistory') || '{}'));
     } catch (e) {
       console.error(e);
     }
-  }, [modalOpen]); // Refresh on modal open
+  }, [modalOpen, jobCards]); // Refresh on modal open or jobCards update
 
   // Sort job cards by date descending
   const sortedCards = useMemo(() => {

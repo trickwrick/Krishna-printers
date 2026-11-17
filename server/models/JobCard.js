@@ -122,6 +122,21 @@ const jobCardSchema = new mongoose.Schema({
     enum: ['pending', 'in-progress', 'completed', 'cancelled'], 
     default: 'pending' 
   },
+  workflowStep: { type: Number, default: 0 }, // 0=pending, 1=Design done, 2=Printing done, 3=Binding done, 4=QC done
+  workflowStepUpdatedBy: { type: String, default: '' },
+  workflowStepUpdatedAt: { type: Date },
+  qcProofImages: [{
+    name: { type: String, default: '' },
+    dataUrl: { type: String, default: '' },
+    uploadedBy: { type: String, default: 'Admin' },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  qcProofCount: { type: Number, default: 0 },
+  paperUsageLog: [{
+    qty: { type: Number, default: 0 },
+    userName: { type: String, default: 'Admin' },
+    timestamp: { type: Date, default: Date.now }
+  }],
   
   timeline: [{
     action: { type: String, required: true },

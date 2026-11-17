@@ -37,10 +37,16 @@ export const fullPermissions = () => {
   return permissions;
 };
 
+let _cachedUserRaw;
+let _cachedUserObj = null;
+
 export const getCurrentUser = () => {
   try {
     const raw = localStorage.getItem('currentUser');
-    return raw ? JSON.parse(raw) : null;
+    if (raw === _cachedUserRaw) return _cachedUserObj;
+    _cachedUserRaw = raw;
+    _cachedUserObj = raw ? JSON.parse(raw) : null;
+    return _cachedUserObj;
   } catch {
     return null;
   }

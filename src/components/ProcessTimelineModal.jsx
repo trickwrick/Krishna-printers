@@ -12,7 +12,8 @@ export default function ProcessTimelineModal({ isOpen, onClose, jobCard }) {
   if (!isOpen) return null;
   
   const cardKey = jobCard?._id || jobCard?.jobNumber;
-  const currentStep = JSON.parse(localStorage.getItem('krishnaJobWorkflowProgress') || '{}')[cardKey] || 0;
+  const localStep = JSON.parse(localStorage.getItem('krishnaJobWorkflowProgress') || '{}')[cardKey] || 0;
+  const currentStep = jobCard?.workflowStep != null ? (Number(jobCard.workflowStep) || 0) : localStep;
   
   // Aggregate all events from backend and local storage
   let aggregatedEvents = jobCard?.timeline ? [...jobCard.timeline] : [];

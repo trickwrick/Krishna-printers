@@ -8,6 +8,18 @@ import { logPaperStockTransaction } from '../utils/paperStockTransactions.js';
 import { syncPaperStockWithJob } from '../utils/paperStockSync.js';
 import { syncPlateStockWithJob } from '../utils/plateStockSync.js';
 
+// Short-TTL in-memory cache for active JobCard list (invalidated immediately on any write)
+const CACHE_TTL_MS = 30000;
+const jobCardListCache = {
+  full: { data: null, expiresAt: 0 },
+  light: { data: null, expiresAt: 0 },
+};
+
+const invalidateJobCardCache = () => {
+  jobCardListCache.full = { data: null, expiresAt: 0 };
+  jobCardListCache.light = { data: null, expiresAt: 0 };
+};
+
 const computePlateUseCount = async (plateSize, editingId) => {
   if (!plateSize) return undefined;
 
@@ -229,6 +241,24 @@ router.post('/', async (req, res) => {
       req.body.companyName = partyName;
     }
 
+    // Sanitize numeric fields so empty form strings don't cause cast issues
+    if (req.body.coverPaperCount === '' || req.body.coverPaperCount === null) {
+      req.body.coverPaperCount = 0;
+    } else if (req.body.coverPaperCount !== undefined) {
+      req.body.coverPaperCount = Number(req.body.coverPaperCount) || 0;
+    }
+    if (req.body.innerPaperCount === '' || req.body.innerPaperCount === null) {
+      req.body.innerPaperCount = 0;
+    } else if (req.body.innerPaperCount !== undefined) {
+      req.body.innerPaperCount = Number(req.body.innerPaperCount) || 0;
+    }
+    if (req.body.completionDays === '') {
+      req.body.completionDays = undefined;
+    } else if (req.body.completionDays !== undefined && req.body.completionDays !== null) {
+      const parsedDays = Number(req.body.completionDays);
+      req.body.completionDays = isNaN(parsedDays) ? undefined : parsedDays;
+    }
+
     // Check if updating existing job card
     let jobCard;
     let isUpdate = false;
@@ -376,6 +406,7 @@ router.post('/', async (req, res) => {
 
     // Notifications for Job Cards have been disabled as per user request.
 
+    invalidateJobCardCache();
     console.log(`☁️ Job Card Saved to MongoDB: ${jobCard.jobNumber}`);
     res.status(201).json(jobCard);
   } catch (err) {
@@ -401,11 +432,29 @@ router.get('/plate-used-count', async (req, res) => {
 });
 
 // GET /api/jobcard - Fetch all Job Cards (Active Only)
+// Supports ?light=1 to exclude heavy timeline array for fast listing/autocomplete
 router.get('/', async (req, res) => {
   try {
+    const isLight = req.query.light === '1' || req.query.light === 'true';
+    const cacheKey = isLight ? 'light' : 'full';
+    const cached = jobCardListCache[cacheKey];
+    if (cached.data && Date.now() < cached.expiresAt) {
+      return res.json(cached.data);
+    }
+
+    const projection = isLight
+      ? '-jobAttachments.dataUrl -jobAttachment.dataUrl -qcProofImages.dataUrl -timeline'
+      : '-jobAttachments.dataUrl -jobAttachment.dataUrl -qcProofImages.dataUrl';
+
     const jobCards = await JobCard.find({ isDeleted: { $ne: true } })
-      .select('-jobAttachments.dataUrl -jobAttachment.dataUrl')
-      .sort({ updatedAt: -1 });
+      .select(projection)
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    jobCardListCache[cacheKey] = {
+      data: jobCards,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    };
     res.json(jobCards);
   } catch (err) {
     console.error(`❌ Fetch Error: ${err.message}`);
@@ -417,8 +466,9 @@ router.get('/', async (req, res) => {
 router.get('/deleted/all', async (req, res) => {
   try {
     const deletedJobCards = await JobCard.find({ isDeleted: true })
-      .select('-jobAttachments.dataUrl -jobAttachment.dataUrl')
-      .sort({ deletedAt: -1 });
+      .select('-jobAttachments.dataUrl -jobAttachment.dataUrl -qcProofImages.dataUrl')
+      .sort({ deletedAt: -1 })
+      .lean();
     res.json(deletedJobCards);
   } catch (err) {
     console.error(`❌ Fetch Deleted Error: ${err.message}`);
@@ -432,9 +482,9 @@ router.get('/:id', async (req, res) => {
     const target = req.params.id;
     let jobCard;
     if (mongoose.Types.ObjectId.isValid(target)) {
-      jobCard = await JobCard.findById(target).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
+      jobCard = await JobCard.findById(target).select('-jobAttachments.dataUrl -jobAttachment.dataUrl -qcProofImages.dataUrl');
     } else {
-      jobCard = await JobCard.findOne({ jobNumber: target }).select('-jobAttachments.dataUrl -jobAttachment.dataUrl');
+      jobCard = await JobCard.findOne({ jobNumber: target }).select('-jobAttachments.dataUrl -jobAttachment.dataUrl -qcProofImages.dataUrl');
     }
     if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
     res.json(jobCard);
@@ -483,6 +533,7 @@ router.post('/:id/attachments', async (req, res) => {
     }
 
     const updated = await JobCard.findByIdAndUpdate(_id, updatePayload, { new: true });
+    invalidateJobCardCache();
     res.json({ success: true, message: "Attachments updated successfully" });
   } catch (err) {
     console.error(`❌ Attachment Upload Error: ${err.message}`);
@@ -509,6 +560,7 @@ router.delete('/:id', async (req, res) => {
       );
     }
     if (!result) return res.status(404).json({ message: "Job Card not found" });
+    invalidateJobCardCache();
     res.json({ message: "Job Card moved to recycle bin" });
   } catch (err) {
     console.error(`❌ Delete Error: ${err.message}`);
@@ -535,6 +587,7 @@ router.put('/:id/restore', async (req, res) => {
       );
     }
     if (!result) return res.status(404).json({ message: "Job Card not found" });
+    invalidateJobCardCache();
     res.json({ message: "Job Card restored successfully" });
   } catch (err) {
     console.error(`❌ Restore Error: ${err.message}`);
@@ -553,6 +606,7 @@ router.patch('/:id/price', async (req, res) => {
     );
 
     if (!jobCard) return res.status(404).json({ error: "Job Card not found" });
+    invalidateJobCardCache();
 
     // Notifications for Job Card price updates have been disabled.
 
@@ -607,7 +661,191 @@ router.patch('/:id/status', async (req, res) => {
       { new: true }
     );
     if (!updated) return res.status(404).json({ error: 'Job card not found' });
+    invalidateJobCardCache();
     res.json({ success: true, status: updated.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/jobcard/:id/workflow-step - Save workflow step progress (shared across all users)
+router.patch('/:id/workflow-step', async (req, res) => {
+  try {
+    const { step, userName } = req.body;
+    const stepNum = Number(step);
+    if (isNaN(stepNum) || stepNum < 0 || stepNum > 4) {
+      return res.status(400).json({ error: 'Invalid step. Must be 0-4.' });
+    }
+    const target = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+
+    // Derive status from step
+    const autoStatus = stepNum >= 4 ? 'completed' : (stepNum > 0 ? 'in-progress' : 'pending');
+
+    const updated = await JobCard.findOneAndUpdate(
+      query,
+      {
+        workflowStep: stepNum,
+        workflowStepUpdatedBy: userName || 'System',
+        workflowStepUpdatedAt: new Date(),
+        status: autoStatus,
+        updatedAt: new Date(),
+        $push: {
+          timeline: {
+            action: 'Workflow Step Update',
+            details: `Step updated to ${stepNum}`,
+            userName: userName || 'System',
+            timestamp: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Job card not found' });
+    invalidateJobCardCache();
+    res.json({ success: true, workflowStep: updated.workflowStep, status: updated.status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/jobcard/:id/qc-images - Fetch Challan Proof / QC images for a Job Card
+router.get('/:id/qc-images', async (req, res) => {
+  try {
+    const target = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+    const jobCard = await JobCard.findOne(query).select('qcProofImages qcProofCount').lean();
+    if (!jobCard) return res.status(404).json({ error: 'Job card not found' });
+    const images = Array.isArray(jobCard.qcProofImages) ? jobCard.qcProofImages : [];
+    res.json({ qcProofImages: images, qcProofCount: images.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/jobcard/:id/qc-images - Upload Challan Proof / QC image(s) (shared across all users)
+router.post('/:id/qc-images', async (req, res) => {
+  try {
+    const { images, userName } = req.body;
+    if (!Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({ error: 'At least one image is required.' });
+    }
+    const target = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+    const card = await JobCard.findOne(query).select('qcProofImages');
+    if (!card) return res.status(404).json({ error: 'Job card not found' });
+
+    const newEntries = images
+      .filter((img) => img && img.dataUrl)
+      .map((img) => ({
+        name: img.name || 'Challan Proof',
+        dataUrl: img.dataUrl,
+        uploadedBy: userName || 'Admin',
+        uploadedAt: new Date(),
+      }));
+
+    if (!newEntries.length) {
+      return res.status(400).json({ error: 'Valid image data is required.' });
+    }
+
+    const updatedImages = [...(card.qcProofImages || []), ...newEntries];
+    const updated = await JobCard.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          qcProofImages: updatedImages,
+          qcProofCount: updatedImages.length,
+          updatedAt: new Date(),
+        },
+        $push: {
+          timeline: {
+            action: 'Challan Proof Uploaded',
+            details: `Uploaded ${newEntries.length} challan proof image${newEntries.length > 1 ? 's' : ''}`,
+            userName: userName || 'Admin',
+            timestamp: new Date(),
+          },
+        },
+      },
+      { new: true }
+    ).select('qcProofImages qcProofCount');
+
+    invalidateJobCardCache();
+    res.json({
+      success: true,
+      qcProofCount: updated.qcProofCount,
+      qcProofImages: updated.qcProofImages,
+    });
+  } catch (err) {
+    console.error('❌ QC Image Upload Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/jobcard/:id/qc-images/:imgIndex - Delete a specific Challan Proof / QC image
+router.delete('/:id/qc-images/:imgIndex', async (req, res) => {
+  try {
+    const target = req.params.id;
+    const imgIndex = parseInt(req.params.imgIndex, 10);
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+    const card = await JobCard.findOne(query).select('qcProofImages');
+    if (!card) return res.status(404).json({ error: 'Job card not found' });
+
+    const existing = Array.isArray(card.qcProofImages) ? [...card.qcProofImages] : [];
+    if (isNaN(imgIndex) || imgIndex < 0 || imgIndex >= existing.length) {
+      return res.status(400).json({ error: 'Invalid image index.' });
+    }
+    existing.splice(imgIndex, 1);
+
+    const updated = await JobCard.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          qcProofImages: existing,
+          qcProofCount: existing.length,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true }
+    ).select('qcProofImages qcProofCount');
+
+    invalidateJobCardCache();
+    res.json({
+      success: true,
+      qcProofCount: updated.qcProofCount,
+      qcProofImages: updated.qcProofImages,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/jobcard/:id/paper-usage - Save paper usage entry to DB (shared across all users)
+router.post('/:id/paper-usage', async (req, res) => {
+  try {
+    const { qty, userName } = req.body;
+    const numQty = Number(qty);
+    if (!numQty || numQty <= 0) {
+      return res.status(400).json({ error: 'Quantity must be greater than 0.' });
+    }
+    const target = req.params.id;
+    const query = mongoose.Types.ObjectId.isValid(target) ? { _id: target } : { jobNumber: target };
+    const entry = {
+      qty: numQty,
+      userName: userName || 'Admin',
+      timestamp: new Date(),
+    };
+    const updated = await JobCard.findOneAndUpdate(
+      query,
+      {
+        $push: { paperUsageLog: entry },
+        $set: { updatedAt: new Date() },
+      },
+      { new: true }
+    ).select('paperUsageLog');
+
+    if (!updated) return res.status(404).json({ error: 'Job card not found' });
+    invalidateJobCardCache();
+    res.json({ success: true, paperUsageLog: updated.paperUsageLog });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

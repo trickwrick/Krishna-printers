@@ -13,17 +13,20 @@ export const writePlateUsageMap = (map) => {
 };
 
 export const buildPlateUsageMapFromCards = (cards) => {
-  const map = {};
+  const counts = {};
+  const maxCounts = {};
   cards.forEach((card) => {
     const size = String(card.plateSize || '').trim();
     if (!size) return;
-    const cardsWithSize = cards.filter((c) => String(c.plateSize || '').trim() === size);
-    const countByDocs = cardsWithSize.length;
-    const maxUseCount = cardsWithSize.reduce(
-      (max, c) => Math.max(max, Number(c.plateUseCount) || 0),
-      0
-    );
-    map[size] = Math.max(countByDocs, maxUseCount);
+    counts[size] = (counts[size] || 0) + 1;
+    const useVal = Number(card.plateUseCount) || 0;
+    if (useVal > (maxCounts[size] || 0)) {
+      maxCounts[size] = useVal;
+    }
+  });
+  const map = {};
+  Object.keys(counts).forEach((size) => {
+    map[size] = Math.max(counts[size], maxCounts[size] || 0);
   });
   return map;
 };

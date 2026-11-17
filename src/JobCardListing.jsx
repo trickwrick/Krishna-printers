@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusSquare, Trash2, Printer, X, Download, Pencil, RefreshCw, Filter, Search, Check, Share2, Loader2, Building2, Hash, Calendar, Layers, FileText, Globe, MapPin, FileDigit, Eye, EyeOff, ImagePlus, Image as ImageIcon, Settings, Clock, CheckCircle2, PlayCircle } from 'lucide-react';
-import { downloadAsPDF } from './utils/pdfExport';
 import { getJobAttachments } from './utils/jobAttachments';
 import { printElement } from './utils/printDocument';
 import DeleteConfirmationModal from './components/DeleteConfirmationModal';
@@ -10,22 +9,6 @@ import { SELLER, TaxFieldsTable, fmtTaxDate, CompanyBrandName } from './utils/ta
 import { API_BASE_URL } from './utils/apiBase';
 import { deleteLocalJobCard, mergeWithLocalJobCards, migrateLocalJobNumbers, updateLocalJobCardField } from './utils/localJobCards';
 import { hasPermission } from './utils/permissions';
-
-const BINDING_OPTIONS = [
-  { key: 'bindingCenterPin', label: 'Center Pin' },
-  { key: 'bindingSilai', label: 'Silai' },
-  { key: 'bindingSidePin', label: 'Side Pin' },
-  { key: 'bindingFolding', label: 'Folding' },
-  { key: 'bindingPerforation', label: 'Perforation' },
-  { key: 'bindingNumbring', label: 'Numbring' },
-  { key: 'bindingRegister', label: 'Register' },
-  { key: 'bindingGlue', label: 'Glue Binding' },
-  { key: 'bindingKachhi', label: 'Kechhi Binding' },
-  { key: 'bindingPukki', label: 'Pukki Binding' },
-];
-
-const getBindingLabel = (card) =>
-  BINDING_OPTIONS.filter((item) => card[item.key]).map((item) => item.label).join(', ') || '-';
 
 const WORKFLOW_STEPS = [
   { title: 'Design & Proof', desc: 'Artwork, design & client approval', owner: 'Super Admin 1' },
@@ -65,12 +48,72 @@ const getTimeLeft = (card) => {
   };
 };
 
+const compressImageToDataUrl = (file, maxDim = 1400, quality = 0.78) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read file'));
+    reader.onload = (event) => {
+      const rawDataUrl = event.target.result;
+      if (!file.type || !file.type.startsWith('image/')) {
+        return resolve(rawDataUrl);
+      }
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width >= height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed.length < rawDataUrl.length ? compressed : rawDataUrl);
+        } catch {
+          resolve(rawDataUrl);
+        }
+      };
+      img.onerror = () => resolve(rawDataUrl);
+      img.src = rawDataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+
+const getLocalQCImages = (cardKey) => {
+  try {
+    const raw = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
+    if (!raw) return [];
+    const parsed = raw.startsWith('[') ? JSON.parse(raw) : [raw];
+    return Array.isArray(parsed)
+      ? parsed.map((item, idx) =>
+          typeof item === 'string'
+            ? { name: `Challan Proof ${idx + 1}`, dataUrl: item, uploadedBy: 'Local', localOnly: true }
+            : item
+        )
+      : [];
+  } catch {
+    return [];
+  }
+};
+
 export default function JobCardListing() {
   const navigate = useNavigate();
   const [jobCards, setJobCards] = useState([]);
   const [workflowProgress, setWorkflowProgress] = useState(() => readWorkflowProgress());
   const [stepConfirm, setStepConfirm] = useState(null);
   const [imageBlockAlert, setImageBlockAlert] = useState(false);
+  const [uploadingQCKey, setUploadingQCKey] = useState(null);
+  const [qcModalCard, setQcModalCard] = useState(null);
+  const [qcModalImages, setQcModalImages] = useState([]);
+  const [qcModalLoading, setQcModalLoading] = useState(false);
   const [paperUsageModalCard, setPaperUsageModalCard] = useState(null);
   const [paperUsageInput, setPaperUsageInput] = useState('');
   const [paperBlockAlert, setPaperBlockAlert] = useState(false);
@@ -79,7 +122,6 @@ export default function JobCardListing() {
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'completed'
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef(null);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [highlightedCardId, setHighlightedCardId] = useState(() => {
     return sessionStorage.getItem('lastEditedJobCardId') || null;
   });
@@ -115,6 +157,27 @@ export default function JobCardListing() {
     localStorage.setItem('jobCardColumnVisibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
 
+  const getCardPaperUsage = (card) => {
+    if (!card) return [];
+    if (Array.isArray(card.paperUsageLog) && card.paperUsageLog.length > 0) {
+      return card.paperUsageLog;
+    }
+    const cardKey = getCardKey(card);
+    try {
+      return JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
+    } catch {
+      return [];
+    }
+  };
+
+  const getCardQCImageCount = (card) => {
+    if (!card) return 0;
+    const serverCount = Number(card.qcProofCount) || (Array.isArray(card.qcProofImages) ? card.qcProofImages.length : 0);
+    if (serverCount > 0) return serverCount;
+    const cardKey = getCardKey(card);
+    return getLocalQCImages(cardKey).length;
+  };
+
   const handleAddPaperUsage = async () => {
     if (!paperUsageModalCard || !paperUsageInput) return;
     const cardKey = getCardKey(paperUsageModalCard);
@@ -125,8 +188,8 @@ export default function JobCardListing() {
 
     // Validate: qty cannot exceed remaining units
     const totalUnits = getPaperTotalUnits(paperUsageModalCard);
-    const existingData = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
-    const usedSoFar = existingData.reduce((acc, r) => acc + r.qty, 0);
+    const existingData = [...getCardPaperUsage(paperUsageModalCard)];
+    const usedSoFar = existingData.reduce((acc, r) => acc + (Number(r.qty) || 0), 0);
     const remaining = Math.max(0, totalUnits - usedSoFar);
 
     if (totalUnits > 0 && qty > remaining) {
@@ -164,28 +227,56 @@ export default function JobCardListing() {
       }
     }
 
-    existingData.push({
+    const newEntry = {
       qty,
       userName: currentUser.name,
       timestamp: new Date().toISOString()
-    });
-    localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(existingData));
+    };
+    const updatedLog = [...existingData, newEntry];
+    try {
+      localStorage.setItem(`krishnaJobPaperUsage_${cardKey}`, JSON.stringify(updatedLog));
+    } catch { /* ignore storage quota errors */ }
     setPaperUsageInput('');
+
+    // Persist to MongoDB so all Admin & Staff devices see Paper Done
+    let finalLog = updatedLog;
+    if (!paperUsageModalCard.localOnly) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/paper-usage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qty, userName: currentUser.name })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.paperUsageLog)) {
+            finalLog = data.paperUsageLog;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync paper usage to server:', err);
+      }
+    }
+
+    setJobCards(prev =>
+      prev.map(c => (getCardKey(c) === cardKey ? { ...c, paperUsageLog: finalLog } : c))
+    );
 
     const newUsedSoFar = usedSoFar + qty;
     const newRemaining = Math.max(0, totalUnits - newUsedSoFar);
 
     if (totalUnits > 0 && newRemaining === 0) {
       setPaperUsageModalCard(null); // Auto close only when 0 units remaining
+    } else {
+      setPaperUsageModalCard(prev => (prev ? { ...prev, paperUsageLog: finalLog } : null));
     }
-    setJobCards(prev => [...prev]); // force re-render
   };
 
 
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/jobcard`);
+      const response = await fetch(`${API_BASE_URL}/api/jobcard?light=1`);
       const data = response.ok ? await response.json() : [];
       const mergedData = mergeWithLocalJobCards(data);
       syncPlateUsageFromCards(mergedData);
@@ -198,6 +289,31 @@ export default function JobCardListing() {
       });
       
       setJobCards(mergedData);
+
+      // ── Sync workflowProgress from server (workflowStep field) ──
+      // Server is the single source of truth for all server cards so every user
+      // (admin & staff) sees the exact same Pending / Processing / Completed counts.
+      const localProgress = readWorkflowProgress();
+      const serverKeys = new Set(data.map(card => card._id || card.jobNumber).filter(Boolean));
+      const merged = {};
+      // Keep localProgress ONLY for offline/local-only cards not on server
+      Object.keys(localProgress).forEach(k => {
+        if (!serverKeys.has(k)) {
+          merged[k] = localProgress[k];
+        }
+      });
+      // For all server cards, strictly trust server's workflowStep (0 = pending, 1-3 = processing, 4 = completed)
+      mergedData.forEach(card => {
+        const key = card._id || card.jobNumber;
+        if (key && serverKeys.has(key)) {
+          const step = Number(card.workflowStep) || 0;
+          if (step > 0) {
+            merged[key] = step;
+          }
+        }
+      });
+      setWorkflowProgress(merged);
+      localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(merged));
 
       // Auto-scroll to last edited job card if present
       const lastEditedId = sessionStorage.getItem('lastEditedJobCardId');
@@ -228,12 +344,16 @@ export default function JobCardListing() {
       console.error("Error loading job cards:", error);
       setJobCards(mergeWithLocalJobCards([]));
     }
-  };
+  }, []);
+
+  const lastFetchTimeRef = useRef(0);
 
   useEffect(() => {
     migrateLocalJobNumbers(); // rename any existing LOCAL-XXXXXX cards to JOBKP-XXXX
-    loadData();
-    setWorkflowProgress(readWorkflowProgress());
+    lastFetchTimeRef.current = Date.now();
+    const timer = setTimeout(() => {
+      loadData();
+    }, 0);
 
     // Close filter dropdown on click outside
     const handleClickOutside = (event) => {
@@ -241,72 +361,165 @@ export default function JobCardListing() {
         setIsFilterOpen(false);
       }
     };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFetchTimeRef.current > 15000) {
+        lastFetchTimeRef.current = Date.now();
+        loadData();
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [loadData]);
 
   const refreshData = () => {
+    lastFetchTimeRef.current = Date.now();
     setWorkflowProgress(readWorkflowProgress());
     loadData();
   };
 
-  const handleImageUpload = (e, cardKey) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      let existing = [];
-      try {
-        const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
-        if (data) {
-          existing = data.startsWith('[') ? JSON.parse(data) : [data];
+  const handleImageUpload = async (e, card) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // Allow re-selecting same file
+    if (!files.length || !card) return;
+
+    const cardKey = getCardKey(card);
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
+    setUploadingQCKey(cardKey);
+
+    try {
+      const compressedList = await Promise.all(
+        files.map(async (file) => ({
+          name: file.name || 'Challan Proof',
+          dataUrl: await compressImageToDataUrl(file),
+        }))
+      );
+
+      if (!card.localOnly) {
+        const res = await fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/qc-images`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            images: compressedList,
+            userName: currentUser.name || 'Admin',
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          alert(err.error || 'Challan proof image upload failed. Please try again.');
+          return;
         }
-      } catch (err) {
-        existing = [];
+
+        const data = await res.json();
+        const newCount = data.qcProofCount ?? compressedList.length;
+        setJobCards(prev =>
+          prev.map(c => (getCardKey(c) === cardKey ? { ...c, qcProofCount: newCount } : c))
+        );
+        if (qcModalCard && getCardKey(qcModalCard) === cardKey && Array.isArray(data.qcProofImages)) {
+          setQcModalImages(data.qcProofImages);
+        }
+        return;
       }
-      
-      let loadedCount = 0;
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          existing.push(event.target.result);
-          loadedCount++;
-          if (loadedCount === files.length) {
-            localStorage.setItem(`krishnaJobQCImage_${cardKey}`, JSON.stringify(existing));
-            setJobCards(prev => [...prev]); // force re-render
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+
+      // Offline / local-only card fallback
+      const existing = getLocalQCImages(cardKey).map(i => i.dataUrl);
+      compressedList.forEach(item => existing.push(item.dataUrl));
+      try {
+        localStorage.setItem(`krishnaJobQCImage_${cardKey}`, JSON.stringify(existing));
+      } catch {
+        alert('Browser local storage is full. Please upload smaller images.');
+        return;
+      }
+      setJobCards(prev => [...prev]);
+    } catch (err) {
+      console.error('Challan proof upload error:', err);
+      alert('Error uploading challan proof image. Please check connection and try again.');
+    } finally {
+      setUploadingQCKey(null);
     }
   };
 
-  const handleViewImage = (cardKey) => {
-    const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
-    if (data) {
-      let images = [];
-      try {
-        images = data.startsWith('[') ? JSON.parse(data) : [data];
-      } catch (e) {
-        images = [data];
+  const handleViewImage = async (card) => {
+    if (!card) return;
+    const cardKey = getCardKey(card);
+    setQcModalCard(card);
+    setQcModalImages([]);
+    setQcModalLoading(true);
+
+    try {
+      let serverImages = [];
+      if (!card.localOnly) {
+        const res = await fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/qc-images`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.qcProofImages)) {
+            serverImages = data.qcProofImages;
+          }
+        }
       }
-      
-      if (images.length > 0) {
-        const win = window.open();
-        const imgTags = images.map(img => `<img src="${img}" style="max-width:100%;max-height:90vh;object-fit:contain;margin-bottom:20px;box-shadow:0 4px 6px rgba(0,0,0,0.3);border-radius:8px;" />`).join('');
-        win.document.write(`<body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;padding:20px;min-height:100vh;overflow-y:auto;">${imgTags}</body>`);
+      const localImages = getLocalQCImages(cardKey);
+      // Show server images (shared across all users); include legacy local images if server has none
+      setQcModalImages(serverImages.length > 0 ? serverImages : localImages);
+    } catch (err) {
+      console.error('Error loading challan proof images:', err);
+      setQcModalImages(getLocalQCImages(cardKey));
+    } finally {
+      setQcModalLoading(false);
+    }
+  };
+
+  const handleDeleteQCImage = async (card, imgIndex, isLocalOnly) => {
+    if (!card) return;
+    if (!window.confirm('Delete this challan proof image?')) return;
+    const cardKey = getCardKey(card);
+
+    if (isLocalOnly) {
+      const localList = getLocalQCImages(cardKey).map(i => i.dataUrl);
+      localList.splice(imgIndex, 1);
+      if (localList.length > 0) {
+        localStorage.setItem(`krishnaJobQCImage_${cardKey}`, JSON.stringify(localList));
+      } else {
+        localStorage.removeItem(`krishnaJobQCImage_${cardKey}`);
       }
+      setQcModalImages(getLocalQCImages(cardKey));
+      setJobCards(prev => [...prev]);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/qc-images/${imgIndex}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        alert('Could not delete image.');
+        return;
+      }
+      const data = await res.json();
+      setQcModalImages(Array.isArray(data.qcProofImages) ? data.qcProofImages : []);
+      setJobCards(prev =>
+        prev.map(c => (getCardKey(c) === cardKey ? { ...c, qcProofCount: data.qcProofCount || 0 } : c))
+      );
+    } catch (err) {
+      console.error('Delete QC image error:', err);
+      alert('Network error while deleting image.');
     }
   };
 
   const promptStepClick = (cardKey, stepNo) => {
     const current = workflowProgress[cardKey] || 0;
     const isTryingToMarkDone = current < stepNo;
+    const card = jobCards.find(c => getCardKey(c) === cardKey);
 
-    // Step 3 (Binding & Finish) requires Paper Status to be complete
+    // Step 3 (Binding & Finish) requires Paper Status to be complete (shared from DB or local)
     if (stepNo === 3 && isTryingToMarkDone) {
-      const card = jobCards.find(c => getCardKey(c) === cardKey);
       const totalUnits = getPaperTotalUnits(card);
-      const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
-      const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
+      const data = getCardPaperUsage(card);
+      const usedUnits = data.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
       const isPaperComplete = totalUnits > 0 && usedUnits >= totalUnits;
       
       if (!isPaperComplete) {
@@ -315,10 +528,10 @@ export default function JobCardListing() {
       }
     }
 
-    // Step 4 (QC & Delivery) requires at least one image uploaded
+    // Step 4 (QC & Delivery) requires at least one Challan Proof image uploaded (shared from DB or local)
     if (stepNo === 4 && isTryingToMarkDone) {
-      const imageData = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
-      if (!imageData) {
+      const imgCount = getCardQCImageCount(card);
+      if (imgCount <= 0) {
         setImageBlockAlert(true);
         return;
       }
@@ -329,53 +542,55 @@ export default function JobCardListing() {
   const executeStepClick = () => {
     if (!stepConfirm) return;
     const { cardKey, stepNo } = stepConfirm;
-    
-    setWorkflowProgress(prev => {
-      const current = prev[cardKey] || 0;
-      const newVal = current === stepNo ? stepNo - 1 : stepNo;
-      const newProgress = { ...prev, [cardKey]: newVal };
-      localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(newProgress));
-      
-      // Also log to history
-      const action = newVal > current ? 'Completed' : 'Reverted';
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
-      const history = JSON.parse(localStorage.getItem('krishnaJobWorkflowHistory') || '{}');
-      if (!history[cardKey]) history[cardKey] = [];
-      
-      history[cardKey].push({
-        stepNo,
-        action,
-        timestamp: new Date().toISOString(),
-        user: currentUser.name
-      });
-      localStorage.setItem('krishnaJobWorkflowHistory', JSON.stringify(history));
 
-      // ── Auto-update job card status based on QC & Delivery (step 4) ──
-      // If step 4 is fully completed → status = 'completed'
-      // If step 4 is reverted (< 4) → status = 'in-progress'
-      const autoStatus = newVal >= 4 ? 'completed' : (newVal > 0 ? 'in-progress' : 'pending');
+    const current = workflowProgress[cardKey] || 0;
+    const newVal = current === stepNo ? stepNo - 1 : stepNo;
+    const newProgress = { ...workflowProgress };
+    if (newVal > 0) {
+      newProgress[cardKey] = newVal;
+    } else {
+      delete newProgress[cardKey];
+    }
 
-      // Update local state immediately
-      setJobCards(prevCards =>
-        prevCards.map(c => {
-          const key = c._id || c.jobNumber;
-          if (key === cardKey) return { ...c, status: autoStatus };
-          return c;
-        })
-      );
+    setWorkflowProgress(newProgress);
+    localStorage.setItem('krishnaJobWorkflowProgress', JSON.stringify(newProgress));
 
-      // Persist to localJobCards (for local-only cards)
-      updateLocalJobCardField(cardKey, { status: autoStatus });
+    // Also log to history
+    const action = newVal > current ? 'Completed' : 'Reverted';
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{"name": "Admin"}');
+    const history = JSON.parse(localStorage.getItem('krishnaJobWorkflowHistory') || '{}');
+    if (!history[cardKey]) history[cardKey] = [];
 
-      // Best-effort server sync
-      fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: autoStatus }),
-      }).catch(() => { /* server unavailable – local already updated */ });
-
-      return newProgress;
+    history[cardKey].push({
+      stepNo,
+      action,
+      timestamp: new Date().toISOString(),
+      user: currentUser.name
     });
+    localStorage.setItem('krishnaJobWorkflowHistory', JSON.stringify(history));
+
+    // ── Auto-update job card status based on workflow step ──
+    const autoStatus = newVal >= 4 ? 'completed' : (newVal > 0 ? 'in-progress' : 'pending');
+
+    // Update local state immediately
+    setJobCards(prevCards =>
+      prevCards.map(c => {
+        const key = c._id || c.jobNumber;
+        if (key === cardKey) return { ...c, status: autoStatus, workflowStep: newVal };
+        return c;
+      })
+    );
+
+    // Persist to localJobCards (for local-only cards)
+    updateLocalJobCardField(cardKey, { status: autoStatus, workflowStep: newVal });
+
+    // ── Save workflowStep to server so ALL users see the same progress ──
+    fetch(`${API_BASE_URL}/api/jobcard/${cardKey}/workflow-step`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step: newVal, userName: currentUser.name }),
+    }).catch(() => { /* server unavailable – local already updated */ });
+
     setStepConfirm(null);
   };
 
@@ -454,22 +669,21 @@ export default function JobCardListing() {
     setColumnVisibility(prev => ({ ...prev, [col]: !prev[col] }));
   };
 
-  const getCardStatus = (card) => {
+  const getCardStatus = useCallback((card) => {
     const cardKey = getCardKey(card);
     const doneSteps = workflowProgress[cardKey] ?? 0;
-    // Done status ONLY when Step 4 (QC & Delivery) is explicitly done (doneSteps >= 4)
+    // Done status ONLY when Step 4 (QC & Delivery) is explicitly marked done (doneSteps >= 4)
     if (doneSteps >= 4) {
       return 'completed';
     }
-    if (doneSteps > 0 || card.status === 'in-progress' || card.status === 'completed') {
+    // In Process ONLY when at least Step 1 is explicitly marked done (process started)
+    if (doneSteps > 0) {
       return 'processing';
     }
     return 'pending';
-  };
+  }, [workflowProgress]);
 
-  const isCardCompleted = (card) => getCardStatus(card) === 'completed';
-
-  const statusCounts = React.useMemo(() => {
+  const statusCounts = useMemo(() => {
     let completed = 0;
     let processing = 0;
     let pending = 0;
@@ -484,27 +698,37 @@ export default function JobCardListing() {
       }
     });
     return { all: jobCards.length, pending, processing, completed };
-  }, [jobCards, workflowProgress]);
+  }, [jobCards, getCardStatus]);
 
-  const filteredCards = jobCards.filter(card => {
-    const cardStatus = getCardStatus(card);
-    if (statusFilter !== 'all' && cardStatus !== statusFilter) return false;
+  const deferredSearchTerm = useDeferredValue(searchTerm);
 
-    const term = (searchTerm || '').trim().toLowerCase();
-    if (!term) return true;
-    const words = term.split(/\s+/).filter(Boolean);
-    const hayStack = [
-      card.partyName || '',
-      card.jobName || '',
-      card.jobNumber || '',
-      card.paper || '',
-      card.paperGSM || '',
-      card.pageSize || '',
-      card.coverPaperDetails || ''
-    ].join(' ').toLowerCase();
+  const filteredCards = useMemo(() => {
+    const term = (deferredSearchTerm || '').trim().toLowerCase();
+    const words = term ? term.split(/\s+/).filter(Boolean) : [];
+    return jobCards.filter(card => {
+      if (statusFilter !== 'all') {
+        const cardStatus = getCardStatus(card);
+        if (cardStatus !== statusFilter) return false;
+      }
 
-    return words.every(word => hayStack.includes(word));
-  });
+      if (!words.length) return true;
+      const hayStack = [
+        card.partyName || '',
+        card.jobName || '',
+        card.jobNumber || '',
+        card.paper || '',
+        card.paperGSM || '',
+        card.pageSize || '',
+        card.coverPaperDetails || ''
+      ].join(' ').toLowerCase();
+
+      return words.every(word => hayStack.includes(word));
+    });
+  }, [jobCards, getCardStatus, statusFilter, deferredSearchTerm]);
+
+  const canPrintJobCard = hasPermission('jobCard', 'print');
+  const canEditJobCard = hasPermission('jobCard', 'edit');
+  const canDeleteJobCard = hasPermission('jobCard', 'delete');
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [cardToDelete, setCardToDelete] = useState(null);
@@ -558,7 +782,6 @@ export default function JobCardListing() {
 
   const [selectedCard, setSelectedCard] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isActionLoading, setIsActionLoading] = useState(false);
 
   const openPreview = (card) => {
     setSelectedCard(card);
@@ -597,58 +820,6 @@ export default function JobCardListing() {
     if (container) container.scrollTop = 0;
     const partyPrefix = (selectedCard?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
     printElement('printable-inner', { docTitle: `${partyPrefix}_JobCard_${selectedCard?.jobNumber || 'print'}` });
-  };
-
-  const [downloadingCardId, setDownloadingCardId] = useState(null);
-
-  const handleDirectDownloadJobCard = async (card) => {
-    if (downloadingCardId) return;
-    setDownloadingCardId(card._id);
-    try {
-      let cardData = { ...card };
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/jobcard/${card._id}/attachments`);
-        if (res.ok) {
-          const data = await res.json();
-          cardData = {
-            ...cardData,
-            jobAttachments: data.jobAttachments,
-            jobAttachment: data.jobAttachment,
-          };
-        }
-      } catch (err) {
-        console.warn('Could not load attachments for PDF:', err);
-      }
-
-      const partyPrefix = (card.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
-      const docLabel = `${partyPrefix}_JobCard_${card.jobNumber || 'card'}`;
-
-      setSelectedCard(cardData);
-      // Wait for React to render the printable container
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      await downloadAsPDF(
-        'printable-inner',
-        docLabel,
-        () => {}
-      );
-    } catch (error) {
-      console.error('Error downloading job card PDF:', error);
-      alert('Failed to download Job Card PDF.');
-    } finally {
-      if (!isModalOpen) {
-        setSelectedCard(null);
-      }
-      setDownloadingCardId(null);
-    }
-  };
-
-  const handleSharePDF = async () => {
-    const partyPrefix = (selectedCard?.partyName || 'Party').trim().replace(/[/\\?%*:|"<>]/g, '-');
-    await downloadAsPDF(
-      'printable-inner',
-      `${partyPrefix}_JobCard_${selectedCard?.jobNumber || 'preview'}`,
-      setIsGenerating
-    );
   };
 
   return (
@@ -863,10 +1034,12 @@ export default function JobCardListing() {
                 filteredCards.map((card, index) => {
                   const cardKey = getCardKey(card);
                   const doneSteps = workflowProgress[cardKey] || 0;
-                  const timeLeft = getTimeLeft(card);
+                  const isExpanded = !!expandedRows[cardKey];
+                  const timeLeft = isExpanded ? getTimeLeft(card) : null;
                   const cardStatus = getCardStatus(card);
                   const isCompleted = cardStatus === 'completed';
                   const isProcessing = cardStatus === 'processing';
+                  const createdDT = columnVisibility.createdAt ? formatShortDateTime(card.createdAt) : null;
 
                   const isLastEdited = highlightedCardId && (
                     (card._id && highlightedCardId === card._id) ||
@@ -894,7 +1067,7 @@ export default function JobCardListing() {
                     <React.Fragment key={cardKey || index}>
                       <tr 
                         id={`jobcard-row-${card._id || card.jobNumber}`}
-                        className={`border-b border-gray-100 transition-all duration-300 ${rowBg} ${rowHoverBg}`}
+                        className={`border-b border-gray-100 transition-colors duration-150 ${rowBg} ${rowHoverBg}`}
                       >
                         <td className="py-2 px-0.5 text-gray-500 align-top text-center text-[11px]">
                           <span>{index + 1}</span>
@@ -970,10 +1143,10 @@ export default function JobCardListing() {
                             })()}
                           </td>
                         )}
-                        {columnVisibility.createdAt && (
+                        {columnVisibility.createdAt && createdDT && (
                           <td className="py-2 px-1.5 text-gray-500 align-top wrap-break-word whitespace-normal leading-tight">
-                            <span className="block">{formatShortDateTime(card.createdAt).date}</span>
-                            <span className="block text-[10px] text-gray-400">{formatShortDateTime(card.createdAt).time}</span>
+                            <span className="block">{createdDT.date}</span>
+                            <span className="block text-[10px] text-gray-400">{createdDT.time}</span>
                           </td>
                         )}
                         {columnVisibility.createdBy && (
@@ -990,29 +1163,27 @@ export default function JobCardListing() {
                               className="text-amber-500 hover:text-amber-700 hover:bg-amber-50 p-0.5 rounded transition-colors focus:outline-none"
                               title="Toggle Workflow Timeline"
                             >
-                              {expandedRows[cardKey] ? <EyeOff size={13} /> : <Eye size={13} />}
+                              {isExpanded ? <EyeOff size={13} /> : <Eye size={13} />}
                             </button>
-                            {hasPermission('jobCard', 'print') && (
+                            {canPrintJobCard && (
                               <button
                                 onClick={() => openPreview(card)}
-                                disabled={isActionLoading}
-                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors focus:outline-none disabled:opacity-50"
+                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1 rounded transition-colors focus:outline-none"
                                 title="Print Preview"
                               >
                                 <Printer size={15} />
                               </button>
                             )}
-                            {hasPermission('jobCard', 'edit') && (
+                            {canEditJobCard && (
                               <button
                                 onClick={() => handleEditClick(card)}
-                                disabled={isActionLoading}
-                                className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none disabled:opacity-50"
+                                className="text-teal-500 hover:text-teal-700 hover:bg-teal-50 p-0.5 rounded transition-colors focus:outline-none"
                                 title="Edit"
                               >
                                 <Pencil size={13} />
                               </button>
                             )}
-                            {hasPermission('jobCard', 'delete') && (
+                            {canDeleteJobCard && (
                               <button
                                 onClick={() => handleDelete(card._id)}
                                 className="text-red-500 hover:text-red-700 hover:bg-red-50 p-0.5 rounded transition-colors focus:outline-none"
@@ -1024,146 +1195,161 @@ export default function JobCardListing() {
                           </div>
                         </td>
                       </tr>
+                      {isExpanded && (
                       <tr className={`border-b border-gray-100 ${rowBg}`}>
                         <td colSpan="20" className="p-0 border-0">
-                          <div
-                            className={`grid transition-all duration-300 ease-in-out ${
-                              expandedRows[cardKey] ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                            }`}
-                          >
-                            <div className="overflow-hidden">
-                              <div className="px-12 pb-4 pt-1 flex items-center gap-4">
-                                <div className="flex-1 min-w-155">
-                                  <div className="relative grid grid-cols-4 gap-4">
-                                    <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
-                                    
-                                      {/* New Icon between Step 2 (Printing) and Step 3 (Binding) */}
-                                      <div className="absolute left-[50%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                                        <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                          <div className="px-12 pb-4 pt-1 flex items-center gap-4">
+                            <div className="flex-1 min-w-155">
+                              <div className="relative grid grid-cols-4 gap-4">
+                                <div className="absolute left-[12%] right-[12%] top-4 h-px bg-gray-200" />
+                                
+                                  {/* New Icon between Step 2 (Printing) and Step 3 (Binding) */}
+                                  <div className="absolute left-[50%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                                    <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                                      <button 
+                                        onClick={() => setPaperUsageModalCard(card)}
+                                        className="p-1 hover:bg-gray-100 rounded-full transition-colors text-blue-500 hover:text-blue-700 relative"
+                                        title="Paper Usage Status"
+                                      >
+                                        <Settings size={14} />
+                                      </button>
+                                    </div>
+                                    {(() => {
+                                      const totalUnits = getPaperTotalUnits(card);
+                                      const data = getCardPaperUsage(card);
+                                      const usedUnits = data.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
+                                      return totalUnits > 0 && usedUnits >= totalUnits;
+                                    })() ? (
+                                      <span 
+                                        onClick={() => setPaperUsageModalCard(card)}
+                                        className="text-[8px] font-bold text-emerald-600 mt-1 uppercase tracking-wide bg-emerald-50 px-1 border border-emerald-200 rounded cursor-pointer"
+                                      >
+                                        Paper Done
+                                      </span>
+                                    ) : (
+                                      <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Paper</span>
+                                    )}
+                                  </div>
+
+                                  {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
+                                  <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                                    <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
+                                      <label
+                                        className={`p-1 hover:bg-gray-100 rounded-full transition-colors ${uploadingQCKey === cardKey ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}
+                                        title="Upload Challan Proof Image"
+                                      >
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          multiple
+                                          className="hidden"
+                                          disabled={uploadingQCKey === cardKey}
+                                          onChange={(e) => handleImageUpload(e, card)}
+                                        />
+                                        {uploadingQCKey === cardKey ? (
+                                          <Loader2 size={14} className="text-blue-600 animate-spin" />
+                                        ) : (
+                                          <ImagePlus size={14} className="text-gray-500 hover:text-blue-600" />
+                                        )}
+                                      </label>
+                                      {(() => {
+                                        const count = getCardQCImageCount(card);
+                                        if (count <= 0) return null;
+                                        return (
                                           <button 
-                                            onClick={() => setPaperUsageModalCard(card)}
-                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-blue-500 hover:text-blue-700 relative"
-                                            title="Paper Usage Status"
+                                            onClick={() => handleViewImage(card)}
+                                            className="p-1 hover:bg-gray-100 rounded-full transition-colors text-emerald-600 hover:text-emerald-700 relative" 
+                                            title="View Challan Proof Images"
                                           >
-                                            <Settings size={14} />
+                                            <ImageIcon size={14} />
+                                            <span className="absolute -top-1.5 -right-1.5 bg-emerald-600 text-white text-[9px] font-bold rounded-full min-w-3.5 h-3.5 flex items-center justify-center px-0.5">
+                                              {count}
+                                            </span>
+                                          </button>
+                                        );
+                                      })()}
+                                    </div>
+                                    {getCardQCImageCount(card) > 0 ? (
+                                      <span
+                                        onClick={() => handleViewImage(card)}
+                                        className="text-[8px] font-bold text-emerald-600 mt-1 uppercase tracking-wide bg-emerald-50 px-1 border border-emerald-200 rounded cursor-pointer"
+                                      >
+                                        Proof Done
+                                      </span>
+                                    ) : (
+                                      <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Challan Proof</span>
+                                    )}
+                                  </div>
+
+                                {(() => {
+                                  const historyStr = localStorage.getItem('krishnaJobWorkflowHistory');
+                                  let cardHistory = [];
+                                  try {
+                                    if (historyStr) cardHistory = JSON.parse(historyStr)[cardKey] || [];
+                                  } catch(error) { console.error(error); }
+
+                                  return WORKFLOW_STEPS.map((step, stepIndex) => {
+                                    const stepNo = stepIndex + 1;
+                                    const done = doneSteps >= stepNo;
+                                    const active = doneSteps + 1 === stepNo;
+                                    const current = doneSteps;
+
+                                    let completedBy = null;
+                                    if (done) {
+                                      const lastCompletion = cardHistory.slice().reverse().find(h => h.stepNo === stepNo && h.action === 'Completed');
+                                      if (lastCompletion && lastCompletion.user) {
+                                        completedBy = lastCompletion.user;
+                                      } else if (stepNo === doneSteps && card.workflowStepUpdatedBy) {
+                                        completedBy = card.workflowStepUpdatedBy;
+                                      }
+                                    }
+
+                                    return (
+                                      <div key={step.title} className="relative z-10 text-center flex flex-col items-center">
+                                        <div 
+                                          onClick={() => promptStepClick(cardKey, stepNo)}
+                                          className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
+                                            done ? 'bg-emerald-500 border-emerald-100 text-white' : active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
+                                          }`}
+                                          title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
+                                        >
+                                          {done ? <Check size={14} strokeWidth={4} /> : stepNo}
+                                        </div>
+                                        <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
+                                        <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
+                                        {done && completedBy && (
+                                          <span 
+                                            className="mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase bg-blue-50 text-blue-700"
+                                            title={`Completed by ${completedBy}`}
+                                          >
+                                            {completedBy}
+                                          </span>
+                                        )}
+                                          <button
+                                            onClick={() => promptStepClick(cardKey, stepNo)}
+                                            className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${
+                                              done ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : active ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                                            }`}
+                                          >
+                                            {done ? 'Undo' : 'Mark Done'}
                                           </button>
                                         </div>
-                                        {(() => {
-                                          const totalUnits = getPaperTotalUnits(card);
-                                          const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
-                                          const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
-                                          return totalUnits > 0 && usedUnits >= totalUnits;
-                                        })() ? (
-                                          <span 
-                                            onClick={() => setPaperUsageModalCard(card)}
-                                            className="text-[8px] font-bold text-emerald-600 mt-1 uppercase tracking-wide bg-emerald-50 px-1 border border-emerald-200 rounded cursor-pointer"
-                                          >
-                                            Paper Done
-                                          </span>
-                                        ) : (
-                                          <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Paper</span>
-                                        )}
-                                      </div>
-
-                                      {/* Upload Image Button between Step 3 (Binding) and Step 4 (QC) */}
-                                      <div className="absolute left-[75%] top-4 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                                        <div className="bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center gap-1">
-                                          <label className="cursor-pointer p-1 hover:bg-gray-100 rounded-full transition-colors" title="Upload Image">
-                                            <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleImageUpload(e, cardKey)} />
-                                            <ImagePlus size={14} className="text-gray-500 hover:text-blue-600" />
-                                          </label>
-                                          {(() => {
-                                            const data = localStorage.getItem(`krishnaJobQCImage_${cardKey}`);
-                                            if (!data) return null;
-                                            let count = 1;
-                                            try { count = data.startsWith('[') ? JSON.parse(data).length : 1; } catch(error) { console.error(error); }
-                                            return (
-                                              <button 
-                                                onClick={() => handleViewImage(cardKey)}
-                                                className="p-1 hover:bg-gray-100 rounded-full transition-colors text-emerald-500 hover:text-emerald-700 relative" 
-                                                title="View Images"
-                                              >
-                                                <ImageIcon size={14} />
-                                                {count > 1 && (
-                                                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-bold rounded-full min-w-3.5 h-3.5 flex items-center justify-center px-0.5">
-                                                    {count}
-                                                  </span>
-                                                )}
-                                              </button>
-                                            );
-                                          })()}
-                                        </div>
-                                        <span className="text-[8px] font-bold text-gray-400 mt-1 uppercase tracking-wide bg-white px-1">Challan Proof</span>
-                                      </div>
-
-                                    {(() => {
-                                      const historyStr = localStorage.getItem('krishnaJobWorkflowHistory');
-                                      let cardHistory = [];
-                                      try {
-                                        if (historyStr) cardHistory = JSON.parse(historyStr)[cardKey] || [];
-                                      } catch(error) { console.error(error); }
-
-                                      return WORKFLOW_STEPS.map((step, stepIndex) => {
-                                        const stepNo = stepIndex + 1;
-                                        const done = doneSteps >= stepNo;
-                                        const active = doneSteps + 1 === stepNo;
-                                        const current = doneSteps;
-
-                                        let completedBy = null;
-                                        if (done) {
-                                          const lastCompletion = cardHistory.slice().reverse().find(h => h.stepNo === stepNo && h.action === 'Completed');
-                                          if (lastCompletion && lastCompletion.user) {
-                                            completedBy = lastCompletion.user;
-                                          }
-                                        }
-
-                                        return (
-                                          <div key={step.title} className="relative z-10 text-center flex flex-col items-center">
-                                            <div 
-                                              onClick={() => promptStepClick(cardKey, stepNo)}
-                                              className={`mx-auto w-8 h-8 rounded-full border-4 flex items-center justify-center text-[11px] font-black shadow-sm cursor-pointer hover:scale-110 transition-transform ${
-                                                done ? 'bg-emerald-500 border-emerald-100 text-white' : active ? 'bg-blue-600 border-blue-100 text-white' : 'bg-gray-100 border-white text-gray-500 hover:border-gray-200'
-                                              }`}
-                                              title={`Mark Step ${stepNo} as ${current === stepNo ? 'pending' : 'done'}`}
-                                            >
-                                              {done ? <Check size={14} strokeWidth={4} /> : stepNo}
-                                            </div>
-                                            <p className="mt-2 text-[11px] font-black text-gray-900">{step.title}</p>
-                                            <p className="mt-0.5 text-[9px] text-gray-400">{step.desc}</p>
-                                            {done && completedBy && (
-                                              <span 
-                                                className="mt-1 inline-flex rounded-full px-2 py-0.5 text-[8px] font-black uppercase bg-blue-50 text-blue-700"
-                                                title={`Completed by ${completedBy}`}
-                                              >
-                                                {completedBy}
-                                              </span>
-                                            )}
-                                              <button
-                                                onClick={() => promptStepClick(cardKey, stepNo)}
-                                                className={`mt-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase transition-colors flex items-center justify-center gap-1 border ${
-                                                  done ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : active ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
-                                                }`}
-                                              >
-                                                {done ? 'Undo' : 'Mark Done'}
-                                              </button>
-                                            </div>
-                                          );
-                                        });
-                                      })()}
-                                  </div>
-                                </div>
-                                {timeLeft && (
-                                  <div className={`w-24 rounded-xl border p-3 text-center shrink-0 ${timeLeft.overdue ? 'bg-red-50 border-red-100 text-red-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
-                                    <p className="text-[9px] font-black uppercase">Time Left</p>
-                                    <p className="text-2xl font-black leading-none mt-1">{timeLeft.days}</p>
-                                    <p className="text-[10px] font-bold mt-0.5">days</p>
-                                  </div>
-                                )}
+                                      );
+                                    });
+                                  })()}
                               </div>
                             </div>
+                            {timeLeft && (
+                              <div className={`w-24 rounded-xl border p-3 text-center shrink-0 ${timeLeft.overdue ? 'bg-red-50 border-red-100 text-red-600' : 'bg-rose-50 border-rose-100 text-rose-600'}`}>
+                                <p className="text-[9px] font-black uppercase">Time Left</p>
+                                <p className="text-2xl font-black leading-none mt-1">{timeLeft.days}</p>
+                                <p className="text-[10px] font-bold mt-0.5">days</p>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
+                      )}
                     </React.Fragment>
                   );
                 })
@@ -1174,8 +1360,8 @@ export default function JobCardListing() {
       </div>
 
       {/* Print Preview Modal */}
-      {(isModalOpen || downloadingCardId) && selectedCard && (
-        <div className={`print-modal-overlay fixed inset-0 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0 ${downloadingCardId && !isModalOpen ? 'opacity-0 pointer-events-none -z-50' : 'bg-black/60'}`}>
+      {isModalOpen && selectedCard && (
+        <div className="print-modal-overlay fixed inset-0 z-100 flex items-stretch sm:items-center justify-center p-0 sm:p-4 overflow-y-auto print:static print:overflow-visible print:bg-white print:p-0 bg-black/60">
           <div className="print-modal-shell job-card-modal-shell bg-white border border-gray-300 w-full max-w-4xl sm:max-w-4xl relative h-dvh sm:h-auto max-h-dvh sm:max-h-[95vh] flex flex-col shadow-none print:max-h-none print:overflow-visible print:border-0 print:shadow-none print:h-auto">
             <div className="modal-header print-modal-header no-print p-3 sm:p-4 border-b bg-white">
               <div className="print-modal-title-row flex items-center justify-between gap-2">
@@ -1560,10 +1746,9 @@ export default function JobCardListing() {
             
             <div className="p-4 overflow-y-auto grow">
               {(() => {
-                const cardKey = getCardKey(paperUsageModalCard);
                 const totalUnits = getPaperTotalUnits(paperUsageModalCard);
-                const data = JSON.parse(localStorage.getItem(`krishnaJobPaperUsage_${cardKey}`) || '[]');
-                const usedUnits = data.reduce((acc, curr) => acc + curr.qty, 0);
+                const data = getCardPaperUsage(paperUsageModalCard);
+                const usedUnits = data.reduce((acc, curr) => acc + (Number(curr.qty) || 0), 0);
                 const remainingUnits = Math.max(0, totalUnits - usedUnits);
                 const isComplete = totalUnits > 0 && usedUnits >= totalUnits;
 
@@ -1634,6 +1819,113 @@ export default function JobCardListing() {
                   </>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Challan Proof / QC Image Gallery Modal */}
+      {qcModalCard && (
+        <div
+          className="fixed inset-0 z-110 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]"
+          onClick={() => setQcModalCard(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <ImageIcon size={18} className="text-emerald-600" />
+                  Challan Proof Images — {qcModalCard.jobNumber}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">{qcModalCard.partyName} · {qcModalCard.jobName}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors ${uploadingQCKey === getCardKey(qcModalCard) ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingQCKey === getCardKey(qcModalCard)}
+                    onChange={(e) => handleImageUpload(e, qcModalCard)}
+                  />
+                  {uploadingQCKey === getCardKey(qcModalCard) ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <ImagePlus size={14} />
+                  )}
+                  <span>Add Photo</span>
+                </label>
+                <button
+                  onClick={() => setQcModalCard(null)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 overflow-y-auto grow bg-gray-50/50">
+              {qcModalLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center text-gray-500 gap-2">
+                  <Loader2 size={28} className="animate-spin text-blue-600" />
+                  <p className="text-xs font-semibold">Loading challan proof images...</p>
+                </div>
+              ) : qcModalImages.length === 0 ? (
+                <div className="py-12 text-center text-gray-400">
+                  <ImageIcon size={36} className="mx-auto mb-2 opacity-40" />
+                  <p className="text-sm font-semibold">No challan proof images uploaded yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {qcModalImages.map((img, idx) => (
+                    <div key={img._id || idx} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs flex flex-col">
+                      <a
+                        href={img.dataUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-gray-900 flex items-center justify-center h-64 overflow-hidden"
+                        title="Click to open full size"
+                      >
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name || `Challan Proof ${idx + 1}`}
+                          className="max-h-64 w-full object-contain hover:scale-105 transition-transform duration-200"
+                        />
+                      </a>
+                      <div className="p-2.5 flex items-center justify-between gap-2 bg-white border-t border-gray-100">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-gray-800 truncate">{img.name || `Challan Proof ${idx + 1}`}</p>
+                          <p className="text-[10px] text-gray-500">
+                            By {img.uploadedBy || 'Admin'}
+                            {img.uploadedAt ? ` · ${new Date(img.uploadedAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <a
+                            href={img.dataUrl}
+                            download={`${qcModalCard.jobNumber || 'Challan'}_Proof_${idx + 1}.jpg`}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Download Image"
+                          >
+                            <Download size={14} />
+                          </a>
+                          <button
+                            onClick={() => handleDeleteQCImage(qcModalCard, idx, !!img.localOnly)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Image"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
