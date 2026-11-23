@@ -299,16 +299,18 @@ const PaperStockManagement = () => {
 
     try {
       const addedQty = Number(addStockForm.quantity) || 0;
-      const existingCoverQty = addingStockToItem.coverQuantity !== undefined ? Number(addingStockToItem.coverQuantity) : undefined;
-      const existingQty = Number(addingStockToItem.quantity) || 0;
+      const currentCover = Number(addingStockToItem.coverQuantity) || 0;
+      const currentTotal = Number(addingStockToItem.quantity) || 0;
+      const baseQty = currentCover > 0 ? currentCover : (currentTotal > 0 ? currentTotal : currentCover);
+      const newCoverQty = baseQty + addedQty;
       
       const res = await fetch(`${API_BASE_URL}/api/paper-stock/${addingStockToItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...addingStockToItem,
-          quantity: existingCoverQty === undefined ? existingQty + addedQty : existingQty,
-          coverQuantity: existingCoverQty !== undefined ? existingCoverQty + addedQty : undefined,
+          coverQuantity: newCoverQty,
+          quantity: newCoverQty + (Number(addingStockToItem.innerQuantity) || 0),
           challanNo: addStockForm.challanNo,
           invoiceNo: addStockForm.invoiceNo,
           createdAt: addStockForm.date,
@@ -688,8 +690,8 @@ const PaperStockManagement = () => {
                                {(item.coverGSM !== undefined || item.gsm) && (
                                  <div className="flex items-center gap-2">
                                    <span className="text-[10px] font-black text-gray-400 uppercase w-12">Paper:</span>
-                                   <span className={`text-sm font-black tracking-tight ${(item.coverQuantity !== undefined ? item.coverQuantity : item.quantity) <= item.lowStockThreshold ? 'text-red-600' : 'text-gray-900'}`}>
-                                     {(item.coverQuantity !== undefined ? item.coverQuantity : item.quantity).toLocaleString()} Sheets
+                                   <span className={`text-sm font-black tracking-tight ${(Number(item.coverQuantity) > 0 ? Number(item.coverQuantity) : (Number(item.quantity) || 0)) <= item.lowStockThreshold ? 'text-red-600' : 'text-gray-900'}`}>
+                                     {(Number(item.coverQuantity) > 0 ? Number(item.coverQuantity) : (Number(item.quantity) || 0)).toLocaleString()} Sheets
                                    </span>
                                  </div>
                                )}
@@ -881,7 +883,7 @@ const PaperStockManagement = () => {
                 <div className="flex justify-between items-center pt-2">
                   <div>
                     <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Remaining Stock</h4>
-                    <p className="font-black text-slate-800">{(addingStockToItem.coverQuantity !== undefined ? addingStockToItem.coverQuantity : (addingStockToItem.quantity || 0)).toLocaleString()} Sheets</p>
+                    <p className="font-black text-slate-800">{(Number(addingStockToItem.coverQuantity) > 0 ? Number(addingStockToItem.coverQuantity) : (Number(addingStockToItem.quantity) || 0)).toLocaleString()} Sheets</p>
                   </div>
                   <div>
                     <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Last Updated</h4>

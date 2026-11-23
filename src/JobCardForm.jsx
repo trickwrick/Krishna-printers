@@ -107,6 +107,7 @@ export default function JobCardForm() {
   const [paperStocks, setPaperStocks] = useState([]);
   const [selectedPaper, setSelectedPaper] = useState(editData?.paper || '');
   const [selectedPaperLabel, setSelectedPaperLabel] = useState(editData?.paper || '');
+  const [selectedPaperStockId, setSelectedPaperStockId] = useState(editData?.coverPaperLines?.[0]?.stockId || '');
   const [paperGSM, setPaperGSM] = useState(editData?.paperGSM || '');
   const [paperSearchTerm, setPaperSearchTerm] = useState('');
   const [isPaperDropdownOpen, setIsPaperDropdownOpen] = useState(false);
@@ -295,7 +296,12 @@ export default function JobCardForm() {
       finishingDripOffQty: finishingDripOffQty || '',
       finishingLamination: finishingLamination || '',
       finishingLaminationQty: finishingLaminationQty || '',
-      coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
+      coverPaperLines: selectedPaper ? [{
+        stockId: activeCoverStock?._id || selectedPaperStockId || null,
+        paperName: selectedPaper,
+        gsm: paperGSM,
+        quantity: Number(fd.get('coverPaperCount')) || 0
+      }] : [],
       innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: innerPaperCount || 0 }] : [],
       // Boolean conversion for binding checkboxes
     };
@@ -439,11 +445,24 @@ export default function JobCardForm() {
   }, [newPlateSizes, oldPlateSizes, jobCards, editData, partyName]);
 
   const filteredStocks = React.useMemo(() => {
-    return paperStocks.filter(stock => {
+    const list = paperStocks.filter(stock => {
       const source = stock.paperSource || 'Company paper';
       return source === paperSource;
     });
-  }, [paperStocks, paperSource]);
+
+    if (paperSource === 'Party paper' && partyName) {
+      const p = partyName.trim().toLowerCase();
+      return [...list].sort((a, b) => {
+        const aParty = (a.coverPartyName || a.partyName || '').trim().toLowerCase();
+        const bParty = (b.coverPartyName || b.partyName || '').trim().toLowerCase();
+        const aMatch = aParty === p ? 2 : (aParty.includes(p) ? 1 : 0);
+        const bMatch = bParty === p ? 2 : (bParty.includes(p) ? 1 : 0);
+        return bMatch - aMatch;
+      });
+    }
+
+    return list;
+  }, [paperStocks, paperSource, partyName]);
 
   const getCoverPaperLabel = (stock) => stock.coverName || stock.name || '';
   const getInnerPaperLabel = (stock) => stock.innerName || stock.name || '';
@@ -506,22 +525,56 @@ export default function JobCardForm() {
   // Find currently selected cover paper stock object & available count
   const activeCoverStock = React.useMemo(() => {
     if (!selectedPaper || selectedPaper === 'Custom' || !paperStocks.length) return null;
-    return paperStocks.find((stock) => {
-      // If paperSource is party paper, match partyName as well
-      if (paperSource && stock.paperSource && stock.paperSource !== paperSource) return false;
-      if (paperSource === 'Party paper' && partyName && stock.partyName && stock.partyName.toLowerCase() !== partyName.toLowerCase()) {
-        return false;
-      }
-      const label = formatCoverPaperOption(stock);
-      const name = getCoverPaperLabel(stock);
-      return (selectedPaperLabel && label === selectedPaperLabel) ||
-             (name && name.toLowerCase() === selectedPaper.toLowerCase());
-    }) || null;
-  }, [selectedPaper, selectedPaperLabel, paperStocks, paperSource, partyName]);
 
-  const availableCoverStockQty = activeCoverStock
-    ? Math.max(0, (activeCoverStock.coverQuantity !== undefined ? Number(activeCoverStock.coverQuantity) : Number(activeCoverStock.quantity) || 0))
-    : null;
+    // 1. If explicit stock ID is tracked, match directly
+    if (selectedPaperStockId) {
+      const match = paperStocks.find((s) => s._id === selectedPaperStockId || String(s._id) === String(selectedPaperStockId));
+      if (match) return match;
+    }
+
+    // 2. If selectedPaperLabel has full formatting (party, gsm, size), match exact label
+    if (selectedPaperLabel && selectedPaperLabel !== selectedPaper) {
+      const matchByLabel = paperStocks.find((s) => formatCoverPaperOption(s) === selectedPaperLabel);
+      if (matchByLabel) return matchByLabel;
+    }
+
+    // 3. Match prioritizing source, partyName (coverPartyName || partyName), name, and GSM
+    return paperStocks.find((stock) => {
+      if (paperSource && stock.paperSource && stock.paperSource !== paperSource) return false;
+
+      if (paperSource === 'Party paper' && partyName) {
+        const stockParty = (stock.coverPartyName || stock.partyName || '').trim().toLowerCase();
+        const currentParty = partyName.trim().toLowerCase();
+        if (stockParty && currentParty && stockParty !== currentParty) {
+          return false;
+        }
+      }
+
+      const name = getCoverPaperLabel(stock);
+      if (!name || name.toLowerCase() !== selectedPaper.toLowerCase()) return false;
+
+      if (paperGSM && (stock.coverGSM || stock.gsm)) {
+        if (String(stock.coverGSM || stock.gsm).trim() !== String(paperGSM).trim()) {
+          return false;
+        }
+      }
+
+      return true;
+    }) || paperStocks.find((stock) => {
+      // Loose fallback matching source and name
+      if (paperSource && stock.paperSource && stock.paperSource !== paperSource) return false;
+      const name = getCoverPaperLabel(stock);
+      return name && name.toLowerCase() === selectedPaper.toLowerCase();
+    }) || null;
+  }, [selectedPaper, selectedPaperLabel, selectedPaperStockId, paperStocks, paperSource, partyName, paperGSM]);
+
+  const availableCoverStockQty = React.useMemo(() => {
+    if (!activeCoverStock) return null;
+    const coverQty = activeCoverStock.coverQuantity != null ? Number(activeCoverStock.coverQuantity) : 0;
+    const totalQty = activeCoverStock.quantity != null ? Number(activeCoverStock.quantity) : 0;
+    const effectiveQty = coverQty > 0 ? coverQty : (totalQty > 0 ? totalQty : coverQty);
+    return Math.max(0, effectiveQty);
+  }, [activeCoverStock]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -660,6 +713,7 @@ export default function JobCardForm() {
         
         // Auto-select this newly created paper in Job Card
         const found = updatedStocks.find(s => s._id === data._id) || data;
+        setSelectedPaperStockId(found._id);
         setSelectedPaper(getCoverPaperLabel(found));
         setSelectedPaperLabel(formatCoverPaperOption(found));
         if (gsmVal) setPaperGSM(gsmVal);
@@ -694,11 +748,40 @@ export default function JobCardForm() {
   useEffect(() => {
     if (!paperStocks.length) return;
 
-    if (editData?.paper) {
-      const coverMatch = paperStocks.find(
-        (stock) => getCoverPaperLabel(stock).toLowerCase() === editData.paper.toLowerCase()
+    if (editData?.coverPaperLines?.[0]?.stockId) {
+      const matchById = paperStocks.find(
+        (s) => String(s._id) === String(editData.coverPaperLines[0].stockId)
       );
+      if (matchById) {
+        setSelectedPaperStockId(matchById._id);
+        setSelectedPaperLabel(formatCoverPaperOption(matchById));
+        return;
+      }
+    }
+
+    if (editData?.paper) {
+      const editParty = (editData.partyName || '').trim().toLowerCase();
+      const editSource = editData.paperSource || 'Company paper';
+      const editGSM = editData.paperGSM ? String(editData.paperGSM).trim() : '';
+
+      const coverMatch = paperStocks.find((stock) => {
+        if (stock.paperSource && editSource && stock.paperSource !== editSource) return false;
+        if (editSource === 'Party paper' && editParty) {
+          const sParty = (stock.coverPartyName || stock.partyName || '').trim().toLowerCase();
+          if (sParty && sParty !== editParty) return false;
+        }
+        if (getCoverPaperLabel(stock).toLowerCase() !== editData.paper.toLowerCase()) return false;
+        if (editGSM && (stock.coverGSM || stock.gsm)) {
+          if (String(stock.coverGSM || stock.gsm).trim() !== editGSM) return false;
+        }
+        return true;
+      }) || paperStocks.find((stock) => {
+        if (stock.paperSource && editSource && stock.paperSource !== editSource) return false;
+        return getCoverPaperLabel(stock).toLowerCase() === editData.paper.toLowerCase();
+      });
+
       if (coverMatch) {
+        setSelectedPaperStockId(coverMatch._id);
         setSelectedPaperLabel(formatCoverPaperOption(coverMatch));
       }
     }
@@ -711,7 +794,7 @@ export default function JobCardForm() {
         setSelectedInnerPaperLabel(formatInnerPaperOption(innerMatch));
       }
     }
-  }, [paperStocks, editData?.paper, editData?.innerPaper]);
+  }, [paperStocks, editData]);
 
   const handleNewPlateSizeChange = (e) => {
     const { value, checked } = e.target;
@@ -800,7 +883,12 @@ export default function JobCardForm() {
       bindingGlue: fd.get('bindingGlue') === 'on',
       bindingKachhi: fd.get('bindingKachhi') === 'on',
       bindingPukki: fd.get('bindingPukki') === 'on',
-      coverPaperLines: selectedPaper ? [{ paperName: selectedPaper, gsm: paperGSM, quantity: Number(fd.get('coverPaperCount')) || 0 }] : [],
+      coverPaperLines: selectedPaper ? [{
+        stockId: activeCoverStock?._id || selectedPaperStockId || null,
+        paperName: selectedPaper,
+        gsm: paperGSM,
+        quantity: Number(fd.get('coverPaperCount')) || 0
+      }] : [],
       innerPaperLines: selectedInnerPaper ? [{ paperName: selectedInnerPaper, gsm: innerPaperGSM, quantity: innerPaperCount || 0 }] : [],
     };
 
@@ -1541,6 +1629,7 @@ export default function JobCardForm() {
                       setPaperSource('Party paper');
                       setSelectedPaper('');
                       setSelectedPaperLabel('');
+                      setSelectedPaperStockId('');
                       setPaperGSM('');
                       setSelectedInnerPaper('');
                       setSelectedInnerPaperLabel('');
@@ -1560,6 +1649,7 @@ export default function JobCardForm() {
                       setPaperSource('Company paper');
                       setSelectedPaper('');
                       setSelectedPaperLabel('');
+                      setSelectedPaperStockId('');
                       setPaperGSM('');
                       setSelectedInnerPaper('');
                       setSelectedInnerPaperLabel('');
@@ -1648,6 +1738,7 @@ export default function JobCardForm() {
                                 key={stock._id}
                                 type="button"
                                 onClick={() => {
+                                  setSelectedPaperStockId(stock._id);
                                   setSelectedPaper(getCoverPaperLabel(stock));
                                   setSelectedPaperLabel(formatCoverPaperOption(stock));
                                   setPaperGSM(stock.coverGSM || stock.gsm || '');
@@ -1673,7 +1764,21 @@ export default function JobCardForm() {
                                     )}
                                   </span>
                                 </div>
-                                {selectedPaperLabel === formatCoverPaperOption(stock) && <div className="w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0" />}
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  {(() => {
+                                    const stockQty = (Number(stock.coverQuantity) > 0 ? Number(stock.coverQuantity) : Number(stock.quantity)) || 0;
+                                    return (
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                        stockQty > 0
+                                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                          : 'bg-red-50 text-red-500 border border-red-200'
+                                      }`}>
+                                        {stockQty.toLocaleString()} Sheets
+                                      </span>
+                                    );
+                                  })()}
+                                  {selectedPaperLabel === formatCoverPaperOption(stock) && <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />}
+                                </div>
                               </button>
                             ))
                         ) : (
